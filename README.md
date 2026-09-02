@@ -98,6 +98,13 @@ you fluff something while playing and want the bars you are in. Trimming moves
 two seconds is a different amount of music in every song. A loop boundary off
 the grid turns a count-in into a guess.
 
+**A and B, from the playhead** — the way you actually mark a passage. Press
+**Set A** (or `I`), let the song run to the end of the phrase, press **Set B**
+(or `O`). Both snap to the bar grid. Pressing A with nothing selected gives you
+a loop of the default bar count immediately, so there is always something
+armable between the two presses; pressing B behind A is refused rather than
+silently swapped.
+
 The readout tells you what you have picked and what it costs: `Verse 1 · 1:24 →
 1:39 · 15.3s · 95 notes`. The note count comes from the *filtered* chart, so it
 follows the difficulty slider — at 60% a passage genuinely has fewer notes in
@@ -188,6 +195,7 @@ instead of two handlers quietly both firing.
 |---|---|
 | `D` | start or end a drill on the selected passage |
 | `↑` `↓` | playback speed ±5% |
+| `I` `O` | set the loop start (A) / end (B) at the playhead |
 | `,` `.` | previous / next section (while the panel is open) |
 
 Which keys was a question for the registry rather than for taste. In the
@@ -321,7 +329,7 @@ Two things learned from the DOM, in case that PR is written by somebody else:
 node --test tests/*.test.js
 ```
 
-97 tests, no dependencies, no build step. The four suites cover the pure
+98 tests, no dependencies, no build step. The four suites cover the pure
 modules — the range table, the ladder, the per-passage statistics, and the
 store. The host seam, the model's wiring and the panel are verified in the
 running app instead; they are the parts that a unit test can only mock.

@@ -360,3 +360,18 @@ test('a drag that cannot make a usable range returns null', () => {
     assert.equal(rangeFromDrag([], 10, 10.1, 60), null);
     assert.equal(rangeFromDrag([], NaN, 5, 60), null);
 });
+
+// ── the marks A and B are just snapped drags ─────────────────────────────
+//
+// model.markEdge() composes snapToBar with rangeFromDrag, so the behaviour
+// worth pinning at this level is that a mark landing on the bar the other one
+// is already on does not produce a zero-length loop.
+
+test('two marks on the same bar still give a usable loop', () => {
+    const bars = barLines(BEATS);
+    const a = snapToBar(bars, 9.1);      // -> 8
+    const b = snapToBar(bars, 9.9);      // -> 8, the same line
+    const r = rangeFromDrag(bars, a, b, 32);
+    assert.ok(r.end > r.start);
+    assert.ok(r.end - r.start >= MIN_RANGE_SEC);
+});

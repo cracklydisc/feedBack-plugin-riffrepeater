@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.4.0 — A and B, from the playhead
+
+The panel could set a loop from a section, a phrase, a bar count or a drag, and
+none of those is how a guitarist actually marks a passage: you press A, let the
+song run to the end of the phrase, and press B. Reading a clock and stepping a
+number until it matches is the same job done backwards.
+
+**`Set A` / `Set B`** take the playhead, snapped to the bar grid like
+everything else here. Pressing A with nothing selected gives a loop of the
+default bar count straight away, so there is always something armable between
+the two presses instead of a half-defined range. Pressing B behind A is
+refused with a sentence rather than guessed at by swapping them — two presses
+in that order describe something, and it is not a loop.
+
+**`I` and `O`** do the same from the keyboard, so the whole gesture happens
+without letting go of the guitar. Verified end to end: `I` at 44.9s snapped to
+bar 17, the song ran 16 seconds, `O` at 60.9s closed it at bar 24 — one loop,
+14 notes, no mouse.
+
+The buttons say A and B because that is the app's own vocabulary for these two
+points. The keys are I and O because the 3D Highway already registers `A` in
+the player scope for its framing tuner, and a shortcut that fights another
+plugin for a key is worse than one that needs a tooltip. I and O are what a
+video editor uses for in and out, which is the same idea.
+
 ## 0.3.0 — a timeline instead of a chip grid
 
 A UI review of 0.2 landed five criticisms. Four were right and are fixed here;

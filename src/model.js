@@ -187,6 +187,53 @@ export function selectDrag(startSec, endSec) {
 }
 
 /**
+ * Set one end of the loop at the playhead — the app's A and B.
+ *
+ * This is how a guitarist actually marks a passage: press A, let the song run
+ * to the end of the phrase, press B. Reading a clock and stepping a number to
+ * match it is the same job done backwards, and it is the job the panel was
+ * making you do.
+ *
+ * Both marks snap to the bar grid, like everything else here. Pressing A with
+ * nothing selected gives you a loop of the default bar count immediately, so
+ * there is always something armable between the two presses rather than a
+ * half-defined range; pressing B before A is refused rather than guessed at.
+ */
+export function markEdge(edge) {
+    const bars = ranges.barLines(host.beats());
+    const dur = host.duration();
+    const t = ranges.snapToBar(bars, host.time());
+    if (!Number.isFinite(t)) return { ok: false, reason: 'no-playhead' };
+
+    const cur = selection();
+    let start;
+    let end;
+
+    if (edge === 'start') {
+        start = t;
+        end = (cur && Number.isFinite(cur.end) && cur.end > t) ? cur.end : null;
+        if (end === null) {
+            const one = ranges.barsFrom(bars, t, state.settings.barCount, dur);
+            end = one ? one.end : null;
+        }
+        if (end === null) return { ok: false, reason: 'no-room' };
+    } else {
+        end = t;
+        start = (cur && Number.isFinite(cur.start) && cur.start < t) ? cur.start : null;
+        // B behind A is not a range. Refusing says so; swapping them silently
+        // would arm a passage the two presses did not describe.
+        if (start === null) return { ok: false, reason: 'b-before-a' };
+    }
+
+    const r = ranges.rangeFromDrag(bars, start, end, dur);
+    if (!r) return { ok: false, reason: 'too-short' };
+    state.barsRange = r;
+    state.mode = 'bars';
+    announce();
+    return { ok: true, range: r };
+}
+
+/**
  * Select whatever the section table says is at this time.
  *
  * What a click on the timeline resolves to. Deliberately derived from the time

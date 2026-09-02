@@ -73,6 +73,12 @@ const actions = {
     barsAtPlayhead() { model.selectBarsAtPlayhead(); },
     nudge(edge, dir) { model.nudge(edge, dir); },
 
+    /** Mark the loop's A or B at the playhead. */
+    markEdge(edge) {
+        const res = model.markEdge(edge);
+        if (!res.ok) note(explainMark(res.reason));
+    },
+
     /**
      * One press for "work on the thing I am worst at".
      *
@@ -164,6 +170,16 @@ const actions = {
         }
     },
 };
+
+function explainMark(reason) {
+    switch (reason) {
+        case 'b-before-a': return 'B has to come after A — set A first, then let the song run.';
+        case 'no-playhead': return 'No playhead yet. Start the song, then mark a point.';
+        case 'no-room': return 'No room for a loop there.';
+        case 'too-short': return 'A and B landed on the same bar — let it run a little further.';
+        default: return 'That did not work.';
+    }
+}
 
 function explain(reason) {
     switch (reason) {
@@ -386,6 +402,21 @@ const SHORTCUTS = [
         key: 'ArrowDown',
         description: 'Riff Repeater: playback speed −5%',
         handler: () => actions.setSpeed(Math.max(15, host.speedPct() - 5)),
+    },
+    {
+        // I and O, the way a video editor marks in and out. A and B would read
+        // better on the buttons — and they are what the buttons say — but the
+        // 3D Highway registers 'A' in this scope for its framing tuner, and a
+        // shortcut that fights another plugin for a key is worse than one that
+        // needs a tooltip.
+        key: 'i',
+        description: 'Riff Repeater: set the loop start (A) at the playhead',
+        handler: () => actions.markEdge('start'),
+    },
+    {
+        key: 'o',
+        description: 'Riff Repeater: set the loop end (B) at the playhead',
+        handler: () => actions.markEdge('end'),
     },
     {
         // Panel-open only: moving a selection you cannot see is not a feature.

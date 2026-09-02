@@ -217,6 +217,28 @@ export function createPanel(actions) {
     readout.appendChild(readoutMeta);
     main.appendChild(readout);
 
+    /*
+     * A and B, from the playhead.
+     *
+     * The way a guitarist actually marks a passage: press A, let the song run
+     * to the end of the phrase, press B. The trim row below is for adjusting
+     * afterwards — reading a clock and stepping a number to match it is the
+     * same job done backwards.
+     */
+    const abRow = el('div', 'rr-row rr-ab');
+    abRow.appendChild(el('span', 'rr-mini', 'Playhead'));
+    const markA = button('rr-btn rr-btn-small', null,
+        'Set the loop start (A) at the playhead', () => actions.markEdge('start'));
+    markA.appendChild(el('span', null, 'Set A'));
+    markA.appendChild(kbd('I'));
+    const markB = button('rr-btn rr-btn-small', null,
+        'Set the loop end (B) at the playhead', () => actions.markEdge('end'));
+    markB.appendChild(el('span', null, 'Set B'));
+    markB.appendChild(kbd('O'));
+    abRow.appendChild(markA);
+    abRow.appendChild(markB);
+    main.appendChild(abRow);
+
     const trim = el('div', 'rr-row rr-trim');
     trim.title = 'Move a loop edge by one whole bar. Bars, not seconds: a boundary '
         + 'off the grid turns the count-in into a guess.';
@@ -653,6 +675,10 @@ export function createPanel(actions) {
             trimEnd.textContent = '–';
         }
         for (const b of trim.querySelectorAll('button')) b.disabled = !sel || snap.drill.active;
+        // A works with nothing selected — that is how you start a range. B
+        // needs a start to close, and the drill owns the loop while it runs.
+        markA.disabled = snap.drill.active;
+        markB.disabled = snap.drill.active || !sel;
 
         // the ladder and the goal
         renderLadder(snap);
