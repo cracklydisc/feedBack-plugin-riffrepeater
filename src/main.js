@@ -1,0 +1,458 @@
+/*
+ * Riff Repeater's runtime: wire the host's events to the model, the model to
+ * the panel, and put both down again cleanly.
+ *
+ * The host re-evaluates a plugin's script on update, rollback and reinstall.
+ * Each run takes the previous one down first — a live interval and a second
+ * copy of the API on window are exactly what plugin-runtime-idempotent.v1 is
+ * about.
+ */
+
+import { host } from './host.js';
+import * as model from './model.js';
+import * as drill from './drill.js';
+import * as store from './store.js';
+import * as ranges from './ranges.js';
+import { follow, unfollow } from './theme.js';
+import { normalizeLadder } from './ladder.js';
+import { createPanel } from './ui/panel.js';
+import { createMount } from './ui/mount.js';
+
+const ID = 'riffrepeater';
+const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
+
+/** Panel open: fast enough that a loop wrap shows up as it happens. */
+const TICK_OPEN_MS = 400;
+/** Panel closed: slow enough to be free, quick enough to notice an auto-drill. */
+const TICK_IDLE_MS = 1500;
+
+try {
+    const prev = window[HOOKS_KEY];
+    if (prev && typeof prev.teardown === 'function') prev.teardown();
+} catch (err) {
+    console.warn('[' + ID + '] previous instance did not come down cleanly:', err);
+}
+
+const unsubs = [];
+const apiListeners = new Set();
+let open = false;
+let tickTimer = null;
+let tickRate = 0;
+let panel = null;
+let mount = null;
+
+/**
+ * What the running drill is working on.
+ *
+ * Captured on every tick while a drill is active, because the conductor drops
+ * its range on the way out and `notedetect:drill-ended` does not carry it —
+ * so without this, a result could not be attributed to a passage. Covers
+ * auto-drills too, which is the point: a drill the detector started on a run
+ * the player fluffed is exactly the passage the map should learn about.
+ */
+let activeDrill = null;   // { key, label, start, end, mine, scored }
+
+// ─────────────────────────────────────────────────────────────────────────
+// actions — the panel's entire write surface
+// ─────────────────────────────────────────────────────────────────────────
+
+const actions = {
+    close() { setOpen(false); },
+
+    setMode(mode) { model.setMode(mode); },
+    selectSection(key) {
+        model.selectSection(key);
+        if (model.snapshot().mode === 'bars') model.setMode('section');
+    },
+    stepPart(d) { model.stepPart(d); },
+    barCount() { return model.getSettings().barCount; },
+    setBarCount(n) { model.setBarCount(n); },
+    barsAtPlayhead() { model.selectBarsAtPlayhead(); },
+    nudge(edge, dir) { model.nudge(edge, dir); },
+
+    toggleRung(pct) {
+        const cur = model.getSettings().ladder || [];
+        const next = cur.includes(pct) ? cur.filter((p) => p !== pct) : [...cur, pct];
+        model.setSettings({ ladder: normalizeLadder(next, host.speedBounds()) });
+    },
+    setGoal(pct) {
+        const n = Math.max(10, Math.min(100, Math.round(Number(pct) || 0)));
+        model.setSettings({ goalPct: n });
+    },
+    setWiden(on) { model.setSettings({ widen: !!on }); },
+
+    async startDrill() {
+        const snap = model.snapshot();
+        const range = snap.selection;
+        if (!range) return;
+        const s = snap.settings;
+        const res = await drill.start(range, {
+            goalPct: s.goalPct,
+            ladder: s.ladder,
+            widen: s.widen,
+        });
+        if (res.ok) {
+            activeDrill = { key: range.key, label: range.label, start: range.start, end: range.end, mine: true, scored: 0 };
+            model.setPaused(true);
+            retick();
+        } else {
+            note(explain(res.reason));
+        }
+        model.announce();
+    },
+
+    endDrill() {
+        drill.end();
+        model.announce();
+    },
+
+    async loopOnly() {
+        const range = model.snapshot().selection;
+        if (!range) return;
+        const res = await drill.loopOnly(range);
+        if (!res.ok) note(explain(res.reason));
+        model.announce();
+    },
+
+    clearLoop() {
+        host.clearLoop();
+        model.announce();
+    },
+
+    setSpeed(pct) {
+        if (host.setSpeedPct(pct)) model.rememberSpeed();
+        model.announce();
+    },
+
+    setDifficulty(pct) {
+        if (host.setDifficultyPct(pct)) {
+            model.rememberDifficulty();
+            model.onDifficultyChanged();
+        }
+    },
+};
+
+function explain(reason) {
+    switch (reason) {
+        case 'no-engine': return 'The Note Detection plugin is not loaded — it owns the drill engine.';
+        case 'detection-off': return 'Turn on note detection first: a drill is graded from what you play.';
+        case 'too-short': return 'That passage is too short to drill. Widen it by a bar.';
+        case 'no-range': return 'Pick a passage first.';
+        case 'refused': return 'The drill engine refused that range — see the console for its reason.';
+        case 'threw': return 'The drill engine errored. See the console.';
+        default: return 'That did not work.';
+    }
+}
+
+/** One-line, transient feedback in the panel header area. */
+function note(text) {
+    if (!panel) return;
+    const line = panel.root.querySelector('.rr-blocked');
+    if (!line) return;
+    line.hidden = false;
+    line.textContent = text;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// render loop
+// ─────────────────────────────────────────────────────────────────────────
+
+function render() {
+    if (!panel) return;
+    const snap = model.snapshot();
+    panel.render(snap);
+}
+
+function tick() {
+    // Keep the drill's target under observation while it runs — this is the
+    // only place the conductor's range is readable before it is discarded.
+    const st = drill.state();
+    if (st.active) {
+        if (st.range && Number.isFinite(st.range.judgeStart)) {
+            const start = st.range.judgeStart;
+            const end = st.range.judgeEnd;
+            if (!activeDrill || activeDrill.start !== start || activeDrill.end !== end) {
+                const scored = activeDrill ? activeDrill.scored : 0;
+                activeDrill = attribute(start, end, st.label, activeDrill && activeDrill.mine);
+                activeDrill.scored = scored;
+            }
+        }
+        // How many iterations the conductor has actually GRADED. Tracked here
+        // because it decides whether the result is worth storing at all: a
+        // drill armed and abandoned before a single pass reports best = 0, and
+        // writing that would stamp 0% onto a passage nobody played.
+        if (activeDrill) activeDrill.scored = drill.iterations().length;
+        model.setPaused(true);
+    } else if (model.snapshot().paused) {
+        model.setPaused(false);
+    }
+    if (open) render();
+    retick();
+}
+
+/**
+ * Which stored passage a drilled range belongs to.
+ *
+ * A drill's loop is not the passage: the conductor pulls the start back by a
+ * five-second lead-in and may have widened both ends. So the range is
+ * attributed by its MIDPOINT — the section that contains the middle of what
+ * was drilled is the section the result is about.
+ */
+function attribute(start, end, label, mine) {
+    const mid = (Number(start) + Number(end)) / 2;
+    const snap = model.snapshot();
+    const own = snap.sections.find((s) => mid >= s.start && mid < s.end);
+    return {
+        key: own ? own.key : ranges.rangeKey('bars', start, end),
+        label: label || (own ? own.label : 'Passage'),
+        start: Number(start),
+        end: Number(end),
+        mine: !!mine,
+    };
+}
+
+function retick() {
+    const want = open ? TICK_OPEN_MS : TICK_IDLE_MS;
+    if (tickTimer && tickRate === want) return;
+    if (tickTimer) clearInterval(tickTimer);
+    tickRate = want;
+    tickTimer = setInterval(tick, want);
+}
+
+function setOpen(next) {
+    open = !!next;
+    if (!mount) return;
+    if (open) { render(); mount.show(); } else { mount.hide(); }
+    retick();
+    announceApi();
+}
+
+function announceApi() {
+    for (const fn of Array.from(apiListeners)) {
+        try { fn(publicState()); } catch (_) { /* a panel that threw is not our problem */ }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// host wiring
+// ─────────────────────────────────────────────────────────────────────────
+
+function wire() {
+    unsubs.push(model.subscribe(() => { if (open) render(); }));
+
+    // A song arriving, or an arrangement switch. `song:ready` also fires on
+    // seeks, which is why refreshSong() decides for itself whether anything
+    // actually changed.
+    const onSong = () => {
+        const changed = model.refreshSong();
+        if (!changed) return;
+        // The host resets the rate to 100% during the load, so restoring has
+        // to happen after it — a microtask is not enough, and a frame is not
+        // reliable either. One short timeout, once per song.
+        setTimeout(() => {
+            model.restoreSpeed();
+            model.restoreDifficulty();
+            model.announce();
+        }, 400);
+    };
+    unsubs.push(host.on('song:ready', onSong));
+    unsubs.push(host.on('song:loaded', onSong));
+    unsubs.push(host.on('arrangement:changed', () => { model.refreshSong(); }));
+    unsubs.push(host.on('song:arrangement-changed', () => { model.refreshSong(); }));
+    unsubs.push(host.on('transform-changed', () => model.onChartChanged()));
+
+    // Leaving the song, or the screen, is when a run's numbers are worth
+    // keeping. Both paths, because a user can exit either way.
+    unsubs.push(host.on('song:ended', () => { model.commitRun(); model.rememberSpeed(); }));
+    unsubs.push(host.on('screen:changed', (e) => {
+        const from = e && e.detail ? e.detail.from : null;
+        if (from === 'player') { model.commitRun(); model.rememberSpeed(); }
+        if (mount) mount.syncVisibility();
+        if (open && !host.inPlayer()) setOpen(false);
+    }));
+
+    // A wrap means the conductor has just scored an iteration.
+    unsubs.push(host.on('loop:restart', () => { if (open) render(); }));
+
+    // Per-note verdicts. Checked against the live drill state rather than a
+    // polled flag: a drill can start between two notes, and a second's worth
+    // of drill verdicts in the map is a second's worth of wrong numbers.
+    const verdict = (e) => {
+        const d = (e && e.detail) || {};
+        const t = Number(d.noteTime);
+        if (!Number.isFinite(t)) return;
+        if (drill.isDrilling()) { model.setPaused(true); return; }
+        model.addVerdict(t, !!d.hit);
+    };
+    unsubs.push(host.onWindow('notedetect:hit', verdict));
+    unsubs.push(host.onWindow('notedetect:miss', verdict));
+
+    // A drill finished — however it finished. `best` is the conductor's own
+    // measurement, which is better evidence than anything we could compute.
+    unsubs.push(drill.onEnded((result) => {
+        const target = activeDrill;
+        activeDrill = null;
+        model.setPaused(false);
+        // Only a drill that graded at least one pass has told us anything. An
+        // abandoned drill reports best = 0, and storing that would put a
+        // passage nobody played at the top of the weak list.
+        const scored = target && Number(target.scored) > 0;
+        if (target && target.key && scored) {
+            model.commitDrill(result, target.key, target.label || result.label);
+        }
+        model.announce();
+        if (open) render();
+    }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// public API
+// ─────────────────────────────────────────────────────────────────────────
+
+function publicState() {
+    const snap = model.snapshot();
+    return {
+        open,
+        ready: snap.ready,
+        songKey: snap.songKey,
+        mode: snap.mode,
+        selection: snap.selection ? { ...snap.selection } : null,
+        engine: { ...snap.engine },
+        drill: { ...snap.drill },
+        settings: { ...snap.settings },
+    };
+}
+
+const api = {
+    version: 1,
+
+    open() { setOpen(true); },
+    close() { setOpen(false); },
+    toggle() { setOpen(!open); },
+    isOpen() { return open; },
+
+    /** Everything loopable in the current song, decorated with what we know. */
+    ranges() {
+        const snap = model.snapshot();
+        return { sections: snap.sections, parts: snap.parts, bars: snap.bars };
+    },
+
+    select(key) { actions.selectSection(key); },
+    selection() { return model.snapshot().selection; },
+    barsAtPlayhead() { return model.selectBarsAtPlayhead(); },
+
+    /** Arm a drill on the selection, or on an explicit `{ start, end, label }`. */
+    async startDrill(range) {
+        if (range && Number.isFinite(Number(range.start))) {
+            const s = model.getSettings();
+            const r = {
+                start: Number(range.start),
+                end: Number(range.end),
+                label: range.label || 'Passage',
+                key: ranges.rangeKey('bars', range.start, range.end),
+            };
+            const res = await drill.start(r, { goalPct: s.goalPct, ladder: s.ladder, widen: s.widen });
+            if (res.ok) activeDrill = { ...r, mine: true, scored: 0 };
+            return res;
+        }
+        await actions.startDrill();
+        return { ok: drill.isDrilling(), reason: null };
+    },
+    endDrill() { return drill.end(); },
+    drillState() { return drill.state(); },
+
+    /** What has been measured for this song, per passage. */
+    map() {
+        const snap = model.snapshot();
+        const saved = snap.songKey ? store.getSong(snap.songKey) : null;
+        return {
+            songKey: snap.songKey,
+            ranges: (saved && saved.ranges) || {},
+            weakest: snap.weakest,
+            run: snap.run,
+        };
+    },
+
+    settings: {
+        get() { return model.getSettings(); },
+        set(patch) { return model.setSettings(patch); },
+        reset() { return model.resetSettings(); },
+    },
+
+    forgetSong() {
+        const key = model.snapshot().songKey;
+        const done = store.forgetSong(key);
+        model.resetRun();
+        return done;
+    },
+    forgetEverything() {
+        const done = store.forgetEverything();
+        model.resetRun();
+        return done;
+    },
+    usage() { return store.usage(); },
+
+    isDisabled: store.isDisabled,
+    disable() { store.setDisabled(true); teardown(); announceApi(); },
+    enable() { store.setDisabled(false); boot(); announceApi(); },
+
+    state: publicState,
+    onChange(fn) {
+        if (typeof fn === 'function') apiListeners.add(fn);
+        return () => apiListeners.delete(fn);
+    },
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// boot / teardown
+// ─────────────────────────────────────────────────────────────────────────
+
+let booted = false;
+
+function boot() {
+    if (booted || store.isDisabled()) return;
+    booted = true;
+    follow();
+    panel = createPanel(actions);
+    mount = createMount({
+        panel: panel.root,
+        onOpen: () => setOpen(true),
+        onClose: () => setOpen(false),
+        isOpen: () => open,
+    });
+    mount.attach();
+    wire();
+    model.refreshSong();
+    retick();
+}
+
+function teardown() {
+    booted = false;
+    open = false;
+    if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+    tickRate = 0;
+    while (unsubs.length) {
+        const off = unsubs.pop();
+        try { off(); } catch (_) { /* going away anyway */ }
+    }
+    if (mount) { try { mount.detach(); } catch (_) { /* ignore */ } mount = null; }
+    panel = null;
+    unfollow();
+    activeDrill = null;
+}
+
+boot();
+
+window.riffRepeater = api;
+
+window[HOOKS_KEY] = {
+    teardown() {
+        teardown();
+        apiListeners.clear();
+        if (window.riffRepeater === api) delete window.riffRepeater;
+    },
+};
+
+console.log('[' + ID + '] loaded'
+    + (store.isDisabled() ? ' (switched off — window.riffRepeater.enable() to turn it back on)' : '')
+    + (drill.available() ? '' : ' — note detection not present, drills unavailable'));

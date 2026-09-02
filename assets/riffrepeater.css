@@ -1,0 +1,542 @@
+/*
+ * Riff Repeater — the panel's own stylesheet.
+ *
+ * Hand-written plain CSS, not a Tailwind build. The `styles` capability just
+ * injects a <link>, so a plugin is free to ship real CSS; going that way
+ * means this file carries no utility classes, applies no second preflight,
+ * and cannot be broken by a change to what core's prebuilt Tailwind happens
+ * to contain (docs/plugin-styles.md § "A prebuilt stylesheet only contains
+ * the classes the build scanner saw").
+ *
+ * Every colour is a `--rr-*` custom property written by src/theme.js from the
+ * host's own theme tokens, so an equipped shop theme moves this panel with it.
+ * The fallbacks in each var() are the host's default palette, so the panel is
+ * still legible if the theme API is missing and nothing gets written.
+ *
+ * Layering: the detector's drill HUD is pinned top-centre at z-index 210 and
+ * is the more urgent surface while a drill runs, so this sits just under it.
+ * The v3 rail popovers are at 40, which this has to clear to be usable.
+ */
+
+:root {
+    --rr-motion-on: 140ms ease;
+}
+
+/* ── the button in the plugins rail popover ─────────────────────────────── */
+
+.rr-open-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    color: rgb(var(--rr-text, 248 250 252));
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background var(--rr-motion, 140ms ease), border-color var(--rr-motion, 140ms ease);
+}
+
+.rr-open-btn:hover { background: rgb(var(--rr-card, 30 41 59)); }
+
+.rr-open-btn-on {
+    border-color: rgb(var(--rr-primary, 14 165 233));
+    background: rgb(var(--rr-primary, 14 165 233) / 0.14);
+}
+
+.rr-open-btn:focus-visible {
+    outline: 2px solid rgb(var(--rr-focus-ring, 56 189 248));
+    outline-offset: 2px;
+}
+
+/* ── the panel ──────────────────────────────────────────────────────────── */
+
+.rr-panel {
+    position: fixed;
+    z-index: 200;
+    width: 360px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-sizing: border-box;
+    border-radius: 12px;
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    background: rgb(var(--rr-card, 30 41 59));
+    color: rgb(var(--rr-text, 248 250 252));
+    box-shadow: 0 18px 48px rgb(0 0 0 / 0.55);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+/*
+ * No fade-in, deliberately.
+ *
+ * The first version transitioned opacity from 0, and in an embedded webview
+ * the transition did not always tick — the panel sat frozen at 0.8 opacity
+ * with the highway showing through its text, indefinitely. A panel's
+ * legibility must not depend on an animation completing, so visibility is
+ * `hidden` alone and this class is just a state marker for the mount and for
+ * anyone debugging.
+ */
+.rr-panel-open { /* marker only */ }
+
+.rr-panel *:focus-visible {
+    outline: 2px solid rgb(var(--rr-focus-ring, 56 189 248));
+    outline-offset: 1px;
+}
+
+.rr-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgb(var(--rr-border, 51 65 85));
+    position: sticky;
+    top: 0;
+    background: rgb(var(--rr-card, 30 41 59));
+    border-radius: 12px 12px 0 0;
+}
+
+.rr-title { font-size: 13px; font-weight: 700; }
+
+.rr-song {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rr-x {
+    flex: 0 0 auto;
+    border: 0;
+    background: transparent;
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font: inherit;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 6px;
+}
+
+.rr-x:hover { color: rgb(var(--rr-text, 248 250 252)); background: rgb(var(--rr-card-muted, 11 18 32)); }
+
+.rr-body { padding: 10px 12px 14px; }
+
+.rr-empty {
+    margin: 6px 0;
+    color: rgb(var(--rr-text-dim, 148 163 184));
+}
+
+.rr-legend {
+    margin: 14px 0 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(var(--rr-text-dim, 148 163 184));
+}
+
+.rr-legend:first-child { margin-top: 2px; }
+
+.rr-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 6px 0;
+}
+
+.rr-mini {
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    flex: 0 0 auto;
+}
+
+.rr-note {
+    margin: 6px 0 0;
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font-size: 11px;
+}
+
+.rr-warn {
+    margin: 6px 0 0;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgb(var(--rr-mid, 234 179 8) / 0.12);
+    border: 1px solid rgb(var(--rr-mid, 234 179 8) / 0.35);
+    color: rgb(var(--rr-text, 248 250 252));
+    font-size: 11px;
+}
+
+.rr-blocked {
+    margin: 6px 0 0;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgb(var(--rr-primary, 14 165 233) / 0.1);
+    border: 1px solid rgb(var(--rr-primary, 14 165 233) / 0.3);
+    font-size: 11px;
+}
+
+/* ── mode tabs ──────────────────────────────────────────────────────────── */
+
+.rr-modes {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 8px;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+}
+
+.rr-mode {
+    flex: 1 1 0;
+    border: 0;
+    border-radius: 6px;
+    padding: 5px 8px;
+    background: transparent;
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.rr-mode-on {
+    background: rgb(var(--rr-primary, 14 165 233));
+    color: rgb(var(--rr-on-accent, 248 250 252));
+}
+
+/* ── section chips ──────────────────────────────────────────────────────── */
+
+.rr-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 8px 0;
+    max-height: 132px;
+    overflow-y: auto;
+}
+
+.rr-chip {
+    position: relative;
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    border-radius: 6px;
+    padding: 3px 7px 5px;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.rr-chip:hover { color: rgb(var(--rr-text, 248 250 252)); }
+
+.rr-chip-on {
+    border-color: rgb(var(--rr-primary, 14 165 233));
+    color: rgb(var(--rr-text, 248 250 252));
+    background: rgb(var(--rr-primary, 14 165 233) / 0.14);
+}
+
+/*
+ * The accuracy band is a 2px underline rather than a fill.
+ *
+ * A filled chip competes with the selected chip for the same signal, and
+ * "which one is selected" has to win: a coloured background that means
+ * something else is how a chip list becomes unreadable.
+ */
+.rr-chip::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: transparent;
+}
+
+.rr-chip[data-band="good"]::after { background: rgb(var(--rr-good, 34 197 94)); }
+.rr-chip[data-band="mid"]::after { background: rgb(var(--rr-mid, 234 179 8)); }
+.rr-chip[data-band="low"]::after { background: rgb(var(--rr-low, 239 68 68)); }
+
+.rr-chip-done { color: rgb(var(--rr-text, 248 250 252)); }
+.rr-chip-done::before {
+    content: '✓ ';
+    color: rgb(var(--rr-good, 34 197 94));
+    font-weight: 700;
+}
+
+/* ── steppers, readout, trim ────────────────────────────────────────────── */
+
+.rr-step {
+    min-width: 24px;
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    border-radius: 6px;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    color: rgb(var(--rr-text, 248 250 252));
+    font: inherit;
+    font-size: 12px;
+    line-height: 1;
+    padding: 4px 6px;
+    cursor: pointer;
+}
+
+.rr-step:hover:not(:disabled) { background: rgb(var(--rr-card, 30 41 59)); }
+.rr-step:disabled, .rr-btn:disabled, .rr-rung:disabled { opacity: 0.4; cursor: default; }
+
+.rr-part-label, .rr-count, .rr-time {
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--rr-text, 248 250 252));
+    min-width: 28px;
+    text-align: center;
+}
+
+.rr-part-label { min-width: 96px; }
+.rr-arrow { color: rgb(var(--rr-text-dim, 148 163 184)); }
+
+.rr-readout {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 8px 0 4px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+}
+
+.rr-readout-label { font-weight: 700; }
+
+.rr-readout-meta {
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── ladder / speed rungs ───────────────────────────────────────────────── */
+
+.rr-rung {
+    min-width: 32px;
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    border-radius: 999px;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+.rr-rung-on {
+    background: rgb(var(--rr-primary, 14 165 233));
+    border-color: rgb(var(--rr-primary, 14 165 233));
+    color: rgb(var(--rr-on-accent, 248 250 252));
+}
+
+.rr-num {
+    width: 52px;
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    border-radius: 6px;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    color: rgb(var(--rr-text, 248 250 252));
+    font: inherit;
+    font-size: 12px;
+    padding: 3px 6px;
+}
+
+.rr-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    cursor: pointer;
+    color: rgb(var(--rr-text-dim, 148 163 184));
+}
+
+.rr-check input { accent-color: rgb(var(--rr-primary, 14 165 233)); }
+
+.rr-range {
+    flex: 1 1 120px;
+    min-width: 100px;
+    accent-color: rgb(var(--rr-primary, 14 165 233));
+}
+
+/* ── actions ────────────────────────────────────────────────────────────── */
+
+.rr-acts { margin-top: 10px; }
+
+.rr-btn {
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    border-radius: 8px;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    color: rgb(var(--rr-text, 248 250 252));
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.rr-btn:hover:not(:disabled) { background: rgb(var(--rr-card, 30 41 59)); }
+
+.rr-btn-primary {
+    background: rgb(var(--rr-primary, 14 165 233));
+    border-color: rgb(var(--rr-primary, 14 165 233));
+    color: rgb(var(--rr-on-accent, 248 250 252));
+}
+
+.rr-btn-primary:hover:not(:disabled) { background: rgb(var(--rr-primary-hi, 56 189 248)); }
+
+.rr-btn-danger {
+    background: rgb(var(--rr-accent, 239 68 68) / 0.16);
+    border-color: rgb(var(--rr-accent, 239 68 68));
+}
+
+.rr-btn-quiet {
+    background: transparent;
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font-weight: 500;
+}
+
+/* ── live drill ─────────────────────────────────────────────────────────── */
+
+.rr-live {
+    margin-top: 10px;
+    padding: 8px 9px;
+    border-radius: 8px;
+    border: 1px solid rgb(var(--rr-primary, 14 165 233) / 0.4);
+    background: rgb(var(--rr-primary, 14 165 233) / 0.08);
+}
+
+.rr-live-status { font-weight: 700; font-variant-numeric: tabular-nums; }
+.rr-live-next { color: rgb(var(--rr-text-dim, 148 163 184)); font-size: 11px; }
+
+.rr-live-focus {
+    margin-top: 3px;
+    font-size: 11px;
+    color: rgb(var(--rr-mid, 234 179 8));
+}
+
+.rr-iters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 7px;
+}
+
+.rr-iter {
+    min-width: 32px;
+    text-align: center;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    border-bottom: 2px solid transparent;
+}
+
+.rr-iter[data-band="good"] { border-bottom-color: rgb(var(--rr-good, 34 197 94)); color: rgb(var(--rr-text, 248 250 252)); }
+.rr-iter[data-band="mid"] { border-bottom-color: rgb(var(--rr-mid, 234 179 8)); color: rgb(var(--rr-text, 248 250 252)); }
+.rr-iter[data-band="low"] { border-bottom-color: rgb(var(--rr-low, 239 68 68)); }
+
+.rr-iter-now {
+    outline: 1px dashed rgb(var(--rr-text-dim, 148 163 184));
+    outline-offset: 1px;
+}
+
+/* ── the map ────────────────────────────────────────────────────────────── */
+
+.rr-weak { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+
+.rr-weak-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 11px;
+    padding: 3px 5px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.rr-weak-row:hover { background: rgb(var(--rr-card-muted, 11 18 32)); }
+
+.rr-weak-name {
+    flex: 0 0 96px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rr-weak-bar {
+    position: relative;
+    flex: 1 1 auto;
+    height: 6px;
+    border-radius: 3px;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    overflow: hidden;
+}
+
+.rr-weak-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--rr-fill, 0%);
+    background: rgb(var(--rr-text-dim, 148 163 184));
+}
+
+.rr-weak-bar[data-band="good"]::after { background: rgb(var(--rr-good, 34 197 94)); }
+.rr-weak-bar[data-band="mid"]::after { background: rgb(var(--rr-mid, 234 179 8)); }
+.rr-weak-bar[data-band="low"]::after { background: rgb(var(--rr-low, 239 68 68)); }
+
+.rr-weak-pct {
+    flex: 0 0 36px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: rgb(var(--rr-text-dim, 148 163 184));
+}
+
+/* Marks a row whose number came from THIS run rather than the store. */
+.rr-live-dot {
+    flex: 0 0 auto;
+    color: rgb(var(--rr-primary, 14 165 233));
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* ── narrow windows ─────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+    .rr-panel { width: calc(100vw - 24px); }
+    .rr-part-label { min-width: 72px; }
+    .rr-weak-name { flex-basis: 72px; }
+}
+
+/*
+ * Reduced motion. `--rr-motion` is written by src/theme.js from the host's
+ * own `feedBack.theme.prefersReducedMotion()` so there is one answer for the
+ * whole app; this media query is the belt-and-braces for a host that predates
+ * that API.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .rr-open-btn { transition: none; }
+}

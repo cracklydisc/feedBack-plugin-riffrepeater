@@ -1,0 +1,250 @@
+<!--
+  Riff Repeater settings.
+
+  Only the things that are NOT per-passage live here: the defaults a drill
+  starts with, the two "remember this" switches, and the store. Everything
+  about a specific passage belongs in the panel, next to the passage.
+
+  Built from window.riffRepeater rather than from hardcoded markup, so a
+  default added in src/store.js shows up here without this file changing.
+  Class names are the small, stable subset of core's utilities that its own
+  markup uses — see docs/plugin-styles.md on why a plugin cannot assume more.
+-->
+<div id="rr-settings" class="p-4 text-sm text-fb-textDim">
+  Loading Riff Repeater settings…
+</div>
+
+<script>
+(function () {
+    const root = document.getElementById('rr-settings');
+    if (!root) return;
+
+    const PRESETS = [50, 65, 80, 90, 100];
+
+    function el(tag, cls, text) {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text != null) n.textContent = text;
+        return n;
+    }
+
+    function field(label, hint) {
+        const wrap = el('div', 'space-y-1');
+        wrap.appendChild(el('div', 'text-fb-text font-semibold', label));
+        if (hint) wrap.appendChild(el('div', 'text-xs text-fb-textDim', hint));
+        return wrap;
+    }
+
+    function build(api) {
+        root.textContent = '';
+        root.className = 'p-4 space-y-5 text-sm';
+
+        root.appendChild(el('h3', 'text-base font-semibold text-fb-text', 'Riff Repeater'));
+        root.appendChild(el('p', 'text-xs text-fb-textDim',
+            'The drill engine itself lives in the Note Detection plugin — this plugin '
+            + 'gives it a way in, a passage to work on, and a memory. Open it from the '
+            + 'Plugins button in the player rail.'));
+
+        // ── the ladder ───────────────────────────────────────────────────
+        const ladderField = field('Default speed ladder',
+            'The rungs a drill climbs. It clears your goal on one pass of the loop to '
+            + 'move up, and finishes with three clean passes at full tempo. 100% is '
+            + 'always the last rung: a drill that never asks for the real tempo has '
+            + 'not taught the passage.');
+        const ladderRow = el('div', 'flex items-center gap-2 pt-1');
+        const rungs = [];
+        for (const p of PRESETS) {
+            const b = el('button', 'px-3 py-1.5 rounded border text-xs font-semibold', String(p));
+            b.type = 'button';
+            if (p === 100) {
+                b.disabled = true;
+                b.title = 'Always included';
+            }
+            b.addEventListener('click', () => {
+                const cur = api.settings.get().ladder || [];
+                const next = cur.includes(p) ? cur.filter((x) => x !== p) : cur.concat([p]);
+                api.settings.set({ ladder: next });
+                sync();
+            });
+            rungs.push({ pct: p, node: b });
+            ladderRow.appendChild(b);
+        }
+        ladderField.appendChild(ladderRow);
+        const stretch = el('div', 'text-xs pt-1');
+        ladderField.appendChild(stretch);
+        root.appendChild(ladderField);
+
+        // ── goal ─────────────────────────────────────────────────────────
+        const goalField = field('Goal',
+            'Accuracy on one pass of the loop that counts as clearing a rung. The '
+            + 'engine\'s own default is 85%.');
+        const goalRow = el('div', 'flex items-center gap-2 pt-1');
+        const goal = document.createElement('input');
+        goal.type = 'number';
+        goal.min = '10';
+        goal.max = '100';
+        goal.step = '5';
+        goal.className = 'w-20 bg-fb-cardMuted border border-fb-border rounded px-3 py-1.5 text-sm text-fb-text';
+        goal.addEventListener('change', () => { api.settings.set({ goalPct: Number(goal.value) }); sync(); });
+        goalRow.appendChild(goal);
+        goalRow.appendChild(el('span', 'text-xs text-fb-textDim', '%'));
+        goalField.appendChild(goalRow);
+        root.appendChild(goalField);
+
+        // ── bar count ────────────────────────────────────────────────────
+        const barField = field('Default bar range',
+            'How many bars "From playhead" takes. Trimming in the panel moves whole '
+            + 'bars, not seconds — a loop boundary off the grid turns a count-in into '
+            + 'a guess.');
+        const barRow = el('div', 'flex items-center gap-2 pt-1');
+        const bars = document.createElement('input');
+        bars.type = 'number';
+        bars.min = '1';
+        bars.max = '64';
+        bars.step = '1';
+        bars.className = 'w-20 bg-fb-cardMuted border border-fb-border rounded px-3 py-1.5 text-sm text-fb-text';
+        bars.addEventListener('change', () => { api.settings.set({ barCount: Number(bars.value) }); sync(); });
+        barRow.appendChild(bars);
+        barRow.appendChild(el('span', 'text-xs text-fb-textDim', 'bars'));
+        barField.appendChild(barRow);
+        root.appendChild(barField);
+
+        // ── switches ─────────────────────────────────────────────────────
+        const checks = [
+            {
+                key: 'widen',
+                label: 'Widen the loop once a passage is nailed',
+                hint: 'The engine grows the loop by a bar each side, up to two, after you '
+                    + 'clear it — so an isolated lick goes back into its surroundings '
+                    + 'before you leave it.',
+            },
+            {
+                key: 'rememberSpeed',
+                label: 'Remember the practice speed per song',
+                hint: 'The app resets playback to 100% every time a song loads. This puts '
+                    + 'back the speed you left this song at, which is what you want for a '
+                    + 'chart you are three sessions into at 80%.',
+            },
+            {
+                key: 'rememberDifficulty',
+                label: 'Remember the difficulty per song',
+                hint: 'Off by default, and worth understanding before turning on: the app '
+                    + 'stores master difficulty as ONE GLOBAL setting, not per song. So '
+                    + 'restoring a per-song value also changes the global one — the last '
+                    + 'song you opened decides what the next one starts at.',
+            },
+        ];
+        const checkWrap = el('div', 'space-y-3');
+        const boxes = [];
+        for (const c of checks) {
+            const label = el('label', 'flex items-start gap-2 cursor-pointer');
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.className = 'w-4 h-4 mt-0.5';
+            box.addEventListener('change', () => { api.settings.set({ [c.key]: box.checked }); sync(); });
+            const body = el('span', 'min-w-0');
+            body.appendChild(el('span', 'text-fb-text', c.label));
+            body.appendChild(el('span', 'block text-xs text-fb-textDim mt-0.5', c.hint));
+            label.appendChild(box);
+            label.appendChild(body);
+            checkWrap.appendChild(label);
+            boxes.push({ key: c.key, box });
+        }
+        root.appendChild(checkWrap);
+
+        // ── the store ────────────────────────────────────────────────────
+        const storeField = field('What has been measured',
+            'Per-passage bests are kept in this browser only. A pack that gets '
+            + 're-converted gets a fresh history, because its notes changed.');
+        const usage = el('div', 'text-xs text-fb-textDim pt-1');
+        const storeRow = el('div', 'flex items-center gap-2 pt-2');
+        const forgetSong = el('button', 'px-3 py-1.5 rounded bg-fb-cardMuted border border-fb-border text-fb-text', 'Forget this song');
+        forgetSong.type = 'button';
+        forgetSong.addEventListener('click', () => { api.forgetSong(); sync(); });
+        const forgetAll = el('button', 'px-3 py-1.5 rounded bg-fb-cardMuted border border-fb-border text-fb-text', 'Forget everything');
+        forgetAll.type = 'button';
+        forgetAll.addEventListener('click', () => { api.forgetEverything(); sync(); });
+        storeRow.appendChild(forgetSong);
+        storeRow.appendChild(forgetAll);
+        storeField.appendChild(usage);
+        storeField.appendChild(storeRow);
+        root.appendChild(storeField);
+
+        // ── the escape hatch ─────────────────────────────────────────────
+        const foot = el('div', 'flex items-center gap-3 pt-1');
+        const off = el('button', 'px-3 py-1.5 rounded bg-fb-cardMuted border border-fb-border text-fb-text');
+        off.type = 'button';
+        const status = el('span', 'text-xs text-fb-textDim');
+        off.addEventListener('click', () => {
+            if (api.isDisabled()) api.enable(); else api.disable();
+            sync();
+        });
+        const reset = el('button', 'px-3 py-1.5 rounded bg-fb-card text-fb-text', 'Reset to defaults');
+        reset.type = 'button';
+        reset.addEventListener('click', () => { api.settings.reset(); sync(); });
+        foot.appendChild(off);
+        foot.appendChild(reset);
+        foot.appendChild(status);
+        root.appendChild(foot);
+
+        function sync() {
+            const s = api.settings.get();
+            const ladder = s.ladder || [];
+            for (const r of rungs) {
+                const on = r.pct === 100 || ladder.includes(r.pct);
+                r.node.className = 'px-3 py-1.5 rounded border text-xs font-semibold '
+                    + (on ? 'bg-fb-primary border-fb-primary text-fb-text'
+                          : 'bg-fb-cardMuted border-fb-border text-fb-textDim');
+            }
+            const slow = ladder.some((p) => p < 80);
+            stretch.textContent = slow
+                ? 'Below 80% the backing track is audibly time-stretched. Worth it for a '
+                  + 'passage you cannot play yet; not worth leaving on.'
+                : '';
+            stretch.className = 'text-xs pt-1 ' + (slow ? 'text-fb-mid' : 'text-fb-textDim');
+
+            if (document.activeElement !== goal) goal.value = String(s.goalPct);
+            if (document.activeElement !== bars) bars.value = String(s.barCount);
+            for (const b of boxes) b.box.checked = !!s[b.key];
+
+            const u = api.usage();
+            usage.textContent = `${u.songs} song${u.songs === 1 ? '' : 's'}, `
+                + `${u.ranges} passage${u.ranges === 1 ? '' : 's'}, `
+                + `${(u.bytes / 1024).toFixed(1)} kB.`;
+
+            const isOff = api.isDisabled();
+            off.textContent = isOff ? 'Turn Riff Repeater back on' : 'Turn Riff Repeater off';
+            status.textContent = isOff ? 'Off — no button in the player.' : '';
+            for (const r of rungs) r.node.disabled = isOff || r.pct === 100;
+            goal.disabled = isOff;
+            bars.disabled = isOff;
+            for (const b of boxes) b.box.disabled = isOff;
+        }
+
+        api.onChange(sync);
+        sync();
+    }
+
+    // The plugin's script loads with the app, but a cold settings screen can
+    // render first. Retry briefly, then say so rather than sitting on
+    // "Loading" for ever.
+    function mount() {
+        if (!window.riffRepeater || !window.riffRepeater.settings) return false;
+        build(window.riffRepeater);
+        return true;
+    }
+    if (!mount()) {
+        let tries = 0;
+        const timer = setInterval(() => {
+            tries += 1;
+            if (mount() || tries > 40) {
+                clearInterval(timer);
+                if (!window.riffRepeater) {
+                    root.textContent = 'Riff Repeater has not loaded. Restart fee[dB]ack, '
+                        + 'or check that the plugin is enabled on the Plugins page.';
+                }
+            }
+        }, 250);
+    }
+})();
+</script>
