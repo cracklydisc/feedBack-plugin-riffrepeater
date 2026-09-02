@@ -177,3 +177,15 @@
     font-size: 14px;
     line-height: 1;
 }
+
+/*
+ * The plate, previewing rather than reporting.
+ *
+ * Sweeping the timeline names whatever is under the cursor — the only way a
+ * 2px section is discoverable at all. The border goes quiet while it does, so
+ * "this is what you would get" never reads as "this is what you have".
+ */
+.rr-plate-preview {
+    border-color: rgb(var(--fbk-border, 51 65 85) / 0.4);
+    border-style: dashed;
+}

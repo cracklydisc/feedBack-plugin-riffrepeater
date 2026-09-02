@@ -41,6 +41,14 @@ const GOAL_MAX = 100;
 /** A drag has to travel this far before it stops being a click. */
 const DRAG_SLOP_PX = 4;
 
+/**
+ * The smallest click target a section gets, however thin its block is.
+ *
+ * 11px is a little under a fingertip and comfortably over a mouse's aim. Wider
+ * would start stealing clicks from the big sections either side of a thin one.
+ */
+const MIN_HIT_PX = 11;
+
 function pct(v) {
     const n = c.num(v);
     return n === null ? '–' : Math.round(n * 100) + '%';
@@ -99,6 +107,24 @@ export function createContent(outer, actions) {
     body.appendChild(timeline);
     let blockSignature = '';
     const blockNodes = new Map();
+
+    /*
+     * Click targets, separate from the fill.
+     *
+     * THE FILL HAS TO STAY HONEST: the strip is a map, so a section's width is
+     * its share of the song and nothing else. But on a real chart that makes
+     * it unclickable — Blackened has 21 sections in 306px, and NINE of them
+     * come out under 10px wide. The smallest, "Outro 1", is 1.9px and has 14
+     * notes in it: a legitimate thing to drill that you cannot hit.
+     *
+     * So the geometry and the hit test are two different things. Every section
+     * gets a target at least MIN_HIT_PX wide, grown symmetrically about its
+     * own centre, and a click picks the target whose CENTRE is nearest. A big
+     * section keeps everything except the few pixels closest to a tiny
+     * neighbour's middle; the tiny one becomes reachable. Nothing moves on
+     * screen.
+     */
+    let hits = [];      // [{ key, centre, from, to }] in px, left to right
 
     // The same navigation without a mouse, and the selection's name.
     const navRow = c.el('div', 'fbk-row rr-nav');
@@ -350,17 +376,95 @@ export function createContent(outer, actions) {
         dragging = false;
         try { timeline.releasePointerCapture(e.pointerId); } catch (_) { /* already gone */ }
         if (wasDragging) return;
-        // A click, not a drag: whatever section covers that time.
-        //
-        // Resolved from the TIME, not from the clicked element.
-        // `e.target.closest('.rr-tl-block')` needed the pointer to land on a
-        // block, so a click on the hairline between two of them fell through
-        // to a one-bar range.
-        if (Number.isFinite(from.t)) actions.selectAtTime(from.t);
+        // A click, not a drag. Resolved through the hit table rather than by
+        // the element under the pointer: `e.target.closest('.rr-tl-block')`
+        // needed the pointer to land on a block, which for a 1.9px block is
+        // not a thing a person can do.
+        const key = hitAt(from.x);
+        if (key) actions.selectSection(key);
+        else if (Number.isFinite(from.t)) actions.selectAtTime(from.t);
     }
 
     timeline.addEventListener('pointerup', endDrag);
     timeline.addEventListener('pointercancel', endDrag);
+
+    /**
+     * Which section a click at this x belongs to.
+     *
+     * Among the targets containing x, the nearest centre wins — that is what
+     * lets an expanded thin target sit inside a wide neighbour without
+     * swallowing it. Falling back to the nearest centre overall keeps a click
+     * in the strip's dead margins from doing nothing.
+     */
+    function hitAt(clientX) {
+        if (!hits.length) return null;
+        const x = clientX - timeline.getBoundingClientRect().left;
+        let best = null;
+        let bestDist = Infinity;
+        for (const h of hits) {
+            if (x < h.from || x > h.to) continue;
+            const d = Math.abs(x - h.centre);
+            if (d < bestDist) { bestDist = d; best = h; }
+        }
+        if (best) return best.key;
+        for (const h of hits) {
+            const d = Math.abs(x - h.centre);
+            if (d < bestDist) { bestDist = d; best = h; }
+        }
+        return best ? best.key : null;
+    }
+
+    /*
+     * Naming what is under the cursor.
+     *
+     * A 2px block is reachable now but still invisible, so there is no way to
+     * know it is there. Sweeping the strip names whatever the hit test would
+     * choose, in the plate, which turns the timeline into something you scrub
+     * rather than something you have to aim at. The plate goes back to the
+     * selection on the way out.
+     */
+    let hoverKey = null;
+    let lastSnap = null;
+
+    timeline.addEventListener('pointermove', (e) => {
+        if (dragFrom) return;                  // a drag has its own feedback
+        const key = hitAt(e.clientX);
+        if (key === hoverKey) return;
+        hoverKey = key;
+        paintPlate();
+    });
+
+    timeline.addEventListener('pointerleave', () => {
+        if (hoverKey === null) return;
+        hoverKey = null;
+        paintPlate();
+    });
+
+    /**
+     * The plate shows the hovered section while the pointer is on the strip,
+     * and the selection otherwise.
+     *
+     * The border goes quiet during a preview, so "this is what you would get"
+     * never reads as "this is what you have".
+     */
+    function paintPlate() {
+        const snap = lastSnap;
+        if (!snap) return;
+        const hovered = hoverKey && hoverKey !== snap.sectionKey
+            ? snap.sections.find((sc) => sc.key === hoverKey)
+            : null;
+        const show = hovered || snap.selection;
+        plate.el.classList.toggle('rr-plate-preview', !!hovered);
+        if (!show) {
+            plate.set('Nothing selected', '');
+            return;
+        }
+        const len = Math.max(0, show.end - show.start);
+        const bits = [`${clock(show.start)} → ${clock(show.end)}`, `${len.toFixed(1)}s`];
+        if (c.num(show.events) !== null) bits.push(`${show.events} notes`);
+        if (c.num(show.best) !== null) bits.push(`best ${pct(show.best)}`);
+        plate.set(show.label, bits.join(' · '));
+    }
 
     // ── render ───────────────────────────────────────────────────────────
 
@@ -402,6 +506,17 @@ export function createContent(outer, actions) {
             if (c.num(s.events) !== null) bits.push(`${s.events} notes`);
             node.title = bits.join(' · ');
         }
+
+        // Rebuild the hit table on every render: the strip's width changes
+        // with the window and the section set changes with the arrangement.
+        const stripW = timeline.getBoundingClientRect().width || 0;
+        hits = snap.sections.map((sc) => {
+            const l = (sc.start / duration) * stripW;
+            const r = (sc.end / duration) * stripW;
+            const centre = (l + r) / 2;
+            const half = Math.max((r - l) / 2, MIN_HIT_PX / 2);
+            return { key: sc.key, centre, from: centre - half, to: centre + half };
+        });
 
         const sel = snap.selection;
         if (sel) {
@@ -511,6 +626,7 @@ export function createContent(outer, actions) {
     }
 
     function render(snap) {
+        lastSnap = snap;
         empty.hidden = !!snap.ready;
         body.hidden = !snap.ready;
         if (!snap.ready) return;
@@ -546,16 +662,11 @@ export function createContent(outer, actions) {
 
         // the chosen range
         const sel = snap.selection;
+        paintPlate();
         if (sel) {
-            const len = Math.max(0, sel.end - sel.start);
-            const bits = [`${clock(sel.start)} → ${clock(sel.end)}`, `${len.toFixed(1)}s`];
-            if (c.num(sel.events) !== null) bits.push(`${sel.events} notes`);
-            if (c.num(sel.best) !== null) bits.push(`best ${pct(sel.best)}`);
-            plate.set(sel.label, bits.join(' · '));
             trimStart.textContent = clock(sel.start);
             trimEnd.textContent = clock(sel.end);
         } else {
-            plate.set('Nothing selected', '');
             trimStart.textContent = '–';
             trimEnd.textContent = '–';
         }

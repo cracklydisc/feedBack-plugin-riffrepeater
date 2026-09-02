@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.5.2 — the thin sections are clickable now
+
+Reported: parts of the timeline are too small to click. Measured on Blackened —
+21 sections in a 296px strip — and it is not a corner case:
+
+| | |
+| --- | --- |
+| sections under 10px wide | **9 of 21** |
+| under 5px | 3 |
+| the thinnest, `Outro 1` | **1.9px**, and it has 14 notes in it |
+
+The fill was right and the hit test *was* the fill. They are two different
+things now: the block's width stays its share of the song, because the strip is
+a map, and every section additionally gets a **click target at least 11px
+wide**, grown symmetrically about its own centre. A click resolves to the
+target whose centre is nearest, so a wide section keeps everything except the
+few pixels closest to a thin neighbour's middle. Nothing moved on screen.
+
+Verified by clicking the centre of the four thinnest sections — 1.9px, 2.3px,
+3.2px, 5.2px — and getting each one, then clicking the 53.9px `Intro 1` to
+prove the expanded targets had not swallowed it. Five for five.
+
+**And sweeping the strip now names what is under the cursor**, because a target
+you cannot see is still no use. The plate shows the section the hit test would
+choose, with a dashed border so *would get* never reads as *have got*, and goes
+back to the selection when the pointer leaves. Turns a strip you have to aim at
+into one you scrub.
+
+Not the fix, for the record: a minimum visual width on thin blocks. It solves
+the clicking and breaks the map — the blocks stop summing to the whole and the
+playhead drifts out of the block it is supposed to be inside.
+
 ## 0.5.1 — kit 0.2.0: the foundations the panel was missing
 
 The kit gained the three scales — five type steps, six space steps, three

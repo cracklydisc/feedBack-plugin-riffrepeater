@@ -75,7 +75,10 @@ says why.
 
 You pick it on a **timeline** — a strip proportional to the song, one block per
 section, coloured by how well you play it. Click a block for its section, or
-drag across it for a custom range snapped to bar lines. It replaced a grid of
+drag across it for a custom range snapped to bar lines. Sweeping it names
+whatever is under the cursor, and every section has a click target at least
+11px wide however thin its block is: on a real chart nine of twenty-one
+sections come out under 10px, and the thinnest is under two. It replaced a grid of
 21+ chips, which was half the panel's height and needed a careful read to find
 "Solo 1"; position answers that at a glance, and a drag is something no
 arrangement of chips can offer.
