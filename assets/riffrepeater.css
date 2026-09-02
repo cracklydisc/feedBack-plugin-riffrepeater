@@ -193,7 +193,39 @@
     font-size: 11px;
 }
 
-.rr-warn {
+/*
+ * A warning is a badge, not a box.
+ *
+ * The time-stretch caveat used to be three lines of prose in a bordered box
+ * that sat there permanently once a slow rung was ticked. The sentence has not
+ * changed — it moved into the badge's tooltip, where it costs no vertical
+ * space in a panel you read while playing.
+ */
+.rr-badge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1;
+    cursor: help;
+}
+
+.rr-badge-warn {
+    background: rgb(var(--rr-mid, 234 179 8) / 0.16);
+    border: 1px solid rgb(var(--rr-mid, 234 179 8) / 0.5);
+    color: rgb(var(--rr-mid, 234 179 8));
+}
+
+/*
+ * Why something just FAILED — an event, so it is written imperatively and
+ * clears itself. Why something is BLOCKED is not here: that lives on the
+ * disabled control's own tooltip and on the status dot in the primary.
+ */
+.rr-flash {
     margin: 6px 0 0;
     padding: 6px 8px;
     border-radius: 8px;
@@ -203,14 +235,61 @@
     font-size: 11px;
 }
 
-.rr-blocked {
-    margin: 6px 0 0;
-    padding: 6px 8px;
-    border-radius: 8px;
-    background: rgb(var(--rr-primary, 14 165 233) / 0.1);
-    border: 1px solid rgb(var(--rr-primary, 14 165 233) / 0.3);
-    font-size: 11px;
+/*
+ * A key cap.
+ *
+ * The app owns Space, the arrows, [ and ] and +/− in the player scope, so the
+ * bindings here are the ones that were free — and a shortcut nobody can see is
+ * a shortcut nobody uses. These are also registered with the host's own
+ * shortcut registry, so they appear in its `?` panel too.
+ */
+.rr-kbd {
+    flex: 0 0 auto;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    background: rgb(var(--rr-bg, 15 23 42));
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
 }
+
+.rr-btn-primary .rr-kbd {
+    border-color: rgb(var(--rr-on-accent, 248 250 252) / 0.35);
+    background: rgb(0 0 0 / 0.18);
+    color: rgb(var(--rr-on-accent, 248 250 252));
+}
+
+/*
+ * The input's state, on the button that needs it.
+ *
+ * "Turn on note detection…" was a box under the actions. It is this dot now:
+ * green when the detector is listening, amber when it is present but off, grey
+ * when the plugin is not installed — with the sentence in the tooltip of both
+ * the dot and the button it disables.
+ */
+.rr-dot {
+    flex: 0 0 auto;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: rgb(var(--rr-text-dim, 148 163 184));
+}
+
+.rr-dot[data-state="ready"] { background: rgb(var(--rr-good, 34 197 94)); }
+.rr-dot[data-state="warn"]  { background: rgb(var(--rr-mid, 234 179 8)); }
+.rr-dot[data-state="off"]   { background: rgb(var(--rr-text-dim, 148 163 184)); }
+
+/* A legend with something on its right — the map's "Practice weakest". */
+.rr-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rr-legend-row .rr-legend { margin-bottom: 0; }
 
 /* ── mode tabs ──────────────────────────────────────────────────────────── */
 
@@ -241,70 +320,91 @@
     color: rgb(var(--rr-on-accent, 248 250 252));
 }
 
-/* ── section chips ──────────────────────────────────────────────────────── */
-
-/*
- * No inner scroll.
+/* ── the timeline ───────────────────────────────────────────────────────
  *
- * The chip list had its own `max-height` + `overflow-y`, which cut the last
- * row of chips in half — it read as a rendering fault rather than as "there is
- * more below", and it put a second scrollbar inside a panel that already has
- * one. The panel's own 74vh scroll is the only one now.
+ * This replaced a grid of 21+ chips that was half the panel's height. It is
+ * proportional to the song, so "where is the solo" is answered by position
+ * rather than by reading twenty labels, and it takes a drag.
+ *
+ * COLOUR MEANS ONE THING HERE: how well you play that stretch. On the chips it
+ * meant two things at once — an accent border for "selected" and a green /
+ * amber / red underline for accuracy — and a reviewer read the amber as a
+ * second kind of selected. Selection is now the white outline and the bracket
+ * above; the fill is only ever the number.
  */
-.rr-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin: 8px 0;
-}
 
-.rr-chip {
+.rr-timeline {
     position: relative;
-    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    height: 30px;
+    margin: 8px 0 4px;
     border-radius: 6px;
-    padding: 3px 7px 5px;
     background: rgb(var(--rr-card-muted, 11 18 32));
-    color: rgb(var(--rr-text-dim, 148 163 184));
-    font: inherit;
-    font-size: 11px;
-    cursor: pointer;
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
     overflow: hidden;
+    cursor: crosshair;
+    touch-action: none;          /* the drag is ours, not the browser's */
 }
 
-.rr-chip:hover { color: rgb(var(--rr-text, 248 250 252)); }
+.rr-tl-blocks { position: absolute; inset: 0; }
 
-.rr-chip-on {
-    border-color: rgb(var(--rr-primary, 14 165 233));
-    color: rgb(var(--rr-text, 248 250 252));
-    background: rgb(var(--rr-primary, 14 165 233) / 0.14);
+.rr-tl-block {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    box-sizing: border-box;
+    border-right: 1px solid rgb(var(--rr-bg, 15 23 42));
+    background: rgb(var(--rr-border, 51 65 85) / 0.55);
 }
+
+.rr-tl-block[data-band="good"] { background: rgb(var(--rr-good, 34 197 94) / 0.6); }
+.rr-tl-block[data-band="mid"]  { background: rgb(var(--rr-mid, 234 179 8) / 0.6); }
+.rr-tl-block[data-band="low"]  { background: rgb(var(--rr-low, 239 68 68) / 0.6); }
+
+.rr-tl-block:hover { filter: brightness(1.35); }
+
+/* Graduated a drill. A tick would not fit in 14px, so it is a top edge. */
+.rr-tl-block-done { box-shadow: inset 0 2px 0 0 rgb(var(--rr-good, 34 197 94)); }
 
 /*
- * The accuracy band is a 2px underline rather than a fill.
+ * The selection: an outline and a bracket, never a fill.
  *
- * A filled chip competes with the selected chip for the same signal, and
- * "which one is selected" has to win: a coloured background that means
- * something else is how a chip list becomes unreadable.
+ * `pointer-events: none` matters — it lies over the blocks, and a click has to
+ * reach the block underneath to know which section it landed on.
  */
-.rr-chip::after {
-    content: '';
+.rr-tl-sel {
     position: absolute;
-    left: 0;
-    right: 0;
+    top: 0;
     bottom: 0;
-    height: 2px;
-    background: transparent;
+    pointer-events: none;
+    box-sizing: border-box;
+    border: 2px solid rgb(var(--rr-text, 248 250 252));
+    border-radius: 3px;
+    background: rgb(var(--rr-text, 248 250 252) / 0.12);
 }
 
-.rr-chip[data-band="good"]::after { background: rgb(var(--rr-good, 34 197 94)); }
-.rr-chip[data-band="mid"]::after { background: rgb(var(--rr-mid, 234 179 8)); }
-.rr-chip[data-band="low"]::after { background: rgb(var(--rr-low, 239 68 68)); }
+.rr-tl-head {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    pointer-events: none;
+    background: rgb(var(--rr-primary-hi, 56 189 248));
+    box-shadow: 0 0 6px rgb(var(--rr-primary-hi, 56 189 248) / 0.8);
+}
 
-.rr-chip-done { color: rgb(var(--rr-text, 248 250 252)); }
-.rr-chip-done::before {
-    content: '✓ ';
-    color: rgb(var(--rr-good, 34 197 94));
+/* ── the section stepper, which is also the selection's name ────────── */
+
+.rr-nav-name {
+    flex: 1 1 auto;
+    min-width: 0;
     font-weight: 700;
+    font-size: 12px;
+    text-align: center;
+    color: rgb(var(--rr-text, 248 250 252));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ── steppers, readout, trim ────────────────────────────────────────────── */
@@ -546,8 +646,24 @@
  * quieter than it, so there is never a question about what the panel is for.
  */
 
+/*
+ * The primary gets its own line.
+ *
+ * In 0.2 it shared a row with "Loop only" and "Clear", and a review reported
+ * it as reading weaker than the mode tabs above it — which it did, at a third
+ * of the width with two siblings competing. Alone on its line, at full width
+ * of a 320px panel, "sized to its label" and "dominant" are the same thing.
+ */
+.rr-acts-primary {
+    margin-top: 12px;
+    gap: 8px;
+}
+
+.rr-acts-primary .rr-btn { flex: 1 1 auto; }
+
+/* The two supporting actions, quieter and smaller, beneath it. */
 .rr-acts {
-    margin-top: 10px;
+    margin-top: 4px;
     gap: 8px;
 }
 
@@ -597,6 +713,13 @@
     background: rgb(var(--rr-accent, 239 68 68) / 0.16);
     border-color: rgb(var(--rr-accent, 239 68 68));
     box-shadow: none;
+}
+
+.rr-btn-small {
+    min-height: 26px;
+    padding: 4px 9px;
+    font-size: 11px;
+    font-weight: 500;
 }
 
 .rr-btn-quiet {

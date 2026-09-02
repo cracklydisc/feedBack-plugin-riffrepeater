@@ -32,6 +32,8 @@ import {
     rangeKey,
     isUsable,
     clock,
+    snapToBar,
+    rangeFromDrag,
     MIN_RANGE_SEC,
 } from '../src/ranges.js';
 
@@ -287,4 +289,74 @@ test('clock formats seconds the way the player does', () => {
     assert.equal(clock(84.41), '1:24');
     assert.equal(clock(-1), '–');
     assert.equal(clock(NaN), '–');
+});
+
+// ── the timeline's drag ──────────────────────────────────────────────────
+//
+// A drag across a 320px strip representing six minutes lands within a second
+// or two of where you meant, so both ends snap to bar lines. These pin the
+// three things a raw drag gets wrong: a backwards drag, a drag too short to
+// span two lines, and the naming of the result.
+
+test('snapToBar takes the NEAREST line, not the previous one', () => {
+    const bars = barLines(BEATS);        // lines every 4s
+    assert.equal(snapToBar(bars, 4.4), 4);
+    assert.equal(snapToBar(bars, 7.6), 8);
+    assert.equal(snapToBar(bars, 6), 4);   // a tie goes to the earlier line
+});
+
+test('snapToBar past the last line returns the last line', () => {
+    const bars = barLines(BEATS);
+    assert.equal(snapToBar(bars, 999), bars[bars.length - 1].time);
+});
+
+test('snapToBar with no bar lines returns the time unchanged', () => {
+    assert.equal(snapToBar([], 12.34), 12.34);
+});
+
+test('a drag snaps both ends to bars and names the measures', () => {
+    const bars = barLines(BEATS);
+    const r = rangeFromDrag(bars, 9.2, 21.4, 32);
+    assert.equal(r.start, 8);
+    assert.equal(r.end, 20);
+    assert.equal(r.label, 'Bars 3–5');
+});
+
+test('a backwards drag is the same range as a forwards one', () => {
+    const bars = barLines(BEATS);
+    const fwd = rangeFromDrag(bars, 9.2, 21.4, 32);
+    const back = rangeFromDrag(bars, 21.4, 9.2, 32);
+    assert.equal(back.start, fwd.start);
+    assert.equal(back.end, fwd.end);
+});
+
+test('a tap gives you the bar you tapped, not nothing', () => {
+    // Both ends snap to the same line; growing by a bar is friendlier than
+    // refusing, and it matches what the gesture looked like.
+    const bars = barLines(BEATS);
+    const r = rangeFromDrag(bars, 9, 9.1, 32);
+    assert.equal(r.start, 8);
+    assert.equal(r.end, 12);
+    assert.equal(r.label, 'Bar 3');
+});
+
+test('a drag past the end snaps to the last bar line, not to the duration', () => {
+    // Snapping is the point: a loop that ends between bar lines cannot take a
+    // count-in. The last line wins even when there is song left after it.
+    const bars = barLines(BEATS);          // lines at 0,4,…,28; song is 32s
+    const r = rangeFromDrag(bars, 26, 999, 32);
+    assert.equal(r.end, 28);
+});
+
+test('the duration still clamps a range that would run past it', () => {
+    const bars = barLines(BEATS);
+    const r = rangeFromDrag(bars, 22, 999, 26);
+    assert.equal(r.end, 26);
+});
+
+test('a drag that cannot make a usable range returns null', () => {
+    // No bar lines to snap to and no room to grow: better to refuse than to
+    // arm something the gesture did not describe.
+    assert.equal(rangeFromDrag([], 10, 10.1, 60), null);
+    assert.equal(rangeFromDrag([], NaN, 5, 60), null);
 });

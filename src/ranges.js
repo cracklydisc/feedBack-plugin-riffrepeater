@@ -245,6 +245,69 @@ export function barsFrom(bars, t, count, duration) {
 }
 
 /**
+ * The nearest bar line to a time.
+ *
+ * What a drag on the timeline gets snapped to. Nearest rather than previous:
+ * a drag is a rough gesture and the user means the bar they let go closest
+ * to, not the one they happened to pass over.
+ */
+export function snapToBar(bars, t) {
+    const list = Array.isArray(bars) ? bars : [];
+    const time = fin(t);
+    if (!Number.isFinite(time)) return NaN;
+    if (!list.length) return time;
+    const i = barIndexAt(list, time);
+    const here = list[i].time;
+    const next = (i + 1 < list.length) ? list[i + 1].time : null;
+    if (next === null) return here;
+    return (Math.abs(time - here) <= Math.abs(next - time)) ? here : next;
+}
+
+/**
+ * A dragged range, snapped to bars and named for what it covers.
+ *
+ * Handles the two things a drag gets wrong on its own: a backwards drag (let
+ * go left of where you started) and a drag so short it snaps to one bar line
+ * — which would give a zero-length loop. The second is why this can return
+ * null: refusing is better than arming something silently different from the
+ * gesture.
+ */
+export function rangeFromDrag(bars, a, b, duration) {
+    const list = Array.isArray(bars) ? bars : [];
+    let start = snapToBar(list, Math.min(Number(a), Number(b)));
+    let end = snapToBar(list, Math.max(Number(a), Number(b)));
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+
+    // Snapped to the same line: grow by one bar rather than refuse outright,
+    // so a tap on the timeline still gives you the bar you tapped.
+    if (end <= start) {
+        const i = barIndexAt(list, start);
+        const dur = fin(duration);
+        end = (i + 1 < list.length) ? list[i + 1].time : (Number.isFinite(dur) ? dur : start + 2);
+    }
+    const dur = fin(duration);
+    if (Number.isFinite(dur) && dur > 0) end = Math.min(end, dur);
+    if (end - start < MIN_RANGE_SEC) return null;
+
+    const si = barIndexAt(list, start);
+    const ei = barIndexAt(list, Math.max(start, end - 0.001));
+    const first = list[si]?.measure;
+    const last = list[ei]?.measure;
+    const label = (Number.isFinite(first) && Number.isFinite(last))
+        ? (first === last ? `Bar ${first}` : `Bars ${first}–${last}`)
+        : 'Custom range';
+    return withKey({
+        kind: 'bars',
+        label,
+        start,
+        end,
+        firstMeasure: first,
+        lastMeasure: last,
+        barCount: Math.max(1, ei - si + 1),
+    });
+}
+
+/**
  * Move one edge of a range by one bar.
  *
  * This is what replaces the detector's own ±2 SECONDS trim. Two seconds is a

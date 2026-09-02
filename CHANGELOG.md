@@ -1,5 +1,86 @@
 # Changelog
 
+## 0.3.0 — a timeline instead of a chip grid
+
+A UI review of 0.2 landed five criticisms. Four were right and are fixed here;
+one was already done and one is answered rather than implemented.
+
+**A timeline replaces the 21+ section chips.** They were half the panel's
+height and needed a careful read to find "Solo 1". A strip proportional to the
+song answers "where is the solo" by position, which is how you already think
+about a song you are learning — and it takes a **drag**, snapped to bar lines,
+which no arrangement of chips can. Click a block for its section; drag across
+for a custom range. The panel is 666px tall now instead of 810.
+
+No waveform, deliberately. Drawing one means fetching and decoding a stem —
+expensive, duplicating work the player already did, and pointless: the useful
+signal here is not amplitude, it is where the sections are and how well you
+play them.
+
+**"Ladder" and "Speed" no longer wear the same costume.** This was the
+sharpest thing in the review and it was completely right: two rows, the same
+five numbers, no way to tell which was which. They ask different questions —
+one is the set of speeds a drill *climbs*, the other is the speed the song is
+playing at *now* — so they are different control families and different words
+now. **Climb** is a chip group (pick a subset) on its rail; **Play at** is a
+segmented control (pick one). Not merged into an initial/target/step model,
+though: the engine takes an explicit array and that re-parameterisation cannot
+express `[50, 80, 100]`.
+
+**Colour means one thing again.** The chips carried an accuracy underline in
+green/amber/red while selection was an accent border, and the reviewer read the
+amber underline as a second kind of "selected" — exactly the failure that
+critique names. Accuracy is now the timeline block's fill and the weak list's
+bar; selection is a white bracket. One signal per channel.
+
+**The two text boxes are gone.** The time-stretch caveat is a `⚠` badge beside
+the ladder with its sentence in the tooltip. The note-detection state is a
+**status dot on the Start button** — green when the detector is listening,
+amber when present but off — with the reason on the button that it disables.
+A third box, for an action that just failed, is now a line that clears itself
+after six seconds, because a failure is an event and not a state.
+
+**The primary has its own line.** At a third of a row with two siblings it read
+weaker than the mode tabs above it. Alone, full width of a 320px panel, it is
+the only lit thing in the panel. `Loop only` and `Clear` are small and quiet
+beneath it.
+
+**"Practice weakest"** selects the passage you play worst *and* arms a drill on
+it, in one press. The list already made the decision; making you read it and
+then find the button was two steps for nothing. Verified: one click went from
+nothing selected to a drill running on Solo 1 at 8%, at 65% speed.
+
+**Keyboard.** Registered through the host's own `window.registerShortcut`, so
+they show up in its `?` panel and its Settings → Keybinds tab, and it warns
+about collisions instead of two handlers quietly both firing. Which keys was a
+question for the registry rather than for taste: in the `player` scope the app
+already owns **Space** (play/pause), **← →** (seek), **Escape**, **[ ]** (A/V
+offset) and **+ −** (volume) — so the obvious guitarist bindings were all
+taken. What was free: **D** start/end a drill, **↑ ↓** speed ±5%, **, .**
+previous/next section. Shown as key caps on the controls they drive.
+
+### Already done, before the review
+
+Every row of "Where you struggle" has been clickable since 0.1.0 — it selects
+that passage. `Practice weakest` is the shortcut for the top one.
+
+### Not doing, and why
+
+A **double-thumb range slider** for the trim. The timeline's drag is that, with
+bar snapping, and a second range widget for the same job would be two ways to
+set one thing.
+
+### Fixed
+
+- `api.open()` opened the panel outside the player. The highway keeps the last
+  song's sections after you navigate away, so `ready` stayed true and the panel
+  came up over the song library. The button was already hidden off the player;
+  the programmatic path is guarded now too.
+- A click on the timeline resolved the section from `e.target.closest(...)`,
+  which needed the pointer to land on a block — so a click on the hairline
+  between two of them fell through to a one-bar range. Resolved from the time
+  instead.
+
 ## 0.2.0 — parked in the corner, and less of a form
 
 **The panel no longer floats next to its button.** It is parked at top-right,

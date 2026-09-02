@@ -65,10 +65,28 @@ const actions = {
         if (model.snapshot().mode === 'bars') model.setMode('section');
     },
     stepPart(d) { model.stepPart(d); },
+    stepSection(d) { model.stepSection(d); },
+    selectDrag(a, b) { model.selectDrag(a, b); },
+    selectAtTime(t) { model.selectAtTime(t); },
     barCount() { return model.getSettings().barCount; },
     setBarCount(n) { model.setBarCount(n); },
     barsAtPlayhead() { model.selectBarsAtPlayhead(); },
     nudge(edge, dir) { model.nudge(edge, dir); },
+
+    /**
+     * One press for "work on the thing I am worst at".
+     *
+     * Selects the weakest passage AND arms the drill, because reading the list
+     * and then finding the button is two steps for a decision the list has
+     * already made. Falls back to selecting it when a drill cannot start —
+     * the reason is on the Start button.
+     */
+    async practiceWeakest() {
+        const range = model.selectWeakest();
+        if (!range) return;
+        if (drill.blockedReason()) { model.announce(); return; }
+        await actions.startDrill();
+    },
 
     toggleRung(pct) {
         const cur = model.getSettings().ladder || [];
@@ -159,13 +177,16 @@ function explain(reason) {
     }
 }
 
-/** One-line, transient feedback in the panel header area. */
+/**
+ * Why something just failed.
+ *
+ * Goes to the panel's flash line when it is open, and to the console when it
+ * is not — a drill refused by a keyboard shortcut with the panel closed would
+ * otherwise fail silently.
+ */
 function note(text) {
-    if (!panel) return;
-    const line = panel.root.querySelector('.rr-blocked');
-    if (!line) return;
-    line.hidden = false;
-    line.textContent = text;
+    if (panel && typeof panel.say === 'function') panel.say(text);
+    if (!open) console.warn(`[${ID}] ${text}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -235,6 +256,11 @@ function retick() {
 }
 
 function setOpen(next) {
+    // The panel belongs to the player and nowhere else. The button is hidden
+    // off it, so a user cannot get here — but `api.open()` can, and it did:
+    // the highway keeps the last song's sections after you navigate away, so
+    // the panel opened perfectly happily on top of the song library.
+    if (next && !host.inPlayer()) return;
     open = !!next;
     if (!mount) return;
     if (open) { render(); mount.show(); } else { mount.hide(); }
@@ -318,6 +344,78 @@ function wire() {
         model.announce();
         if (open) render();
     }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// keyboard
+// ─────────────────────────────────────────────────────────────────────────
+
+/*
+ * Shortcuts, through the host's own registry.
+ *
+ * `window.registerShortcut` is documented as a plugin-facing API and it earns
+ * its keep twice over: the app's `?` panel and its Settings → Keybinds tab
+ * list what we add, and it warns on the console when a key is already taken
+ * instead of two handlers quietly both firing.
+ *
+ * WHAT IS NOT BOUND, and why. Asking the registry (`getAllShortcuts()`) rather
+ * than guessing: in the `player` scope the app already owns Space (play/pause),
+ * ← / → (seek ±5s), Escape (back), [ and ] (A/V offset) and + / − (volume).
+ * The obvious guitarist bindings — Space to start, [ and ] to move the loop —
+ * are therefore all taken, and rebinding them would break the transport to
+ * add a convenience. So: D for the drill, ↑/↓ for speed (free in this scope),
+ * and , / . for the sections.
+ */
+const SHORTCUT_SCOPE = 'player';
+
+const SHORTCUTS = [
+    {
+        key: 'd',
+        description: 'Riff Repeater: start or end a drill on the selected passage',
+        handler: () => {
+            if (drill.isDrilling()) actions.endDrill();
+            else actions.startDrill();
+        },
+    },
+    {
+        key: 'ArrowUp',
+        description: 'Riff Repeater: playback speed +5%',
+        handler: () => actions.setSpeed(Math.min(100, host.speedPct() + 5)),
+    },
+    {
+        key: 'ArrowDown',
+        description: 'Riff Repeater: playback speed −5%',
+        handler: () => actions.setSpeed(Math.max(15, host.speedPct() - 5)),
+    },
+    {
+        // Panel-open only: moving a selection you cannot see is not a feature.
+        key: ',',
+        description: 'Riff Repeater: previous section (panel open)',
+        handler: () => { if (open) actions.stepSection(-1); },
+    },
+    {
+        key: '.',
+        description: 'Riff Repeater: next section (panel open)',
+        handler: () => { if (open) actions.stepSection(1); },
+    },
+];
+
+function wireShortcuts() {
+    if (typeof window.registerShortcut !== 'function') return;
+    for (const s of SHORTCUTS) {
+        try {
+            window.registerShortcut({ ...s, scope: SHORTCUT_SCOPE });
+        } catch (err) {
+            console.warn(`[${ID}] could not register '${s.key}':`, err);
+        }
+    }
+}
+
+function unwireShortcuts() {
+    if (typeof window.unregisterShortcut !== 'function') return;
+    for (const s of SHORTCUTS) {
+        try { window.unregisterShortcut(s.key, SHORTCUT_SCOPE); } catch (_) { /* going away anyway */ }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -437,6 +535,7 @@ function boot() {
     });
     mount.attach();
     wire();
+    wireShortcuts();
     model.refreshSong();
     retick();
 }
@@ -450,6 +549,7 @@ function teardown() {
         const off = unsubs.pop();
         try { off(); } catch (_) { /* going away anyway */ }
     }
+    unwireShortcuts();
     if (mount) { try { mount.detach(); } catch (_) { /* ignore */ } mount = null; }
     panel = null;
     unfollow();

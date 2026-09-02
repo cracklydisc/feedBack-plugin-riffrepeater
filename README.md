@@ -73,18 +73,30 @@ says why.
 
 ### Picks the passage — at three grains
 
+You pick it on a **timeline** — a strip proportional to the song, one block per
+section, coloured by how well you play it. Click a block for its section, or
+drag across it for a custom range snapped to bar lines. It replaced a grid of
+21+ chips, which was half the panel's height and needed a careful read to find
+"Solo 1"; position answers that at a glance, and a drag is something no
+arrangement of chips can offer.
+
+There is no waveform. Drawing one means fetching and decoding a stem, which is
+expensive, duplicates work the player already did, and adds nothing — the
+useful signal here is not amplitude, it is where the sections are and how well
+you play them.
+
 **Section** — the same passages the app's own Practice popover lists, built the
-same way (consecutive same-name markers collapse, repeats get counted). A chip
+same way (consecutive same-name markers collapse, repeats get counted). A block
 here is the same seconds as a chip there; that agreement is checked by
 [`tests/ranges.test.js`](tests/ranges.test.js).
 
 **Phrase** — the phrases inside a section, the app's "Part *n* of *m*".
 
-**Bars** — any run of measures, taken from the bar under the playhead. This is
-the grain the app does not offer and the one a guitarist actually asks for.
-The engine's own trim moves the loop edges by **two seconds**; two seconds is a
-different amount of music in every song, so this trims by **whole bars**
-instead. A loop boundary off the grid turns a count-in into a guess.
+**Bars** — a run of measures taken from the bar under the playhead, for when
+you fluff something while playing and want the bars you are in. Trimming moves
+**whole bars**; the engine's own trim moves the loop edges by two seconds, and
+two seconds is a different amount of music in every song. A loop boundary off
+the grid turns a count-in into a guess.
 
 The readout tells you what you have picked and what it costs: `Verse 1 · 1:24 →
 1:39 · 15.3s · 95 notes`. The note count comes from the *filtered* chart, so it
@@ -115,10 +127,11 @@ finish*.
 song load, which is right as a default and wrong for a chart you are three
 sessions into at 80%.
 
-**Your best, per passage.** Section chips carry a coloured underline for how
-well you have played them, and a **Where you struggle** list puts the worst
-first — from this run while you are playing, from the store when you are not.
-Click a row to select that passage.
+**Your best, per passage.** The timeline blocks are coloured by it, and a
+**Where you struggle** list puts the worst first — from this run while you are
+playing, from the store when you are not. Click a row to select that passage,
+or press **Practice weakest** to select the worst one *and* arm a drill on it
+in one press.
 
 **Optionally the difficulty, per song** — off by default, and worth
 understanding before turning on: the app stores master difficulty as *one
@@ -135,20 +148,53 @@ apply to.
 
 ### Reads as a HUD, not a preferences sheet
 
-The panel is something you look at with a guitar in your hands, so it follows
-the control taxonomy the Virtuoso plugin already writes down for this app: two
-families for "pick one of N" and no others (a segmented control for the mode
-tabs, chip groups for the sections, the ladder and the speed presets), a toggle
-pill for a boolean, one lit primary sized to its label, and no text inputs.
+The panel is something you look at with a guitar in your hands, so four rules
+hold, three of them from the control taxonomy the Virtuoso plugin already
+writes down for this app:
 
-The clearest instance is the ladder, which does double duty: idle it is the
-setting, and while a drill runs it *is* the progress display — the rung being
-played is filled, cleared rungs go green, the rest wait. The prose that used to
-sit under each control moved into `title`; the only note still drawn is one
-that explains a control that is not working.
+**One control family per meaning, and the families must not collide.** A
+segmented control is "pick one of a small fixed set" — the mode tabs, and the
+**Play at** speed row. A chip group is "pick a subset" — the **Climb** ladder.
+A toggle pill is a boolean. Version 0.2 drew the ladder and the speed as the
+same rail of pills with the same five numbers, which is two different things
+wearing one costume; they are different shapes and different words now.
 
-Values a stepper cannot reach live on the settings page. A form belongs there,
-not in the player.
+**One lit primary, on its own line.** Nothing else in the panel is accent-
+filled, so there is never a question about what to press.
+
+**A data signal never looks like a selection signal.** Accuracy is the
+timeline block's fill and the weak list's bar; selection is a white bracket.
+One signal per channel — 0.2 had accuracy as a coloured underline on the same
+chips whose border meant "selected", and a reviewer read the amber as a second
+kind of selected.
+
+**No paragraph of explanation, and no box drawn to hold one.** A warning is a
+badge with its sentence in the tooltip. A blocked action explains itself on the
+control it blocks, and carries a status dot for the input. Values a stepper
+cannot reach live on the settings page — a form belongs there, not in the
+player.
+
+The clearest instance of all four is the ladder, which does double duty: idle
+it is the setting, and while a drill runs it *is* the progress display — the
+rung being played is filled, cleared rungs go green, the rest wait.
+
+### Keyboard
+
+Registered through the host's own `window.registerShortcut`, so they appear in
+its `?` panel and its Settings → Keybinds tab, and it warns about collisions
+instead of two handlers quietly both firing.
+
+| | |
+|---|---|
+| `D` | start or end a drill on the selected passage |
+| `↑` `↓` | playback speed ±5% |
+| `,` `.` | previous / next section (while the panel is open) |
+
+Which keys was a question for the registry rather than for taste. In the
+`player` scope the app already owns **Space** (play/pause), **← →** (seek),
+**Escape**, **[** and **]** (A/V offset) and **+ −** (volume) — so the obvious
+guitarist bindings are all taken, and rebinding them would break the transport
+to add a convenience.
 
 ---
 
@@ -275,7 +321,7 @@ Two things learned from the DOM, in case that PR is written by somebody else:
 node --test tests/*.test.js
 ```
 
-88 tests, no dependencies, no build step. The four suites cover the pure
+97 tests, no dependencies, no build step. The four suites cover the pure
 modules — the range table, the ladder, the per-passage statistics, and the
 store. The host seam, the model's wiring and the panel are verified in the
 running app instead; they are the parts that a unit test can only mock.

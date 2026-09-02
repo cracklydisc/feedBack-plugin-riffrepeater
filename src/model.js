@@ -168,6 +168,83 @@ export function selectBarsAtPlayhead() {
     return r;
 }
 
+/**
+ * Take the range a drag on the timeline describes.
+ *
+ * Both ends snap to bar lines, which is the whole reason a drag is usable at
+ * all: a gesture across a 300px strip representing six minutes lands within a
+ * second or two of where you meant, and a loop boundary that is not on a bar
+ * line turns the count-in into a guess.
+ */
+export function selectDrag(startSec, endSec) {
+    const bars = ranges.barLines(host.beats());
+    const r = ranges.rangeFromDrag(bars, startSec, endSec, host.duration());
+    if (!r) return null;
+    state.barsRange = r;
+    state.mode = 'bars';
+    announce();
+    return r;
+}
+
+/**
+ * Select whatever the section table says is at this time.
+ *
+ * What a click on the timeline resolves to. Deliberately derived from the time
+ * rather than read off the clicked element: the DOM route needed the pointer
+ * to land on a block, so a click on the hairline between two of them — or any
+ * synthetic click, which is how this was noticed — fell through to a bar
+ * range instead of a section.
+ *
+ * Falls back to a bar range when the time is outside every section, which is
+ * the honest answer for a chart whose markers do not cover it.
+ */
+export function selectAtTime(t) {
+    const time = Number(t);
+    if (!Number.isFinite(time)) return null;
+    const hit = state.sections.find((s) => time >= s.start && time < s.end);
+    if (!hit) return selectDrag(time, time);
+    state.sectionKey = hit.key;
+    state.partIndex = 0;
+    if (state.mode === 'bars') state.mode = 'section';
+    rebuildParts();
+    announce();
+    return hit;
+}
+
+/**
+ * Step to the next or previous section.
+ *
+ * The timeline is a mouse gesture; this is the same navigation for a keyboard
+ * or a controller, which is the only way to move through 21 sections without
+ * aiming at a 14-pixel block.
+ */
+export function stepSection(delta) {
+    if (!state.sections.length) return;
+    const at = state.sections.findIndex((s) => s.key === state.sectionKey);
+    const next = Math.max(0, Math.min(state.sections.length - 1, (at < 0 ? 0 : at) + (Number(delta) || 0)));
+    state.sectionKey = state.sections[next].key;
+    state.partIndex = 0;
+    if (state.mode === 'bars') state.mode = 'section';
+    rebuildParts();
+    announce();
+}
+
+/**
+ * Select the passage you play worst, and say which it was.
+ *
+ * The weak list already knows; this is the one-press version of reading it and
+ * clicking a row. Returns the range so the caller can arm a drill on it in the
+ * same gesture.
+ */
+export function selectWeakest() {
+    const rows = snapshot().weakest;
+    if (!rows.length) return null;
+    const target = rows[0];
+    selectSection(target.key);
+    setMode('section');
+    return selection();
+}
+
 export function setBarCount(n) {
     const count = Math.max(1, Math.min(64, Math.round(Number(n) || 1)));
     state.settings = store.setSettings({ barCount: count });
@@ -364,6 +441,8 @@ export function snapshot() {
         songKey: state.songKey,
         songTitle: state.songTitle,
         duration,
+        /** Where the playhead is, for the timeline's marker. */
+        playhead: host.time(),
 
         engine: {
             available: drill.available(),

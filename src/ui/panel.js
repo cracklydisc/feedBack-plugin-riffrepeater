@@ -14,48 +14,54 @@
  *   - it writes ONLY through the actions passed in, never to the model directly
  *
  * Rendering is patch-in-place rather than innerHTML-per-tick, because this
- * re-renders twice a second while a drill runs and a rebuilt chip is a chip
+ * re-renders twice a second while a drill runs and a rebuilt block is a block
  * that cannot be clicked.
  *
  * ── ON THE CONTROLS ─────────────────────────────────────────────────────
  *
  * This is a heads-up display for something you do with a guitar in your
- * hands, not a preferences sheet. Four rules, taken from the design language
- * the Virtuoso plugin already writes down for this app:
+ * hands, not a preferences sheet. The rules, from the design language the
+ * Virtuoso plugin already writes down for this app, plus what a review of the
+ * first version taught:
  *
- *  1. Two families for "pick one of N", and no others: a SEGMENTED control for
- *     a small fixed mutually-exclusive set (the mode tabs), a CHIP GROUP for a
- *     set that may be many and may scroll (the sections, the ladder, the speed
- *     presets).
- *  2. A boolean is a TOGGLE PILL, not a checkbox.
- *  3. ONE lit primary, sized to its label. Everything else in the row is
- *     quieter than it, so there is never a question about what to press.
- *  4. No text input, and no paragraph of explanation. A number you set with
- *     ± reads as a game option; a number you type reads as a form. The prose
- *     that used to sit under each control lives in `title` now — the exact
- *     values a stepper cannot reach live on the settings page, which is where
- *     a form belongs.
+ *  1. ONE CONTROL FAMILY PER MEANING, and the families must not collide. A
+ *     segmented control is "pick one of a small fixed set". A chip group is
+ *     "pick a subset". A toggle pill is a boolean. Version 0.2 drew the drill
+ *     ladder (a subset) and the playback speed (one of a set) as the same
+ *     rail of pills with the same five numbers — two different things wearing
+ *     one costume, which is the single most confusing thing a panel can do.
+ *     They are different families now, and their labels say which is which.
+ *  2. ONE lit primary, on its own line, so nothing competes with it.
+ *  3. A DATA signal must never look like a SELECTION signal. The section
+ *     chips carried an accuracy underline in green/amber/red while selection
+ *     was an accent border — and a reviewer read the amber underline as a
+ *     second kind of "selected". The accuracy colour now lives on the
+ *     timeline and in the weak list, where colour means one thing.
+ *  4. No paragraph of explanation, and no box drawn to hold one. A warning is
+ *     a badge with the sentence in its tooltip; a blocked action explains
+ *     itself on the button that is blocked.
  *
- * And one thing that is not decoration: the ladder does double duty. Idle, it
- * is the setting — tick the rungs a drill should climb. Running, it IS the
- * progress display: cleared rungs go green, the current one is filled, the
- * rest wait. Turning a setting into a status readout is most of what separates
- * a HUD from a form.
+ * And the ladder still does double duty: idle it is the setting, running it IS
+ * the progress display. Turning a setting into a status readout is most of
+ * what separates a HUD from a form.
  */
 
 import { PRESETS, STRETCH_WARN_PCT, statusLine, nextStepLine, band } from '../ladder.js';
 import { clock } from '../ranges.js';
 
 const MODES = [
-    { id: 'section', label: 'Section', hint: 'A logical part of the song — the same passages the Practice popover lists.' },
+    { id: 'section', label: 'Section', hint: 'A logical part of the song — the same passages the Practice popover lists. Click a block on the timeline, or drag across it for a custom range.' },
     { id: 'part', label: 'Phrase', hint: 'The phrases inside that section — the host\'s "Part n of m".' },
-    { id: 'bars', label: 'Bars', hint: 'Any run of measures, taken from the playhead. Trim by whole bars.' },
+    { id: 'bars', label: 'Bars', hint: 'A run of measures taken from the bar under the playhead — for when you fluff something while playing and want the bars you are in.' },
 ];
 
 /** The panel steps the goal in 5s and stops at 50; the settings page has the rest. */
 const GOAL_STEP = 5;
 const GOAL_MIN = 50;
 const GOAL_MAX = 100;
+
+/** A drag has to travel this far before it stops being a click. */
+const DRAG_SLOP_PX = 4;
 
 function el(tag, cls, text) {
     const n = document.createElement(tag);
@@ -70,6 +76,13 @@ function button(cls, text, title, onClick) {
     if (title) b.title = title;
     if (onClick) b.addEventListener('click', onClick);
     return b;
+}
+
+/** A key cap, so a shortcut is discoverable without opening the help panel. */
+function kbd(keys) {
+    const n = el('span', 'rr-kbd', keys);
+    n.setAttribute('aria-hidden', 'true');
+    return n;
 }
 
 /** A boolean, drawn the way the app draws one. */
@@ -113,7 +126,6 @@ export function createPanel(actions) {
     const body = el('div', 'rr-body');
     root.appendChild(body);
 
-    // ── a message instead of controls, when there is nothing to control ──
     const empty = el('p', 'rr-empty');
     body.appendChild(empty);
 
@@ -134,13 +146,44 @@ export function createPanel(actions) {
     }
     main.appendChild(modeRow);
 
-    // section chips — rebuilt only when the section set changes
-    const chips = el('div', 'rr-chips');
-    chips.setAttribute('role', 'toolbar');
-    chips.setAttribute('aria-label', 'Sections');
-    main.appendChild(chips);
-    let chipSignature = '';
-    const chipNodes = new Map();
+    /*
+     * The timeline.
+     *
+     * This replaces a grid of 21+ chips, which was half the panel's height and
+     * needed a careful visual scan to find "Solo 1". A strip proportional to
+     * the song reads at a glance — you know roughly where the solo is in a
+     * song even if you cannot name the section — and it gives drag-to-select
+     * for free, which no arrangement of chips can.
+     *
+     * It draws no waveform. A waveform would mean fetching and decoding the
+     * stem, which is expensive, duplicates work the player already did, and
+     * adds nothing: the useful signal here is not amplitude, it is where the
+     * sections are and how well you play them.
+     */
+    const timeline = el('div', 'rr-timeline');
+    timeline.setAttribute('role', 'group');
+    timeline.setAttribute('aria-label', 'Song timeline — click a section, or drag for a custom range');
+    timeline.title = 'Click a section. Drag across for a custom range, snapped to bar lines.';
+    const tlBlocks = el('div', 'rr-tl-blocks');
+    const tlSel = el('div', 'rr-tl-sel');
+    const tlHead = el('div', 'rr-tl-head');
+    timeline.appendChild(tlBlocks);
+    timeline.appendChild(tlSel);
+    timeline.appendChild(tlHead);
+    main.appendChild(timeline);
+    let blockSignature = '';
+    const blockNodes = new Map();
+
+    // The same navigation without a mouse, and the selection's name.
+    const navRow = el('div', 'rr-row rr-nav');
+    const navPrev = button('rr-step', '◀', 'Previous section', () => actions.stepSection(-1));
+    const navName = el('span', 'rr-nav-name');
+    const navNext = button('rr-step', '▶', 'Next section', () => actions.stepSection(1));
+    navRow.appendChild(navPrev);
+    navRow.appendChild(navName);
+    navRow.appendChild(navNext);
+    navRow.appendChild(kbd(', .'));
+    main.appendChild(navRow);
 
     // phrase stepper
     const partRow = el('div', 'rr-row rr-parts');
@@ -192,9 +235,17 @@ export function createPanel(actions) {
     // ── how to drill ─────────────────────────────────────────────────────
     main.appendChild(el('h4', 'rr-legend', 'How to drill'));
 
-    // The ladder: a chip group idle, the progress display while a drill runs.
+    /*
+     * "Climb", not "Ladder" — and a chip group, not a rail of pills.
+     *
+     * The label is the fix for the review's sharpest point: this row and the
+     * playback-speed row carried the same five numbers with no way to tell
+     * which was which. This one is the set of speeds a drill CLIMBS; the other
+     * is the speed the song plays at NOW. Different words, different control
+     * family, and a badge that explains the slow end.
+     */
     const ladderRow = el('div', 'rr-row rr-ladder');
-    ladderRow.appendChild(el('span', 'rr-mini', 'Ladder'));
+    ladderRow.appendChild(el('span', 'rr-mini', 'Climb'));
     const ladderTrack = el('div', 'rr-track');
     const ladderButtons = new Map();
     for (const p of PRESETS) {
@@ -203,6 +254,10 @@ export function createPanel(actions) {
         ladderTrack.appendChild(b);
     }
     ladderRow.appendChild(ladderTrack);
+    const stretchBadge = el('span', 'rr-badge rr-badge-warn', '⚠');
+    stretchBadge.title = `Below ${STRETCH_WARN_PCT}% the backing track is audibly `
+        + 'time-stretched. Worth it for a passage you cannot play yet; not worth leaving on.';
+    ladderRow.appendChild(stretchBadge);
     main.appendChild(ladderRow);
 
     // Goal and the widen switch share a row: two settings, no prose, one line.
@@ -223,27 +278,48 @@ export function createPanel(actions) {
     goalRow.appendChild(widen.wrap);
     main.appendChild(goalRow);
 
-    const warn = el('p', 'rr-warn');
-    main.appendChild(warn);
-
     // ── actions ──────────────────────────────────────────────────────────
+    /*
+     * The primary gets its own line. In 0.2 it shared a row with two other
+     * buttons and a reviewer reported it as reading weaker than the mode tabs
+     * above it — which it did, at a third of the width with two siblings.
+     */
+    const primaryRow = el('div', 'rr-row rr-acts-primary');
+    const startBtn = button('rr-btn rr-btn-primary', null, null, () => actions.startDrill());
+    const startDot = el('span', 'rr-dot');
+    startBtn.appendChild(startDot);
+    startBtn.appendChild(el('span', null, '⏱ Start drill'));
+    startBtn.appendChild(kbd('D'));
+    const endBtn = button('rr-btn rr-btn-danger', null, 'Stop the drill and restore your speed',
+        () => actions.endDrill());
+    endBtn.appendChild(el('span', null, '✕ End drill'));
+    endBtn.appendChild(kbd('D'));
+    primaryRow.appendChild(startBtn);
+    primaryRow.appendChild(endBtn);
+    main.appendChild(primaryRow);
+
     const acts = el('div', 'rr-row rr-acts');
-    const startBtn = button('rr-btn rr-btn-primary', '⏱ Start drill',
-        'Arm the drill on the chosen passage', () => actions.startDrill());
-    const endBtn = button('rr-btn rr-btn-danger', '✕ End drill',
-        'Stop the drill and restore your speed', () => actions.endDrill());
-    const loopBtn = button('rr-btn', 'Loop only',
+    const loopBtn = button('rr-btn rr-btn-small', 'Loop only',
         'Loop the passage with no goal and no ramp', () => actions.loopOnly());
-    const clearBtn = button('rr-btn rr-btn-quiet', 'Clear',
+    const clearBtn = button('rr-btn rr-btn-small rr-btn-quiet', 'Clear',
         'Drop the loop and play on', () => actions.clearLoop());
-    acts.appendChild(startBtn);
-    acts.appendChild(endBtn);
     acts.appendChild(loopBtn);
     acts.appendChild(clearBtn);
     main.appendChild(acts);
 
-    const blocked = el('p', 'rr-blocked');
-    main.appendChild(blocked);
+    /*
+     * The one imperative surface in the panel, and the one exception to
+     * "reads only the snapshot".
+     *
+     * It carries the reason an action just FAILED — a range the engine
+     * refused, a throw — which is an event, not a state, and therefore not
+     * something a snapshot can hold. Reasons an action is *blocked* are not
+     * here: those live on the disabled control's own tooltip.
+     */
+    const flash = el('p', 'rr-flash');
+    flash.hidden = true;
+    main.appendChild(flash);
+    let flashTimer = null;
 
     // ── live drill ───────────────────────────────────────────────────────
     const live = el('div', 'rr-live');
@@ -257,19 +333,26 @@ export function createPanel(actions) {
     live.appendChild(liveIters);
     main.appendChild(live);
 
-    // ── speed & difficulty ───────────────────────────────────────────────
-    main.appendChild(el('h4', 'rr-legend', 'Speed & difficulty'));
+    // ── play at ──────────────────────────────────────────────────────────
+    main.appendChild(el('h4', 'rr-legend', 'Play at'));
 
+    /*
+     * A segmented control, because this is "pick one" — the speed the song is
+     * playing at right now. The drill's ladder above is "pick a subset". Same
+     * numbers, different question, and now different shapes.
+     */
     const speedRow = el('div', 'rr-row rr-speed');
-    speedRow.appendChild(el('span', 'rr-mini', 'Speed'));
-    const speedTrack = el('div', 'rr-track');
+    const speedSeg = el('div', 'rr-seg');
+    speedSeg.setAttribute('role', 'group');
+    speedSeg.setAttribute('aria-label', 'Playback speed');
     const speedButtons = new Map();
     for (const p of PRESETS) {
-        const b = button('rr-rung', String(p), `Play at ${p}% of tempo`, () => actions.setSpeed(p));
+        const b = button('rr-seg-btn', String(p), `Play at ${p}% of tempo`, () => actions.setSpeed(p));
         speedButtons.set(p, b);
-        speedTrack.appendChild(b);
+        speedSeg.appendChild(b);
     }
-    speedRow.appendChild(speedTrack);
+    speedRow.appendChild(speedSeg);
+    speedRow.appendChild(kbd('↑ ↓'));
     main.appendChild(speedRow);
 
     const diffRow = el('div', 'rr-row rr-diff');
@@ -292,45 +375,129 @@ export function createPanel(actions) {
     diffRow.appendChild(diffValue);
     main.appendChild(diffRow);
 
-    // Only ever shown when it explains why something is not working.
+    // Only ever drawn when it explains a control that is not working.
     const diffNote = el('p', 'rr-note');
     main.appendChild(diffNote);
 
     // ── the map ──────────────────────────────────────────────────────────
-    main.appendChild(el('h4', 'rr-legend', 'Where you struggle'));
+    const mapHead = el('div', 'rr-legend-row');
+    mapHead.appendChild(el('h4', 'rr-legend', 'Where you struggle'));
+    const weakestBtn = button('rr-btn rr-btn-small rr-push', 'Practice weakest',
+        'Select the passage you play worst and arm a drill on it',
+        () => actions.practiceWeakest());
+    mapHead.appendChild(weakestBtn);
+    main.appendChild(mapHead);
     const runLine = el('p', 'rr-note');
     main.appendChild(runLine);
     const weak = el('div', 'rr-weak');
     main.appendChild(weak);
 
+    // ── the timeline's pointer handling ──────────────────────────────────
+
+    let dragFrom = null;      // { x, t } where the pointer went down
+    let dragging = false;
+    let lastSnap = null;      // the model's duration, cached for x -> time
+
+    function timeAtX(clientX) {
+        const r = timeline.getBoundingClientRect();
+        if (!r.width || !Number.isFinite(lastSnap) || lastSnap <= 0) return NaN;
+        const frac = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+        return frac * lastSnap;
+    }
+
+    timeline.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        const t = timeAtX(e.clientX);
+        if (!Number.isFinite(t)) return;
+        dragFrom = { x: e.clientX, t };
+        dragging = false;
+        try { timeline.setPointerCapture(e.pointerId); } catch (_) { /* not fatal */ }
+        e.preventDefault();
+    });
+
+    timeline.addEventListener('pointermove', (e) => {
+        if (!dragFrom) return;
+        if (!dragging && Math.abs(e.clientX - dragFrom.x) < DRAG_SLOP_PX) return;
+        dragging = true;
+        const t = timeAtX(e.clientX);
+        if (Number.isFinite(t)) actions.selectDrag(dragFrom.t, t);
+    });
+
+    function endDrag(e) {
+        if (!dragFrom) return;
+        const from = dragFrom;
+        const wasDragging = dragging;
+        dragFrom = null;
+        dragging = false;
+        try { timeline.releasePointerCapture(e.pointerId); } catch (_) { /* already gone */ }
+        if (wasDragging) return;
+        // A click, not a drag: whatever section covers that time.
+        //
+        // Resolved from the TIME, not from the clicked element. Reading
+        // `e.target.closest('.rr-tl-block')` needed the pointer to land on a
+        // block, so a click on the hairline between two of them fell through
+        // to a one-bar range instead of the section — and the same happened
+        // for any click that did not originate on a block.
+        if (Number.isFinite(from.t)) actions.selectAtTime(from.t);
+    }
+
+    timeline.addEventListener('pointerup', endDrag);
+    timeline.addEventListener('pointercancel', endDrag);
+
     // ── render ───────────────────────────────────────────────────────────
 
-    function renderChips(snap) {
+    function renderTimeline(snap) {
+        lastSnap = snap.duration;
+        const dur = snap.duration;
+        if (!Number.isFinite(dur) || dur <= 0) {
+            timeline.hidden = true;
+            return;
+        }
+        timeline.hidden = snap.mode === 'bars' ? false : false;
+
         const signature = snap.sections.map((s) => s.key).join('|');
-        if (signature !== chipSignature) {
-            chipSignature = signature;
-            chips.textContent = '';
-            chipNodes.clear();
+        if (signature !== blockSignature) {
+            blockSignature = signature;
+            tlBlocks.textContent = '';
+            blockNodes.clear();
             for (const s of snap.sections) {
-                const b = button('rr-chip', s.label, null, () => actions.selectSection(s.key));
-                chipNodes.set(s.key, b);
-                chips.appendChild(b);
+                const b = el('div', 'rr-tl-block');
+                b.dataset.key = s.key;
+                b.style.left = ((s.start / dur) * 100) + '%';
+                b.style.width = (((s.end - s.start) / dur) * 100) + '%';
+                blockNodes.set(s.key, b);
+                tlBlocks.appendChild(b);
             }
         }
+
         for (const s of snap.sections) {
-            const node = chipNodes.get(s.key);
+            const node = blockNodes.get(s.key);
             if (!node) continue;
-            // This run's number wins over the stored best: while you are
-            // playing, the interesting question is how THIS pass is going.
             const acc = Number.isFinite(s.runAccuracy) ? s.runAccuracy : s.best;
-            node.classList.toggle('rr-chip-on', snap.mode !== 'bars' && s.key === snap.sectionKey);
             node.dataset.band = Number.isFinite(acc) ? band(acc) : 'none';
-            node.classList.toggle('rr-chip-done', !!s.graduated);
-            const bits = [s.label];
+            node.classList.toggle('rr-tl-block-on', snap.mode !== 'bars' && s.key === snap.sectionKey);
+            node.classList.toggle('rr-tl-block-done', !!s.graduated);
+            const bits = [s.label, `${clock(s.start)} → ${clock(s.end)}`];
             if (Number.isFinite(acc)) bits.push(`best ${pct(acc)}`);
-            if (s.plays) bits.push(`${s.plays} attempt${s.plays === 1 ? '' : 's'}`);
             if (Number.isFinite(s.events)) bits.push(`${s.events} notes`);
             node.title = bits.join(' · ');
+        }
+
+        const sel = snap.selection;
+        if (sel) {
+            tlSel.hidden = false;
+            tlSel.style.left = ((sel.start / dur) * 100) + '%';
+            tlSel.style.width = (Math.max(0.4, ((sel.end - sel.start) / dur) * 100)) + '%';
+        } else {
+            tlSel.hidden = true;
+        }
+
+        const t = snap.playhead;
+        if (Number.isFinite(t) && t >= 0) {
+            tlHead.hidden = false;
+            tlHead.style.left = (Math.min(100, (t / dur) * 100)) + '%';
+        } else {
+            tlHead.hidden = true;
         }
     }
 
@@ -358,14 +525,14 @@ export function createPanel(actions) {
             b.disabled = running || p === 100;
             b.title = running
                 ? (isNow ? `Playing at ${p}% — clear the goal to move up`
-                    : (cleared ? `Cleared at ${p}%` : (inLadder ? `Still to come: ${p}%` : `Not in this drill`)))
+                    : (cleared ? `Cleared at ${p}%` : (inLadder ? `Still to come: ${p}%` : 'Not in this drill')))
                 : (p === 100
                     ? 'A drill always finishes at full tempo'
                     : `${p}% of tempo — click to ${inLadder ? 'drop' : 'add'} this rung`);
         }
         ladderTrack.title = running
             ? 'The ladder this drill is climbing.'
-            : `A cleared goal steps up a rung; ${snap.drill.reps || 3} clean passes at full tempo finish the drill.`;
+            : `The speeds a drill climbs. A cleared goal steps up one; ${snap.drill.reps || 3} clean passes at full tempo finish it.`;
     }
 
     function renderIterations(snap) {
@@ -395,8 +562,6 @@ export function createPanel(actions) {
     function renderWeak(snap) {
         weak.textContent = '';
         if (!snap.weakest.length) {
-            // `rr-note`, not `rr-mini`: mini is an uppercase, letter-spaced
-            // field label, and a whole sentence in it is unreadable.
             weak.appendChild(el('p', 'rr-note',
                 'Nothing measured yet. Play with note detection on and the sections you '
                 + 'struggle with will collect a number here.'));
@@ -439,11 +604,17 @@ export function createPanel(actions) {
             b.classList.toggle('rr-mode-on', snap.mode === id);
             b.setAttribute('aria-selected', snap.mode === id ? 'true' : 'false');
         }
-        chips.hidden = snap.mode === 'bars';
         partRow.hidden = snap.mode !== 'part';
         barsRow.hidden = snap.mode !== 'bars';
 
-        renderChips(snap);
+        renderTimeline(snap);
+
+        // the section stepper doubles as the selection's name
+        const current = snap.sections.find((s) => s.key === snap.sectionKey);
+        const at = snap.sections.indexOf(current);
+        navName.textContent = current ? current.label : '—';
+        navPrev.disabled = at <= 0;
+        navNext.disabled = at < 0 || at >= snap.sections.length - 1;
 
         // phrases
         if (snap.mode === 'part') {
@@ -493,22 +664,21 @@ export function createPanel(actions) {
         goalUp.disabled = snap.drill.active || goal >= GOAL_MAX;
         widen.input.checked = !!snap.settings.widen;
         widen.input.disabled = snap.drill.active;
-
-        const slow = (snap.settings.ladder || []).some((p) => p < STRETCH_WARN_PCT);
-        warn.hidden = !slow || snap.drill.active;
-        warn.textContent = warn.hidden ? ''
-            : `Below ${STRETCH_WARN_PCT}% the backing track is audibly time-stretched. `
-              + 'Worth it for a passage you cannot play yet; not worth leaving on.';
+        stretchBadge.hidden = snap.drill.active
+            || !(snap.settings.ladder || []).some((p) => p < STRETCH_WARN_PCT);
 
         // actions
         const canDrill = snap.selectionUsable && !snap.engine.blocked;
         startBtn.hidden = snap.drill.active;
         endBtn.hidden = !snap.drill.active;
         startBtn.disabled = !canDrill;
+        // The blocked reason lives ON the blocked control — no box for it.
+        startBtn.title = snap.engine.blocked
+            || (snap.selectionUsable ? 'Arm the drill on the chosen passage' : 'Pick a passage first');
+        startDot.dataset.state = snap.engine.blocked ? (snap.engine.available ? 'warn' : 'off') : 'ready';
+        startDot.title = snap.engine.blocked || 'Note detection is live';
         loopBtn.disabled = !snap.selectionUsable || snap.drill.active;
         clearBtn.disabled = snap.drill.active;
-        blocked.hidden = !snap.engine.blocked || snap.drill.active;
-        blocked.textContent = snap.engine.blocked || '';
 
         // live
         live.hidden = !snap.drill.active;
@@ -522,21 +692,18 @@ export function createPanel(actions) {
             renderIterations(snap);
         }
 
-        // speed & difficulty
+        // play at
         for (const [p, b] of speedButtons) {
-            const on = Math.abs(snap.speedPct - p) < 3;
-            b.classList.toggle('rr-rung-now', on);
-            b.classList.remove('rr-rung-on', 'rr-rung-done');
+            b.classList.toggle('rr-seg-btn-on', Math.abs(snap.speedPct - p) < 3);
             b.disabled = snap.drill.active;
         }
-        speedTrack.title = snap.drill.active
+        speedSeg.title = snap.drill.active
             ? 'The drill owns the speed while it runs.'
-            : 'Play the song at this fraction of its tempo.';
+            : 'The speed the song is playing at now.';
         if (document.activeElement !== diffInput) diffInput.value = String(snap.difficultyPct);
         diffValue.textContent = snap.difficultyPct + '%';
         diffInput.disabled = !snap.hasPhraseData || snap.drill.active;
 
-        // The only note left standing, and only when it explains a dead control.
         if (snap.drill.active) {
             diffNote.hidden = false;
             diffNote.textContent = 'The drill owns the speed and the difficulty while it runs.';
@@ -549,6 +716,7 @@ export function createPanel(actions) {
         }
 
         // the map
+        weakestBtn.disabled = !snap.weakest.length || snap.drill.active;
         const run = snap.run;
         runLine.textContent = Number.isFinite(run.accuracy)
             ? `This run: ${pct(run.accuracy)} over ${run.hits + run.misses} judged notes.${snap.paused ? ' Paused — the drill is measuring instead.' : ''}`
@@ -556,5 +724,18 @@ export function createPanel(actions) {
         renderWeak(snap);
     }
 
-    return { root, render };
+    /** Show why something just failed. Clears itself; render() never touches it. */
+    function say(text) {
+        if (!text) return;
+        flash.textContent = text;
+        flash.hidden = false;
+        if (flashTimer) clearTimeout(flashTimer);
+        flashTimer = setTimeout(() => {
+            flash.hidden = true;
+            flash.textContent = '';
+            flashTimer = null;
+        }, 6000);
+    }
+
+    return { root, render, say };
 }
