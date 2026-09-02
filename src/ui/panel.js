@@ -28,12 +28,6 @@ import * as c from '../kit/controls.js';
 import { PRESETS, STRETCH_WARN_PCT, statusLine, nextStepLine } from '../ladder.js';
 import { clock } from '../ranges.js';
 
-const MODES = [
-    { value: 'section', label: 'Section', title: 'A logical part of the song — the same passages the Practice popover lists. Click a block on the timeline, or drag across it for a custom range.' },
-    { value: 'part', label: 'Phrase', title: 'The phrases inside that section — the host\'s "Part n of m".' },
-    { value: 'bars', label: 'Bars', title: 'A run of measures taken from the bar under the playhead — for when you fluff something while playing and want the bars you are in.' },
-];
-
 /** The panel steps the goal in 5s and stops at 50; the settings page has the rest. */
 const GOAL_MIN = 50;
 const GOAL_MAX = 100;
@@ -76,9 +70,6 @@ export function createContent(outer, actions) {
 
     // ── what to loop ─────────────────────────────────────────────────────
     body.appendChild(c.section('What to loop'));
-
-    const mode = c.segmented(MODES, (v) => actions.setMode(v), 'Loop grain');
-    body.appendChild(mode.el);
 
     /*
      * The timeline.
@@ -127,34 +118,27 @@ export function createContent(outer, actions) {
     let hits = [];      // [{ key, centre, from, to }] in px, left to right
 
 
-    // phrase stepper
+    /*
+     * How much of the section — the whole thing, or one phrase inside it.
+     *
+     * This replaced the three mode tabs, and the reason they could go is that
+     * position zero here is the WHOLE section: a step left from part 1 hands
+     * it back, so nothing needs a control saying "actually, all of it".
+     *
+     * The tabs were a switch whose `Section` side gated no controls at all,
+     * whose `Bars` side gated a setting that lives on the settings page plus a
+     * button that duplicated `A`, and which seven different gestures wrote to
+     * anyway — so it mostly reported the last thing you did rather than
+     * commanding anything.
+     */
     const partRow = c.el('div', 'fbk-row rr-parts');
-    const partPrev = c.button('fbk-step', '◀', 'Previous phrase', () => actions.stepPart(-1));
+    const partPrev = c.button('fbk-step', '◀', 'The whole section', () => actions.stepPart(-1));
     const partLabel = c.el('span', 'rr-nav-name');
-    const partNext = c.button('fbk-step', '▶', 'Next phrase', () => actions.stepPart(1));
+    const partNext = c.button('fbk-step', '▶', 'The next phrase inside it', () => actions.stepPart(1));
     partRow.appendChild(partPrev);
     partRow.appendChild(partLabel);
     partRow.appendChild(partNext);
     body.appendChild(partRow);
-
-    // bar count
-    const barsRow = c.el('div', 'fbk-row rr-bars');
-    const barCount = c.stepper({
-        wide: true,          // "4 bars" needs more room than "85 %"
-        value: 4,
-        step: 1,
-        min: 1,
-        max: 64,
-        unit: 'bars',
-        downTitle: 'One bar fewer',
-        upTitle: 'One bar more',
-        onChange: (v) => actions.setBarCount(v),
-    });
-    barsRow.appendChild(barCount.el);
-    barsRow.appendChild(c.button('fbk-btn fbk-btn-small fbk-btn-quiet', 'From playhead',
-        'Take that many bars starting at the bar under the playhead',
-        () => actions.barsAtPlayhead()));
-    body.appendChild(barsRow);
 
 
     /*
@@ -635,10 +619,6 @@ export function createContent(outer, actions) {
         body.hidden = !snap.ready;
         if (!snap.ready) return;
 
-        mode.set(snap.mode);
-        partRow.hidden = snap.mode !== 'part';
-        barsRow.hidden = snap.mode !== 'bars';
-
         renderTimeline(snap);
 
         // the chevrons step through the sections; the plate says which one
@@ -647,21 +627,25 @@ export function createContent(outer, actions) {
         navPrev.disabled = at <= 0;
         navNext.disabled = at < 0 || at >= snap.sections.length - 1;
 
-        if (snap.mode === 'part') {
-            partLabel.textContent = snap.partCount
-                ? `Part ${snap.partIndex + 1} of ${snap.partCount}`
-                : 'No phrase data';
-            partPrev.disabled = snap.partIndex <= 0;
-            partNext.disabled = snap.partIndex >= snap.partCount - 1;
+        // whole section -> part 1 -> part 2 -> …, with zero being the whole
+        const custom = snap.mode === 'bars';
+        if (custom) {
+            partLabel.textContent = 'Custom range';
+        } else if (!snap.partCount) {
+            partLabel.textContent = 'No phrase data';
+        } else if (snap.onPart) {
+            partLabel.textContent = `Part ${snap.partIndex + 1} of ${snap.partCount}`;
+        } else {
+            partLabel.textContent = snap.partCount > 1
+                ? `Whole section · ${snap.partCount} phrases`
+                : 'Whole section';
         }
-
-        if (snap.mode === 'bars') {
-            barCount.set(snap.bars.count);
-            barCount.disable(!snap.bars.available);
-            barsRow.title = snap.bars.available
-                ? 'How many bars to take, starting at the bar under the playhead.'
-                : 'This chart carries no bar lines, so bar ranges are unavailable.';
-        }
+        // Back is dead on the whole section; forward is dead on the last
+        // phrase, and on a custom range neither applies until you pick a
+        // section again.
+        partPrev.disabled = custom || !snap.partCount || !snap.onPart;
+        partNext.disabled = custom || !snap.partCount
+            || (snap.onPart && snap.partIndex >= snap.partCount - 1);
 
         // the chosen range
         const sel = snap.selection;

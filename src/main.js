@@ -19,7 +19,7 @@ import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.5.5';
+const VERSION = '0.6.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -60,7 +60,6 @@ let activeDrill = null;   // { key, label, start, end, mine, scored }
 const actions = {
     close() { setOpen(false); },
 
-    setMode(mode) { model.setMode(mode); },
     selectSection(key) {
         model.selectSection(key);
         if (model.snapshot().mode === 'bars') model.setMode('section');
@@ -69,9 +68,6 @@ const actions = {
     stepSection(d) { model.stepSection(d); },
     selectDrag(a, b) { model.selectDrag(a, b); },
     selectAtTime(t) { model.selectAtTime(t); },
-    barCount() { return model.getSettings().barCount; },
-    setBarCount(n) { model.setBarCount(n); },
-    barsAtPlayhead() { model.selectBarsAtPlayhead(); },
     nudge(edge, dir) { model.nudge(edge, dir); },
 
     /** Mark the loop's A or B at the playhead. */

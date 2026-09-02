@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.6.0 — the mode tabs are gone
+
+Asked: does the "What to loop" section still make sense?
+
+No, and the reason is worth writing down, because it is not a styling problem.
+`Section / Phrase / Bars` looked like a mode switch, but:
+
+- its `Section` side gated **no controls at all**;
+- its `Bars` side gated a stepper that is a preference (and already has a
+  control on the settings page) plus a `From playhead` button that made the
+  *identical* `barsFrom(bars, t, barCount, dur)` call as **A**;
+- and **seven other gestures wrote to it** — a timeline click, a drag, `A`,
+  `B`, the chevrons, `Practice weakest`, a section change.
+
+A control that seven other things overwrite is not commanding anything; it is
+*reporting the last thing you did*, in the shape of a button. So it went, along
+with the Bars row.
+
+What replaced it is one line already on screen: **the phrase stepper, with the
+whole section at position zero.**
+
+```
+   ◀   Whole section · 2 phrases   ▶
+   ◀        Part 1 of 2           ▶
+```
+
+A step left from part 1 hands the section back, so nothing needs a control
+saying "actually, all of it" — and this is the app's own model, since its
+Section Practice pairs the parts with a "Full section" checkbox.
+
+| | 0.5.5 | 0.6.0 |
+| --- | --- | --- |
+| rows in *What to loop* | 5 (one of them conditional) | **3** |
+| ways to say "the whole section" | 2 (a tab and an implicit default) | **1** |
+| buttons that call `barsFrom` from the playhead | 2 | **1** |
+| segmented controls in the panel | 2 | **1** (*Play at*) |
+
+### Fixed — and only the test found it
+
+Removing the tabs changed what `state.mode` **means**, and that turned out to
+be a bug the panel could not show.
+
+While the tabs existed, `mode` was an explicit choice with its own control, so
+carrying it across a section change was the right thing: you had asked for
+phrases, you kept phrases. With the tabs gone, `mode` is a *position in a
+walk* — "part 2 of 2" is where you got to inside the last section, not a
+preference. But `selectSection` still only reset `partIndex`:
+
+```js
+state.sectionKey = key;
+state.partIndex = 0;      // …and mode stayed 'part'
+```
+
+So picking Chorus 2 while on the second half of Verse 1 landed you on the
+**first half of Chorus 2** — a loop nobody asked for, and readable only in the
+stepper's label. All three gestures that choose a section now go through one
+`landOnWhole()`.
+
+Worth noting *how* it surfaced: the panel looked correct, and the first version
+of the test asserting `partIndex === 0` **passed** — index 0 of a section you
+are still "on a phrase of" is its first half. The assertion that caught it
+compares the whole position, `{ onPart, index }`. New file, `tests/model.test.js`,
+eight tests: 107 in total.
+
 ## 0.5.5 — less, not restyled
 
 Reported: the panel reads better than it did but is still busy, and there is an

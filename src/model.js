@@ -138,15 +138,64 @@ export function selectSection(key) {
     const found = state.sections.find((s) => s.key === key);
     if (!found) return;
     state.sectionKey = key;
-    state.partIndex = 0;
+    landOnWhole();
     rebuildParts();
     announce();
 }
 
+/**
+ * Put the selection on the WHOLE of whatever section was just chosen.
+ *
+ * Every gesture that picks a new section goes through here, and it has to,
+ * because since 0.6.0 the grain is a POSITION in a walk rather than a mode the
+ * user set once: "part 2 of 2" is where you got to inside the last section,
+ * not a preference to carry into the next one. Choosing Chorus 2 while on the
+ * second half of Verse 1 used to land you on the first half of Chorus 2 — a
+ * loop nobody asked for, and invisible unless you read the stepper's label.
+ *
+ * Before the mode tabs went, keeping the mode was the right call: it was an
+ * explicit choice with its own control, so honouring it across sections was
+ * respecting the user. Removing the control changed what the field MEANS, and
+ * this is the part of that change that the panel could not show.
+ */
+function landOnWhole() {
+    state.mode = 'section';
+    state.partIndex = 0;
+}
+
+/**
+ * Walk the section and its phrases as one list.
+ *
+ *     whole section  ->  part 1  ->  part 2  ->  …
+ *
+ * Position zero is the WHOLE section, which is what lets the mode tabs go: a
+ * step left from part 1 gives the section back, so there is no need for a
+ * control that says "actually, all of it". It is also the app's own model —
+ * its Section Practice has a "Full section" checkbox alongside the parts.
+ */
 export function stepPart(delta) {
+    const d = Number(delta) || 0;
+    if (!d) return;
     if (!state.parts.length) return;
-    const next = state.partIndex + (Number(delta) || 0);
-    state.partIndex = Math.max(0, Math.min(state.parts.length - 1, next));
+
+    if (state.mode !== 'part') {
+        // On the whole section: forward enters the phrases, back does nothing.
+        if (d < 0) return;
+        state.mode = 'part';
+        state.partIndex = 0;
+        announce();
+        return;
+    }
+
+    const next = state.partIndex + d;
+    if (next < 0) {
+        // Back out of the phrases and onto the section itself.
+        state.mode = 'section';
+        state.partIndex = 0;
+        announce();
+        return;
+    }
+    state.partIndex = Math.min(state.parts.length - 1, next);
     announce();
 }
 
@@ -251,8 +300,7 @@ export function selectAtTime(t) {
     const hit = state.sections.find((s) => time >= s.start && time < s.end);
     if (!hit) return selectDrag(time, time);
     state.sectionKey = hit.key;
-    state.partIndex = 0;
-    if (state.mode === 'bars') state.mode = 'section';
+    landOnWhole();
     rebuildParts();
     announce();
     return hit;
@@ -270,8 +318,7 @@ export function stepSection(delta) {
     const at = state.sections.findIndex((s) => s.key === state.sectionKey);
     const next = Math.max(0, Math.min(state.sections.length - 1, (at < 0 ? 0 : at) + (Number(delta) || 0)));
     state.sectionKey = state.sections[next].key;
-    state.partIndex = 0;
-    if (state.mode === 'bars') state.mode = 'section';
+    landOnWhole();
     rebuildParts();
     announce();
 }
@@ -503,6 +550,8 @@ export function snapshot() {
         sectionKey: state.sectionKey,
         parts,
         partIndex: state.partIndex,
+        /** True while a phrase is selected rather than the whole section. */
+        onPart: state.mode === 'part',
         partCount: state.parts.length,
         bars: {
             range: state.barsRange ? decorate(state.barsRange) : null,

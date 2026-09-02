@@ -71,7 +71,7 @@ says why.
 
 ## What it does
 
-### Picks the passage — at three grains
+### Picks the passage
 
 You pick it on a **timeline** — a strip proportional to the song, one block per
 section, coloured by how well you play it. Click a block for its section, or
@@ -88,16 +88,27 @@ expensive, duplicates work the player already did, and adds nothing — the
 useful signal here is not amplitude, it is where the sections are and how well
 you play them.
 
-**Section** — the same passages the app's own Practice popover lists, built the
-same way (consecutive same-name markers collapse, repeats get counted). A block
-here is the same seconds as a chip there; that agreement is checked by
+The blocks are the same passages the app's own Practice popover lists, built
+the same way (consecutive same-name markers collapse, repeats get counted). A
+block here is the same seconds as a chip there; that agreement is checked by
 [`tests/ranges.test.js`](tests/ranges.test.js).
 
-**Phrase** — the phrases inside a section, the app's "Part *n* of *m*".
+Inside a section there are its **phrases** — the app's "Part *n* of *m*" — and
+one stepper walks both:
 
-**Bars** — a run of measures taken from the bar under the playhead, for when
-you fluff something while playing and want the bars you are in. Trimming moves
-**whole bars**; the engine's own trim moves the loop edges by two seconds, and
+```
+   ◀   Whole section · 2 phrases   ▶
+   ◀        Part 1 of 2           ▶
+```
+
+Position zero is the whole section, so a step left from part 1 hands it back.
+There used to be three mode tabs above this; version 0.6.0 removed them,
+because a control that seven other gestures overwrite is reporting rather than
+commanding — [CHANGELOG](CHANGELOG.md) has the count.
+
+A drag across the timeline gives a **custom range** snapped to bar lines, for
+when you fluff something while playing and want the bars you are in. Trimming
+moves **whole bars**; the engine's own trim moves the loop edges by two seconds, and
 two seconds is a different amount of music in every song. A loop boundary off
 the grid turns a count-in into a guess.
 
@@ -170,8 +181,8 @@ literal `box-shadow`.
 Four of those rules, because they are the ones this panel is shaped by:
 
 **One control family per meaning, and the families must not collide.** A
-segmented control is "pick one of a small fixed set" — the mode tabs, and the
-**Play at** speed row. A chip group is "pick a subset" — the **Climb** ladder.
+segmented control is "pick one of a small fixed set" — the **Play at** speed
+row. A chip group is "pick a subset" — the **Climb** ladder.
 A toggle pill is a boolean. Version 0.2 drew the ladder and the speed as the
 same rail of pills with the same five numbers, which is two different things
 wearing one costume; they are different shapes and different words now.
@@ -339,17 +350,22 @@ Two things learned from the DOM, in case that PR is written by somebody else:
 node --test tests/*.test.js
 ```
 
-98 tests, no dependencies, no build step.
+107 tests, no dependencies, no build step.
 
 `src/kit/` and `assets/kit.css` are **vendored** — edit them in
 [feedBack-plugin-kit](https://github.com/cracklydisc/feedBack-plugin-kit) and
 copy them back, never here. There is no shared-library mechanism in this host
 (no import maps, no guaranteed plugin load order, and a plugin can be
 disabled), so a runtime dependency on another plugin would break every consumer
-when one is switched off. The four suites cover the pure
-modules — the range table, the ladder, the per-passage statistics, and the
-store. The host seam, the model's wiring and the panel are verified in the
-running app instead; they are the parts that a unit test can only mock.
+when one is switched off. Four suites cover the pure modules — the range table,
+the ladder, the per-passage statistics, and the store. A fifth covers the
+**selection walk**, with the host's globals stubbed, because since 0.6.0 that
+walk is the only way to get from a phrase back to the section it lives in, so a
+regression there is silent — the panel goes on looking right while one grain
+becomes unreachable. It earned its keep immediately: it caught a section change
+carrying "part 2 of 2" onto the next section. The rest of the host seam and the
+panel are verified in the running app instead; they are the parts a unit test
+can only mock.
 
 To develop against a checkout rather than an install, point the app at a
 directory of symlinks:
