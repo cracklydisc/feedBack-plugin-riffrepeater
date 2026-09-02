@@ -13,9 +13,18 @@
  * The fallbacks in each var() are the host's default palette, so the panel is
  * still legible if the theme API is missing and nothing gets written.
  *
- * Layering: the detector's drill HUD is pinned top-centre at z-index 210 and
- * is the more urgent surface while a drill runs, so this sits just under it.
- * The v3 rail popovers are at 40, which this has to clear to be usable.
+ * Layering, measured rather than guessed. The panel is portalled to <body>,
+ * and the thing that decides its z-index is not the rail popovers (40) but
+ * THE PLAYER ITSELF: core's style.css gives `#player` `position: fixed;
+ * inset: 0; z-index: 100`, so it is a full-screen layer and anything under 100
+ * at body level is behind it — which is exactly what happened on the first
+ * attempt at 45 (correctly positioned, invisible). Above it live the
+ * guided-tour menu at 200/201, the detector's drill HUD at 210 and the tuner
+ * button at 1001.
+ *
+ * 150 clears the player and stays under all three. The drill HUD in
+ * particular has to keep covering this: while a drill runs it is the more
+ * urgent surface.
  */
 
 :root {
@@ -55,14 +64,26 @@
 
 /* ── the panel ──────────────────────────────────────────────────────────── */
 
+/*
+ * Parked, not anchored.
+ *
+ * top 64px / right 12px is the app's own corner for a plugin's settings pane:
+ * the 3D Highway parks there and Live Tab moved there after two reports of a
+ * pill-anchored panel clipping inside the player's scrolling <main> and
+ * jumping when a control changed its height. Same place, same idea — three
+ * plugins that read as one app instead of three floating boxes.
+ */
 .rr-panel {
     position: fixed;
-    z-index: 200;
-    width: 360px;
+    top: 64px;
+    right: 12px;
+    z-index: 150;
+    width: 320px;
     max-width: calc(100vw - 24px);
-    max-height: calc(100vh - 24px);
+    max-height: 74vh;
     overflow-y: auto;
     overscroll-behavior: contain;
+    scrollbar-width: thin;
     box-sizing: border-box;
     border-radius: 12px;
     border: 1px solid rgb(var(--rr-border, 51 65 85));
@@ -160,7 +181,11 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     flex: 0 0 auto;
+    min-width: 48px;
 }
+
+/* Pushes what follows to the far end of its row. */
+.rr-push { margin-left: auto; }
 
 .rr-note {
     margin: 6px 0 0;
@@ -218,13 +243,19 @@
 
 /* ── section chips ──────────────────────────────────────────────────────── */
 
+/*
+ * No inner scroll.
+ *
+ * The chip list had its own `max-height` + `overflow-y`, which cut the last
+ * row of chips in half — it read as a rendering fault rather than as "there is
+ * more below", and it put a second scrollbar inside a panel that already has
+ * one. The panel's own 74vh scroll is the only one now.
+ */
 .rr-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
     margin: 8px 0;
-    max-height: 132px;
-    overflow-y: auto;
 }
 
 .rr-chip {
@@ -323,10 +354,40 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* ── ladder / speed rungs ───────────────────────────────────────────────── */
+/* ── the ladder, as a ladder ─────────────────────────────────────────────
+ *
+ * Same element, two jobs. Idle it is a chip group: tick the rungs a drill
+ * should climb. Running, it IS the progress display — cleared rungs carry a
+ * check, the current one is lit, the ones above are waiting. Turning a setting
+ * into a status readout is most of what separates a HUD from a form, and it
+ * costs one extra class rather than a second widget.
+ */
+
+.rr-track {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex: 1 1 auto;
+}
+
+/* The rail the rungs sit on. Behind them, inset by half a rung each side. */
+.rr-track::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: 50%;
+    height: 2px;
+    margin-top: -1px;
+    background: rgb(var(--rr-border, 51 65 85));
+}
 
 .rr-rung {
-    min-width: 32px;
+    position: relative;
+    z-index: 1;
+    flex: 1 1 0;
+    min-width: 30px;
     border: 1px solid rgb(var(--rr-border, 51 65 85));
     border-radius: 999px;
     background: rgb(var(--rr-card-muted, 11 18 32));
@@ -335,37 +396,142 @@
     font-size: 11px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    padding: 3px 8px;
+    padding: 3px 4px;
+    margin: 0 2px;
     cursor: pointer;
 }
 
+/* In the ladder — this rung will be climbed. */
 .rr-rung-on {
+    background: rgb(var(--rr-primary, 14 165 233) / 0.18);
+    border-color: rgb(var(--rr-primary, 14 165 233));
+    color: rgb(var(--rr-text, 248 250 252));
+}
+
+/* Where the drill is now. The one filled rung, so the eye lands on it. */
+.rr-rung-now {
     background: rgb(var(--rr-primary, 14 165 233));
     border-color: rgb(var(--rr-primary, 14 165 233));
     color: rgb(var(--rr-on-accent, 248 250 252));
+    box-shadow: 0 0 0 3px rgb(var(--rr-primary, 14 165 233) / 0.25);
 }
 
-.rr-num {
-    width: 52px;
-    border: 1px solid rgb(var(--rr-border, 51 65 85));
-    border-radius: 6px;
-    background: rgb(var(--rr-card-muted, 11 18 32));
+/*
+ * Cleared. Green, and green is only ever "cleared / target reached" here —
+ * the same rule the app's own accuracy palette follows (good / mid / low).
+ */
+.rr-rung-done {
+    background: rgb(var(--rr-good, 34 197 94) / 0.18);
+    border-color: rgb(var(--rr-good, 34 197 94));
     color: rgb(var(--rr-text, 248 250 252));
-    font: inherit;
-    font-size: 12px;
-    padding: 3px 6px;
 }
 
-.rr-check {
+/* ── segmented control (pick one of a small fixed set) ──────────────────── */
+
+.rr-seg {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 8px;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    flex: 1 1 auto;
+}
+
+.rr-seg-btn {
+    flex: 1 1 0;
+    border: 0;
+    border-radius: 6px;
+    padding: 4px 2px;
+    background: transparent;
+    color: rgb(var(--rr-text-dim, 148 163 184));
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.rr-seg-btn:hover:not(:disabled) { color: rgb(var(--rr-text, 248 250 252)); }
+
+.rr-seg-btn-on {
+    background: rgb(var(--rr-primary, 14 165 233));
+    color: rgb(var(--rr-on-accent, 248 250 252));
+}
+
+.rr-seg-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* The value the segments and the stepper agree on. */
+.rr-value {
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: 44px;
+    text-align: center;
+    color: rgb(var(--rr-text, 248 250 252));
+}
+
+/* ── toggle pill (a boolean, the way the app draws one) ─────────────────── */
+
+.rr-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    margin-left: auto;
+    gap: 7px;
     cursor: pointer;
     color: rgb(var(--rr-text-dim, 148 163 184));
+    user-select: none;
 }
 
-.rr-check input { accent-color: rgb(var(--rr-primary, 14 165 233)); }
+.rr-toggle input {
+    /* The real control stays in the DOM for the keyboard and the screen
+       reader; only its default rendering goes away. */
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.rr-toggle-track {
+    flex: 0 0 auto;
+    position: relative;
+    width: 30px;
+    height: 17px;
+    border-radius: 999px;
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    border: 1px solid rgb(var(--rr-border, 51 65 85));
+    transition: background var(--rr-motion, 140ms ease), border-color var(--rr-motion, 140ms ease);
+}
+
+.rr-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 11px;
+    height: 11px;
+    border-radius: 999px;
+    background: rgb(var(--rr-text-dim, 148 163 184));
+    transition: transform var(--rr-motion, 140ms ease), background var(--rr-motion, 140ms ease);
+}
+
+.rr-toggle input:checked + .rr-toggle-track {
+    background: rgb(var(--rr-primary, 14 165 233));
+    border-color: rgb(var(--rr-primary, 14 165 233));
+}
+
+.rr-toggle input:checked + .rr-toggle-track::after {
+    transform: translateX(13px);
+    background: rgb(var(--rr-on-accent, 248 250 252));
+}
+
+.rr-toggle input:focus-visible + .rr-toggle-track {
+    outline: 2px solid rgb(var(--rr-focus-ring, 56 189 248));
+    outline-offset: 2px;
+}
+
+.rr-toggle input:checked ~ .rr-toggle-text { color: rgb(var(--rr-text, 248 250 252)); }
+
+.rr-toggle input:disabled ~ * { opacity: 0.4; }
 
 .rr-range {
     flex: 1 1 120px;
@@ -373,11 +539,24 @@
     accent-color: rgb(var(--rr-primary, 14 165 233));
 }
 
-/* ── actions ────────────────────────────────────────────────────────────── */
+/* ── actions ─────────────────────────────────────────────────────────────
+ *
+ * One lit primary, sized to its label, docked to the thing it launches — the
+ * house rule ("primed primary", one per mode). Everything else in the row is
+ * quieter than it, so there is never a question about what the panel is for.
+ */
 
-.rr-acts { margin-top: 10px; }
+.rr-acts {
+    margin-top: 10px;
+    gap: 8px;
+}
 
 .rr-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 30px;
     border: 1px solid rgb(var(--rr-border, 51 65 85));
     border-radius: 8px;
     background: rgb(var(--rr-card-muted, 11 18 32));
@@ -385,29 +564,51 @@
     font: inherit;
     font-size: 12px;
     font-weight: 600;
-    padding: 6px 10px;
+    padding: 5px 10px;
     cursor: pointer;
 }
 
 .rr-btn:hover:not(:disabled) { background: rgb(var(--rr-card, 30 41 59)); }
 
 .rr-btn-primary {
+    min-height: 38px;
+    padding: 8px 16px;
+    font-size: 13px;
     background: rgb(var(--rr-primary, 14 165 233));
     border-color: rgb(var(--rr-primary, 14 165 233));
     color: rgb(var(--rr-on-accent, 248 250 252));
+    box-shadow: 0 2px 10px rgb(var(--rr-primary, 14 165 233) / 0.3);
 }
 
 .rr-btn-primary:hover:not(:disabled) { background: rgb(var(--rr-primary-hi, 56 189 248)); }
+.rr-btn-primary:disabled { box-shadow: none; }
 
+/*
+ * "End drill" keeps the primary's size and loses its hue.
+ *
+ * Same slot, same weight — the thing you press to stop is exactly as findable
+ * as the thing you pressed to start. Red here is the app's `accent`, which it
+ * already uses for destructive actions.
+ */
 .rr-btn-danger {
+    min-height: 38px;
+    padding: 8px 16px;
+    font-size: 13px;
     background: rgb(var(--rr-accent, 239 68 68) / 0.16);
     border-color: rgb(var(--rr-accent, 239 68 68));
+    box-shadow: none;
 }
 
 .rr-btn-quiet {
     background: transparent;
+    border-color: transparent;
     color: rgb(var(--rr-text-dim, 148 163 184));
     font-weight: 500;
+}
+
+.rr-btn-quiet:hover:not(:disabled) {
+    background: rgb(var(--rr-card-muted, 11 18 32));
+    color: rgb(var(--rr-text, 248 250 252));
 }
 
 /* ── live drill ─────────────────────────────────────────────────────────── */

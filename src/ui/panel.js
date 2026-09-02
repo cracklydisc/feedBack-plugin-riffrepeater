@@ -3,11 +3,11 @@
  *
  * THIS FILE IS THE THROWAWAY HALF. In core these controls belong in a third
  * row of the Section Practice popover, next to the chips the user already
- * clicks — not in a floating panel launched from the plugins rail. The panel
- * exists because the popover has no sanctioned extension point for a plugin
- * (docs/plugin-v3-ui.md documents exactly one: playerControlSlot), and
+ * clicks — not in a panel parked in a corner. The panel exists because the
+ * popover has no sanctioned extension point for a plugin (core's
+ * docs/plugin-v3-ui.md documents exactly one: playerControlSlot), and
  * injecting into it would mean fighting specificity and re-injecting after
- * every re-render. So: the right mount, later; a stable mount, now.
+ * every re-render.
  *
  * Two rules keep it replaceable:
  *   - it reads ONLY model.snapshot(), never the host or the detector
@@ -16,6 +16,31 @@
  * Rendering is patch-in-place rather than innerHTML-per-tick, because this
  * re-renders twice a second while a drill runs and a rebuilt chip is a chip
  * that cannot be clicked.
+ *
+ * ── ON THE CONTROLS ─────────────────────────────────────────────────────
+ *
+ * This is a heads-up display for something you do with a guitar in your
+ * hands, not a preferences sheet. Four rules, taken from the design language
+ * the Virtuoso plugin already writes down for this app:
+ *
+ *  1. Two families for "pick one of N", and no others: a SEGMENTED control for
+ *     a small fixed mutually-exclusive set (the mode tabs), a CHIP GROUP for a
+ *     set that may be many and may scroll (the sections, the ladder, the speed
+ *     presets).
+ *  2. A boolean is a TOGGLE PILL, not a checkbox.
+ *  3. ONE lit primary, sized to its label. Everything else in the row is
+ *     quieter than it, so there is never a question about what to press.
+ *  4. No text input, and no paragraph of explanation. A number you set with
+ *     ± reads as a game option; a number you type reads as a form. The prose
+ *     that used to sit under each control lives in `title` now — the exact
+ *     values a stepper cannot reach live on the settings page, which is where
+ *     a form belongs.
+ *
+ * And one thing that is not decoration: the ladder does double duty. Idle, it
+ * is the setting — tick the rungs a drill should climb. Running, it IS the
+ * progress display: cleared rungs go green, the current one is filled, the
+ * rest wait. Turning a setting into a status readout is most of what separates
+ * a HUD from a form.
  */
 
 import { PRESETS, STRETCH_WARN_PCT, statusLine, nextStepLine, band } from '../ladder.js';
@@ -26,6 +51,11 @@ const MODES = [
     { id: 'part', label: 'Phrase', hint: 'The phrases inside that section — the host\'s "Part n of m".' },
     { id: 'bars', label: 'Bars', hint: 'Any run of measures, taken from the playhead. Trim by whole bars.' },
 ];
+
+/** The panel steps the goal in 5s and stops at 50; the settings page has the rest. */
+const GOAL_STEP = 5;
+const GOAL_MIN = 50;
+const GOAL_MAX = 100;
 
 function el(tag, cls, text) {
     const n = document.createElement(tag);
@@ -40,6 +70,19 @@ function button(cls, text, title, onClick) {
     if (title) b.title = title;
     if (onClick) b.addEventListener('click', onClick);
     return b;
+}
+
+/** A boolean, drawn the way the app draws one. */
+function toggle(label, title, onChange) {
+    const wrap = el('label', 'rr-toggle');
+    if (title) wrap.title = title;
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.addEventListener('change', () => onChange(input.checked));
+    wrap.appendChild(input);
+    wrap.appendChild(el('span', 'rr-toggle-track'));
+    wrap.appendChild(el('span', 'rr-toggle-text', label));
+    return { wrap, input };
 }
 
 function pct(v) {
@@ -118,7 +161,9 @@ export function createPanel(actions) {
     barsRow.appendChild(barMinus);
     barsRow.appendChild(barCount);
     barsRow.appendChild(barPlus);
-    barsRow.appendChild(button('rr-btn rr-btn-quiet', 'From playhead', 'Take that many bars starting at the bar under the playhead', () => actions.barsAtPlayhead()));
+    barsRow.appendChild(button('rr-btn rr-btn-quiet', 'From playhead',
+        'Take that many bars starting at the bar under the playhead',
+        () => actions.barsAtPlayhead()));
     main.appendChild(barsRow);
 
     // the chosen range, and its edges
@@ -130,6 +175,8 @@ export function createPanel(actions) {
     main.appendChild(readout);
 
     const trim = el('div', 'rr-row rr-trim');
+    trim.title = 'Move a loop edge by one whole bar. Bars, not seconds: a boundary '
+        + 'off the grid turns the count-in into a guess.';
     trim.appendChild(el('span', 'rr-mini', 'Trim'));
     trim.appendChild(button('rr-step', '−', 'Start one bar earlier', () => actions.nudge('start', -1)));
     const trimStart = el('span', 'rr-time');
@@ -145,55 +192,50 @@ export function createPanel(actions) {
     // ── how to drill ─────────────────────────────────────────────────────
     main.appendChild(el('h4', 'rr-legend', 'How to drill'));
 
+    // The ladder: a chip group idle, the progress display while a drill runs.
     const ladderRow = el('div', 'rr-row rr-ladder');
     ladderRow.appendChild(el('span', 'rr-mini', 'Ladder'));
+    const ladderTrack = el('div', 'rr-track');
     const ladderButtons = new Map();
     for (const p of PRESETS) {
-        const b = button('rr-rung', String(p), `${p}% of tempo`, () => actions.toggleRung(p));
-        if (p === 100) {
-            b.disabled = true;
-            b.title = 'A drill always finishes at full tempo';
-        }
+        const b = button('rr-rung', String(p), null, () => actions.toggleRung(p));
         ladderButtons.set(p, b);
-        ladderRow.appendChild(b);
+        ladderTrack.appendChild(b);
     }
+    ladderRow.appendChild(ladderTrack);
     main.appendChild(ladderRow);
 
+    // Goal and the widen switch share a row: two settings, no prose, one line.
     const goalRow = el('div', 'rr-row rr-goal');
     goalRow.appendChild(el('span', 'rr-mini', 'Goal'));
-    const goalInput = document.createElement('input');
-    goalInput.type = 'number';
-    goalInput.min = '10';
-    goalInput.max = '100';
-    goalInput.step = '5';
-    goalInput.className = 'rr-num';
-    goalInput.title = 'Accuracy needed on one pass of the loop to move up a rung';
-    goalInput.addEventListener('change', () => actions.setGoal(Number(goalInput.value)));
-    goalRow.appendChild(goalInput);
-    goalRow.appendChild(el('span', 'rr-mini', '%'));
+    const goalDown = button('rr-step', '−', 'Lower the goal by 5%', () => actions.nudgeGoal(-GOAL_STEP));
+    const goalValue = el('span', 'rr-value');
+    const goalUp = button('rr-step', '+', 'Raise the goal by 5%', () => actions.nudgeGoal(GOAL_STEP));
+    goalRow.appendChild(goalDown);
+    goalRow.appendChild(goalValue);
+    goalRow.appendChild(goalUp);
 
-    const widenWrap = el('label', 'rr-check');
-    const widenBox = document.createElement('input');
-    widenBox.type = 'checkbox';
-    widenBox.addEventListener('change', () => actions.setWiden(widenBox.checked));
-    widenWrap.appendChild(widenBox);
-    widenWrap.appendChild(el('span', null, 'Widen when nailed'));
-    widenWrap.title = 'Once the passage is clean, grow the loop by a bar each side (up to two) so it goes back into its surroundings before you leave it';
-    goalRow.appendChild(widenWrap);
+    const widen = toggle('Widen',
+        'Once the passage is clean, grow the loop by a bar each side (up to two) '
+        + 'so it goes back into its surroundings before you leave it.',
+        (on) => actions.setWiden(on));
+    widen.wrap.classList.add('rr-push');
+    goalRow.appendChild(widen.wrap);
     main.appendChild(goalRow);
-
-    const repsNote = el('p', 'rr-note');
-    main.appendChild(repsNote);
 
     const warn = el('p', 'rr-warn');
     main.appendChild(warn);
 
     // ── actions ──────────────────────────────────────────────────────────
     const acts = el('div', 'rr-row rr-acts');
-    const startBtn = button('rr-btn rr-btn-primary', '⏱ Start drill', 'Arm the drill on the chosen passage', () => actions.startDrill());
-    const endBtn = button('rr-btn rr-btn-danger', '✕ End drill', 'Stop the drill and restore your speed', () => actions.endDrill());
-    const loopBtn = button('rr-btn', 'Loop only', 'Loop the passage with no goal and no ramp', () => actions.loopOnly());
-    const clearBtn = button('rr-btn rr-btn-quiet', 'Clear loop', 'Drop the loop and play on', () => actions.clearLoop());
+    const startBtn = button('rr-btn rr-btn-primary', '⏱ Start drill',
+        'Arm the drill on the chosen passage', () => actions.startDrill());
+    const endBtn = button('rr-btn rr-btn-danger', '✕ End drill',
+        'Stop the drill and restore your speed', () => actions.endDrill());
+    const loopBtn = button('rr-btn', 'Loop only',
+        'Loop the passage with no goal and no ramp', () => actions.loopOnly());
+    const clearBtn = button('rr-btn rr-btn-quiet', 'Clear',
+        'Drop the loop and play on', () => actions.clearLoop());
     acts.appendChild(startBtn);
     acts.appendChild(endBtn);
     acts.appendChild(loopBtn);
@@ -220,15 +262,19 @@ export function createPanel(actions) {
 
     const speedRow = el('div', 'rr-row rr-speed');
     speedRow.appendChild(el('span', 'rr-mini', 'Speed'));
+    const speedTrack = el('div', 'rr-track');
     const speedButtons = new Map();
-    for (const p of [50, 65, 80, 90, 100]) {
+    for (const p of PRESETS) {
         const b = button('rr-rung', String(p), `Play at ${p}% of tempo`, () => actions.setSpeed(p));
         speedButtons.set(p, b);
-        speedRow.appendChild(b);
+        speedTrack.appendChild(b);
     }
+    speedRow.appendChild(speedTrack);
     main.appendChild(speedRow);
 
     const diffRow = el('div', 'rr-row rr-diff');
+    diffRow.title = 'Master difficulty. Lower thins the chart to the easier tiers the '
+        + 'pack was authored with; 100% is the full arrangement.';
     diffRow.appendChild(el('span', 'rr-mini', 'Difficulty'));
     const diffInput = document.createElement('input');
     diffInput.type = 'range';
@@ -236,6 +282,7 @@ export function createPanel(actions) {
     diffInput.max = '100';
     diffInput.step = '5';
     diffInput.className = 'rr-range';
+    diffInput.setAttribute('aria-label', 'Master difficulty');
     diffInput.addEventListener('input', () => {
         diffValue.textContent = diffInput.value + '%';
         actions.setDifficulty(Number(diffInput.value));
@@ -245,12 +292,12 @@ export function createPanel(actions) {
     diffRow.appendChild(diffValue);
     main.appendChild(diffRow);
 
+    // Only ever shown when it explains why something is not working.
     const diffNote = el('p', 'rr-note');
     main.appendChild(diffNote);
 
     // ── the map ──────────────────────────────────────────────────────────
-    const mapHead = el('h4', 'rr-legend', 'Where you struggle');
-    main.appendChild(mapHead);
+    main.appendChild(el('h4', 'rr-legend', 'Where you struggle'));
     const runLine = el('p', 'rr-note');
     main.appendChild(runLine);
     const weak = el('div', 'rr-weak');
@@ -285,6 +332,40 @@ export function createPanel(actions) {
             if (Number.isFinite(s.events)) bits.push(`${s.events} notes`);
             node.title = bits.join(' · ');
         }
+    }
+
+    /**
+     * The ladder, in whichever of its two jobs applies.
+     *
+     * Running, the state comes from the ENGINE's ladder and rung, not from the
+     * setting — they can differ, because a drill keeps the ladder it was armed
+     * with while the user is free to re-tick the setting for the next one.
+     */
+    function renderLadder(snap) {
+        const running = snap.drill.active;
+        const chosen = snap.settings.ladder || [];
+        const engine = running ? (snap.drill.ladderPct || []) : [];
+        const nowPct = running ? engine[snap.drill.rung] : null;
+
+        for (const [p, b] of ladderButtons) {
+            const inLadder = running ? engine.includes(p) : (p === 100 || chosen.includes(p));
+            const isNow = running && p === nowPct;
+            const cleared = running && inLadder && Number.isFinite(nowPct) && p < nowPct;
+
+            b.classList.toggle('rr-rung-on', inLadder && !isNow && !cleared);
+            b.classList.toggle('rr-rung-now', !!isNow);
+            b.classList.toggle('rr-rung-done', !!cleared);
+            b.disabled = running || p === 100;
+            b.title = running
+                ? (isNow ? `Playing at ${p}% — clear the goal to move up`
+                    : (cleared ? `Cleared at ${p}%` : (inLadder ? `Still to come: ${p}%` : `Not in this drill`)))
+                : (p === 100
+                    ? 'A drill always finishes at full tempo'
+                    : `${p}% of tempo — click to ${inLadder ? 'drop' : 'add'} this rung`);
+        }
+        ladderTrack.title = running
+            ? 'The ladder this drill is climbing.'
+            : `A cleared goal steps up a rung; ${snap.drill.reps || 3} clean passes at full tempo finish the drill.`;
     }
 
     function renderIterations(snap) {
@@ -368,7 +449,7 @@ export function createPanel(actions) {
         if (snap.mode === 'part') {
             partLabel.textContent = snap.partCount
                 ? `Part ${snap.partIndex + 1} of ${snap.partCount}`
-                : 'This section has no phrase data';
+                : 'No phrase data';
             partPrev.disabled = snap.partIndex <= 0;
             partNext.disabled = snap.partIndex >= snap.partCount - 1;
         }
@@ -379,9 +460,9 @@ export function createPanel(actions) {
             const noBars = !snap.bars.available;
             barMinus.disabled = noBars || snap.bars.count <= 1;
             barPlus.disabled = noBars;
-            if (noBars) {
-                barsRow.title = 'This chart carries no bar lines, so bar ranges are unavailable.';
-            }
+            barsRow.title = noBars
+                ? 'This chart carries no bar lines, so bar ranges are unavailable.'
+                : 'How many bars to take, starting at the bar under the playhead.';
         }
 
         // the chosen range
@@ -402,20 +483,22 @@ export function createPanel(actions) {
         }
         for (const b of trim.querySelectorAll('button')) b.disabled = !sel || snap.drill.active;
 
-        // ladder
-        const ladder = snap.settings.ladder || [];
-        for (const [p, b] of ladderButtons) {
-            b.classList.toggle('rr-rung-on', p === 100 || ladder.includes(p));
-            b.disabled = p === 100 || snap.drill.active;
-        }
-        if (document.activeElement !== goalInput) goalInput.value = String(snap.settings.goalPct);
-        goalInput.disabled = snap.drill.active;
-        widenBox.checked = !!snap.settings.widen;
-        widenBox.disabled = snap.drill.active;
-        repsNote.textContent = `A cleared goal steps up a rung; ${snap.drill.reps || 3} clean passes at full tempo finish the drill.`;
-        warn.hidden = !ladder.some((p) => p < STRETCH_WARN_PCT);
+        // the ladder and the goal
+        renderLadder(snap);
+        const goal = snap.drill.active && Number.isFinite(snap.drill.goalPct)
+            ? snap.drill.goalPct
+            : snap.settings.goalPct;
+        goalValue.textContent = goal + '%';
+        goalDown.disabled = snap.drill.active || goal <= GOAL_MIN;
+        goalUp.disabled = snap.drill.active || goal >= GOAL_MAX;
+        widen.input.checked = !!snap.settings.widen;
+        widen.input.disabled = snap.drill.active;
+
+        const slow = (snap.settings.ladder || []).some((p) => p < STRETCH_WARN_PCT);
+        warn.hidden = !slow || snap.drill.active;
         warn.textContent = warn.hidden ? ''
-            : `Below ${STRETCH_WARN_PCT}% the backing track is audibly time-stretched. Worth it for a passage you cannot play yet; not worth leaving on.`;
+            : `Below ${STRETCH_WARN_PCT}% the backing track is audibly time-stretched. `
+              + 'Worth it for a passage you cannot play yet; not worth leaving on.';
 
         // actions
         const canDrill = snap.selectionUsable && !snap.engine.blocked;
@@ -441,17 +524,29 @@ export function createPanel(actions) {
 
         // speed & difficulty
         for (const [p, b] of speedButtons) {
-            b.classList.toggle('rr-rung-on', Math.abs(snap.speedPct - p) < 3);
+            const on = Math.abs(snap.speedPct - p) < 3;
+            b.classList.toggle('rr-rung-now', on);
+            b.classList.remove('rr-rung-on', 'rr-rung-done');
             b.disabled = snap.drill.active;
         }
+        speedTrack.title = snap.drill.active
+            ? 'The drill owns the speed while it runs.'
+            : 'Play the song at this fraction of its tempo.';
         if (document.activeElement !== diffInput) diffInput.value = String(snap.difficultyPct);
         diffValue.textContent = snap.difficultyPct + '%';
         diffInput.disabled = !snap.hasPhraseData || snap.drill.active;
-        diffNote.textContent = snap.drill.active
-            ? 'The drill owns the speed while it runs, and the difficulty with it.'
-            : (snap.hasPhraseData
-                ? 'Difficulty thins the chart to the easier tiers the pack was authored with.'
-                : 'This chart has a single difficulty tier, so the slider does nothing here.');
+
+        // The only note left standing, and only when it explains a dead control.
+        if (snap.drill.active) {
+            diffNote.hidden = false;
+            diffNote.textContent = 'The drill owns the speed and the difficulty while it runs.';
+        } else if (!snap.hasPhraseData) {
+            diffNote.hidden = false;
+            diffNote.textContent = 'This chart has a single difficulty tier, so the slider does nothing here.';
+        } else {
+            diffNote.hidden = true;
+            diffNote.textContent = '';
+        }
 
         // the map
         const run = snap.run;

@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.2.0 — parked in the corner, and less of a form
+
+**The panel no longer floats next to its button.** It is parked at top-right,
+64px/12px, portalled to `<body>` — the same corner and the same idea as the 3D
+Highway's settings pane and Live Tab's panel. Live Tab got there first and its
+commit says why: a panel anchored to a pill inside the player's scrolling
+`<main>` is clipped by that element rather than by the screen, and a panel
+pinned by one edge can only grow from the other, so changing a control moves
+the whole thing. Anchoring also put it over the notes, which is what prompted
+this. All of the placement code is gone — no measuring the trigger, no flipping
+sides, no re-anchoring on resize.
+
+Finding the right layer took a measurement rather than a guess: core's
+`style.css` gives `#player` `position: fixed; inset: 0; z-index: 100`, so it is
+a full-screen layer and the first attempt at z-45 was positioned perfectly and
+invisible behind it. 150 clears the player and stays under the guided-tour menu
+(200/201) and the detector's drill HUD (210), which has to keep covering this.
+
+**The controls stopped reading like a preferences sheet.** Four changes, each
+one taken from the design language the Virtuoso plugin already writes down for
+this app:
+
+- **The ladder does double duty.** Idle it is still the setting — tick the
+  rungs a drill should climb. Running, it *is* the progress display: the rung
+  being played is filled, cleared rungs go green, the rest wait outlined, and
+  they sit on a rail so it reads as a climb. Turning a setting into a status
+  readout is most of what separates a HUD from a form, and here it cost one
+  extra class rather than a second widget. The state comes from the engine's
+  ladder, not from the setting — they can differ, because a drill keeps what it
+  was armed with while you are free to re-tick for the next one.
+- **The goal is a stepper, not a text field.** `− 85% +`, in 5s, 50–100. A
+  number you type reads as a form; a number you set with ± reads as a game
+  option. The full 10–100 range stays on the settings page, which is where a
+  number field belongs.
+- **"Widen when nailed" is a toggle pill**, the way the app draws a boolean,
+  and it shares the goal's row — two settings, one line, no prose.
+- **One lit primary.** `⏱ Start drill` is bigger and accent-filled; `Loop only`
+  is a plain secondary and `Clear` is quiet. `✕ End drill` takes the primary's
+  slot and size when a drill is running, so the thing you press to stop is
+  exactly as findable as the thing you pressed to start.
+
+**And four paragraphs of explanation left the panel.** They live in `title`
+now. The only note still drawn is one that explains a control that is not
+working — a single-tier chart's dead difficulty slider, or the drill owning the
+speed — plus the time-stretch warning, which is a real warning and stays.
+
+The section chip list lost its own scrollbar. Its `max-height` cut the last row
+of chips in half, which read as a rendering fault rather than as "there is more
+below", and it put a second scrollbar inside a panel that already had one.
+
+### Fixed
+
+- The panel failed to load at all for one run: rewriting `mount.js` restored an
+  old import path (`../src/host.js` from inside `src/ui/`, which resolves to
+  `src/src/host.js`) and the module graph 404'd.
+
 ## 0.1.0 — a way into the drill engine
 
 The first version. It exists because the drill conductor in `note_detect` is a

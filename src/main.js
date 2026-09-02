@@ -79,6 +79,21 @@ const actions = {
         const n = Math.max(10, Math.min(100, Math.round(Number(pct) || 0)));
         model.setSettings({ goalPct: n });
     },
+
+    /**
+     * Step the goal, which is how the panel sets it.
+     *
+     * The panel's floor is 50 rather than the store's 10: a drill whose goal is
+     * "land one note in ten" is not a drill, and a stepper that walks down to
+     * it is a stepper you have to walk back up. The full 10–100 range stays
+     * reachable from the settings page, where a number field belongs.
+     */
+    nudgeGoal(delta) {
+        const cur = Number(model.getSettings().goalPct) || 85;
+        const step = Number(delta) || 0;
+        const next = Math.max(50, Math.min(100, Math.round((cur + step) / 5) * 5));
+        if (next !== cur) model.setSettings({ goalPct: next });
+    },
     setWiden(on) { model.setSettings({ widen: !!on }); },
 
     async startDrill() {

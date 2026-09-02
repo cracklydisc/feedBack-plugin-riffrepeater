@@ -47,7 +47,9 @@ git clone https://github.com/cracklydisc/feedBack-plugin-riffrepeater.git riffre
 ```
 
 Restart fee[dB]ack, open a song, and the player's **Plugins** rail button has a
-**⏱ Riff Repeater** in it.
+**⏱ Riff Repeater** in it. The panel opens parked at the top-right corner — the
+same place the 3D Highway keeps its settings pane and Live Tab its panel, so it
+never sits over the notes and never moves when a control changes.
 
 Installed this way the app can update it for you: **Plugins → Check for
 Updates** finds new versions and installs them with one click.
@@ -130,6 +132,23 @@ the sections in the Practice rail pill, the loop and the difficulty in the
 *Advanced settings* popover, the speed in the transport. They are the three
 knobs of one activity, so the panel carries all three next to the passage they
 apply to.
+
+### Reads as a HUD, not a preferences sheet
+
+The panel is something you look at with a guitar in your hands, so it follows
+the control taxonomy the Virtuoso plugin already writes down for this app: two
+families for "pick one of N" and no others (a segmented control for the mode
+tabs, chip groups for the sections, the ladder and the speed presets), a toggle
+pill for a boolean, one lit primary sized to its label, and no text inputs.
+
+The clearest instance is the ladder, which does double duty: idle it is the
+setting, and while a drill runs it *is* the progress display — the rung being
+played is filled, cleared rungs go green, the rest wait. The prose that used to
+sit under each control moved into `title`; the only note still drawn is one
+that explains a control that is not working.
+
+Values a stepper cannot reach live on the settings page. A form belongs there,
+not in the player.
 
 ---
 
