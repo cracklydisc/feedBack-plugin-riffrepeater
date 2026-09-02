@@ -1,5 +1,5 @@
 /*
- * kit 0.1.0 — the token bridge.
+ * kit 0.2.0 — the token bridge.
  *
  * Reads the host's palette and writes it back as `--fbk-*` custom properties
  * that a stylesheet can use, then follows `theme:changed`. This existed three
@@ -72,16 +72,85 @@ const FROM_HOST = {
 };
 
 /**
- * Layer 2 defaults — the app's own look, as devices.
+ * Layer 2 defaults — the app's own look, as devices AND as measurements.
  *
  * Written in terms of the Layer 1 roles so an equipped theme recolours them
  * without touching this table. A skin that wants a different LANGUAGE (no
- * glow, a bevel, a texture) overrides the slots rather than the roles; see
- * `applyRecipe()`.
+ * glow, a bevel, a texture, tighter type) overrides the slots rather than the
+ * roles.
+ *
+ * ── THE THREE SCALES ────────────────────────────────────────────────────
+ *
+ * These are the part that was missing. Before them the CSS used 10, 11, 12, 13
+ * and 20px type and 6, 7, 8, 9, 10, 11, 12 and 15px spacing, all picked per
+ * rule — which is exactly what "approximate" looks like from a metre away.
+ *
+ * TYPE — five steps, and no element may invent a sixth. A `font` shorthand
+ * cannot carry letter-spacing, so each step is a pair: `--fbk-t-X` for the
+ * shorthand and `--fbk-t-X-track` for the tracking.
+ *
+ * SPACE — a 2px base, six steps. No margin, padding or gap in the kit is a
+ * number; every one of them is `var(--fbk-s-N)`.
+ *
+ * HEIGHT — three heights, and every interactive control is exactly one of
+ * them. That is what makes rows share a baseline instead of each row being as
+ * tall as whatever it happens to contain.
  */
 const RECIPES = {
-    /* How a primary action is made special. At least one of fill/border/halo
-       must be non-none, or a primary would be visually flat. */
+    /* ── type ───────────────────────────────────────────────────────────
+     *
+     * The family is named rather than inherited, because a `font` shorthand
+     * needs a real family — `font: 500 13px/1.45 inherit` is invalid and
+     * silently drops the whole declaration. This is the app's own body stack
+     * (`fontFamily.display` in its tailwind.config.js); v3's Rubik is a
+     * display face for headings and not what a panel of controls wants.
+     */
+    font: '"Inter", system-ui, sans-serif',
+
+    /* The one big number in a panel. */
+    't-display': '800 22px/1.05 var(--fbk-font)',
+    't-display-track': '-0.01em',
+    /* An inline readout: a stepper's value, a meter's percentage. */
+    't-value': '800 16px/1.1 var(--fbk-font)',
+    't-value-track': '0',
+    /* Prose, and the title of a plate. */
+    't-body': '500 13px/1.45 var(--fbk-font)',
+    't-body-track': '0',
+    /* Control labels and button text. */
+    't-label': '700 11px/1.25 var(--fbk-font)',
+    't-label-track': '0.01em',
+    /* Section headings and key caps. Uppercase is applied by the component. */
+    't-micro': '800 10px/1.2 var(--fbk-font)',
+    't-micro-track': '0.1em',
+
+    /* ── space: a 2px base ────────────────────────────────────────────── */
+    's-1': '2px',
+    's-2': '4px',
+    's-3': '6px',
+    's-4': '10px',
+    's-5': '14px',
+    's-6': '20px',
+
+    /* ── control heights: three, and no others ────────────────────────── */
+    'h-sm': '26px',   /* chip, small button, icon button */
+    'h-md': '32px',   /* segmented cell, stepper, standard button */
+    'h-lg': '44px',   /* the one primary */
+
+    /*
+     * The width every inline label shares.
+     *
+     * Without it each row's control started at a different x, because the
+     * labels are different lengths — visible and wrong in a 336px panel. A
+     * label that does not fit becomes a block label instead of widening this.
+     */
+    'label-w': '62px',
+
+    /* The thickness of a hairline, so a skin can make them heavier. */
+    hairline: '1px',
+
+    /* ── devices ──────────────────────────────────────────────────────
+     * How a primary action is made special. At least one of fill/border/halo
+     * must be non-none, or a primary would be visually flat. */
     'emph-fill': 'linear-gradient(180deg, rgb(var(--fbk-accent-hi)), rgb(var(--fbk-accent)))',
     'emph-border': '1px solid rgb(var(--fbk-accent-hi) / 0.7)',
     'emph-halo': '0 0 0 1px rgb(var(--fbk-accent) / 0.45), 0 8px 24px rgb(var(--fbk-accent) / 0.35)',
@@ -105,6 +174,15 @@ const RECIPES = {
     radius: '12px',
     'radius-sm': '8px',
     'radius-pill': '999px',
+
+    /*
+     * Disabled, as one recipe.
+     *
+     * It was per-component before: `opacity: 0.4` here, `filter: saturate(0.4)`
+     * there, and the primary ended up a muddy grey-blue that read as broken
+     * rather than as unavailable. One opacity, one rule, and the halo goes.
+     */
+    'disabled-opacity': '0.38',
 
     /* Decorative timing. Gated below, so no consumer can forget. */
     motion: '140ms ease',

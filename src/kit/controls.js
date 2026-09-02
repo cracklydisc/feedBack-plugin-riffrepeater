@@ -1,5 +1,5 @@
 /*
- * kit 0.1.0 — the four control families, as builders.
+ * kit 0.2.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -230,7 +230,7 @@ export function stepper(opts = {}) {
         upTitle = 'More',
     } = opts;
 
-    const wrap = el('div', 'fbk-stepper');
+    const wrap = el('div', opts.wide ? 'fbk-stepper fbk-stepper-wide' : 'fbk-stepper');
     let value = num(opts.value) ?? 0;
 
     const down = button('fbk-step', '−', downTitle, () => bump(-step));

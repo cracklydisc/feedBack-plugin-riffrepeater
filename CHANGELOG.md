@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.5.1 — kit 0.2.0: the foundations the panel was missing
+
+The kit gained the three scales — five type steps, six space steps, three
+control heights — and this panel is rebuilt on them. Nothing about what it does
+changed; what changed is that its values are on a scale instead of picked per
+row.
+
+The one visible defect it fixes: **every inline label now starts its control at
+the same x.** `Playhead`, `Trim`, `Climb`, `Goal` and `Chart` each ended
+wherever their own text ended, so four rows began at four different positions —
+measured after the change, all five start at exactly the same pixel. The
+`Playhead` row is labelled **Mark** now, because the longer word did not fit
+the shared column and shortening the word was the right fix rather than moving
+the column for one row.
+
+Three more, all found by looking at the kit's new gallery rather than reasoning
+about the CSS:
+
+- The **Climb** chips had grown to fill their row and covered the rail
+  completely — a ladder that read as a row of touching pills. They sit at their
+  natural width now, spread along a visible track.
+- **Start drill** centred its status dot, its label and its `D` cap together in
+  the middle of an empty 336px bar. Dot leading, label centred, cap trailing.
+- `85 %` read as two things, because the unit had inherited the micro step's
+  0.1em tracking and drifted away from its number.
+
+And `assets/gallery.html` ships with the plugin, so it can be served straight
+from the dev server: `/api/plugins/riffrepeater/assets/gallery.html`. It is the
+kit's page, not this plugin's, but a static file needs a route and this plugin
+has one.
+
 ## 0.5.0 — on the kit
 
 Everything shared moved out. `src/kit/` and `assets/kit.css` are vendored from

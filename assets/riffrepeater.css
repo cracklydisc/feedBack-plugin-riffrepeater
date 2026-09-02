@@ -13,14 +13,6 @@
  * literal hex, glow or gradient here either.
  */
 
-/* An inline label, for the rows where a label above the control would cost a
-   line the panel cannot spare. The kit's `.fbk-label` is the block version. */
-.rr-inline-label {
-    flex: 0 0 auto;
-    min-width: 46px;
-    margin-bottom: 0;
-}
-
 .rr-nav-name {
     flex: 1 1 auto;
     min-width: 0;

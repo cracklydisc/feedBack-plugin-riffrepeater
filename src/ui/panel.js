@@ -124,6 +124,7 @@ export function createContent(outer, actions) {
     // bar count
     const barsRow = c.el('div', 'fbk-row rr-bars');
     const barCount = c.stepper({
+        wide: true,          // "4 bars" needs more room than "85 %"
         value: 4,
         step: 1,
         min: 1,
@@ -148,7 +149,7 @@ export function createContent(outer, actions) {
      * same job done backwards.
      */
     const abRow = c.el('div', 'fbk-row rr-ab');
-    abRow.appendChild(c.el('span', 'fbk-label rr-inline-label', 'Playhead'));
+    abRow.appendChild(c.el('span', 'fbk-label fbk-label-inline', 'Mark'));
     const markA = c.button('fbk-btn fbk-btn-small', null,
         'Set the loop start (A) at the playhead', () => actions.markEdge('start'));
     markA.appendChild(c.el('span', null, 'Set A'));
@@ -167,7 +168,7 @@ export function createContent(outer, actions) {
     const trim = c.el('div', 'fbk-row rr-trim');
     trim.title = 'Move a loop edge by one whole bar. Bars, not seconds: a boundary '
         + 'off the grid turns the count-in into a guess.';
-    trim.appendChild(c.el('span', 'fbk-label rr-inline-label', 'Trim'));
+    trim.appendChild(c.el('span', 'fbk-label fbk-label-inline', 'Trim'));
     trim.appendChild(c.button('fbk-step', '−', 'Start one bar earlier', () => actions.nudge('start', -1)));
     const trimStart = c.el('span', 'rr-time');
     trim.appendChild(trimStart);
@@ -196,7 +197,7 @@ export function createContent(outer, actions) {
      * "the speeds a drill climbs" and "the speed it is playing at".
      */
     const climbRow = c.el('div', 'fbk-row rr-climb');
-    climbRow.appendChild(c.el('span', 'fbk-label rr-inline-label', 'Climb'));
+    climbRow.appendChild(c.el('span', 'fbk-label fbk-label-inline', 'Climb'));
     const climb = c.chips(
         PRESETS.map((p) => ({ value: p, label: String(p) })),
         (p) => actions.toggleRung(p),
@@ -211,7 +212,7 @@ export function createContent(outer, actions) {
 
     // Goal and the widen switch share a row: two settings, no prose, one line.
     const goalRow = c.el('div', 'fbk-row rr-goal');
-    goalRow.appendChild(c.el('span', 'fbk-label rr-inline-label', 'Goal'));
+    goalRow.appendChild(c.el('span', 'fbk-label fbk-label-inline', 'Goal'));
     const goal = c.stepper({
         value: 85,
         step: 5,
@@ -235,17 +236,17 @@ export function createContent(outer, actions) {
     const startBtn = c.button('fbk-btn fbk-btn-primary', null, null, () => actions.startDrill());
     const startDot = c.dot('off');
     startBtn.appendChild(startDot);
-    startBtn.appendChild(c.el('span', null, '⏱ Start drill'));
+    startBtn.appendChild(c.el('span', 'fbk-btn-label', '⏱ Start drill'));
     startBtn.appendChild(c.kbd('D'));
     body.appendChild(startBtn);
 
     const endBtn = c.button('fbk-btn fbk-btn-stop', null,
         'Stop the drill and restore your speed', () => actions.endDrill());
-    endBtn.appendChild(c.el('span', null, '✕ End drill'));
+    endBtn.appendChild(c.el('span', 'fbk-btn-label', '✕ End drill'));
     endBtn.appendChild(c.kbd('D'));
     body.appendChild(endBtn);
 
-    const acts = c.el('div', 'fbk-row rr-acts');
+    const acts = c.el('div', 'fbk-row fbk-row-tight rr-acts');
     const loopBtn = c.button('fbk-btn fbk-btn-small', 'Loop only',
         'Loop the passage with no goal and no ramp', () => actions.loopOnly());
     const clearBtn = c.button('fbk-btn fbk-btn-small fbk-btn-quiet', 'Clear',
@@ -282,7 +283,7 @@ export function createContent(outer, actions) {
     const diffRow = c.el('div', 'fbk-row rr-diff');
     diffRow.title = 'Master difficulty. Lower thins the chart to the easier tiers the '
         + 'pack was authored with; 100% is the full arrangement.';
-    diffRow.appendChild(c.el('span', 'fbk-label rr-inline-label', 'Chart'));
+    diffRow.appendChild(c.el('span', 'fbk-label fbk-label-inline', 'Chart'));
     const difficulty = c.slider({
         min: 0,
         max: 100,

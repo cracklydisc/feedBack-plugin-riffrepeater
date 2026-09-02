@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<!--
+  kit 0.2.0 — the component gallery.
+
+  Every component in every state, on one page, so the details get LOOKED at
+  rather than guessed. It is also the proof for the two rules that are
+  otherwise only assertions:
+
+    · "still legible with every recipe slot set to none" — the NO DEVICES
+      button strips the glow, the gradient, the shadows and the inner light
+      line, which is what a glow-less shop skin does. Nothing may vanish.
+    · "still legible under prefers-reduced-motion" — the STILL button sets
+      --fbk-motion to none.
+
+  Serving it: it is a plain file under a plugin's assets/, so the host's own
+  asset route hands it over —
+  http://localhost:8000/api/plugins/<id>/assets/gallery.html
+
+  The token values inlined below are the defaults from src/theme.js. This is
+  the ONE place in the kit where literal colours are correct: a static page has
+  no host to read them from, and the point is to see the default look.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fee[dB]ack plugin kit — gallery</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+:root {
+    /* Layer 1 — roles */
+    --fbk-bg: 15 23 42;
+    --fbk-sidebar: 17 24 39;
+    --fbk-surface: 30 41 59;
+    --fbk-surface-2: 11 18 32;
+    --fbk-border: 51 65 85;
+    --fbk-text: 248 250 252;
+    --fbk-dim: 148 163 184;
+    --fbk-accent: 14 165 233;
+    --fbk-accent-hi: 56 189 248;
+    --fbk-alert: 239 68 68;
+    --fbk-good: 34 197 94;
+    --fbk-mid: 234 179 8;
+    --fbk-bad: 239 68 68;
+    --fbk-gold: 232 192 64;
+    --fbk-on-accent: 248 250 252;
+    --fbk-focus: 56 189 248;
+
+    /* Layer 2 — type */
+    --fbk-font: "Inter", system-ui, sans-serif;
+    --fbk-t-display: 800 22px/1.05 var(--fbk-font);
+    --fbk-t-display-track: -0.01em;
+    --fbk-t-value: 800 16px/1.1 var(--fbk-font);
+    --fbk-t-value-track: 0;
+    --fbk-t-body: 500 13px/1.45 var(--fbk-font);
+    --fbk-t-body-track: 0;
+    --fbk-t-label: 700 11px/1.25 var(--fbk-font);
+    --fbk-t-label-track: 0.01em;
+    --fbk-t-micro: 800 10px/1.2 var(--fbk-font);
+    --fbk-t-micro-track: 0.1em;
+
+    /* Layer 2 — space, heights, geometry */
+    --fbk-s-1: 2px;  --fbk-s-2: 4px;  --fbk-s-3: 6px;
+    --fbk-s-4: 10px; --fbk-s-5: 14px; --fbk-s-6: 20px;
+    --fbk-h-sm: 26px; --fbk-h-md: 32px; --fbk-h-lg: 44px;
+    --fbk-label-w: 62px;
+    --fbk-hairline: 1px;
+
+    /* Layer 2 — devices */
+    --fbk-emph-fill: linear-gradient(180deg, rgb(var(--fbk-accent-hi)), rgb(var(--fbk-accent)));
+    --fbk-emph-border: 1px solid rgb(var(--fbk-accent-hi) / 0.7);
+    --fbk-emph-halo: 0 0 0 1px rgb(var(--fbk-accent) / 0.45), 0 8px 24px rgb(var(--fbk-accent) / 0.35);
+    --fbk-emph-on: rgb(var(--fbk-on-accent));
+    --fbk-lit-fill: rgb(var(--fbk-accent));
+    --fbk-lit-halo: 0 0 10px rgb(var(--fbk-accent) / 0.45);
+    --fbk-lit-on: rgb(var(--fbk-on-accent));
+    --fbk-panel-shadow: 0 24px 60px rgb(0 0 0 / 0.6);
+    --fbk-panel-inner: inset 0 1px 0 rgb(255 255 255 / 0.06);
+    --fbk-meter-fill: rgb(var(--fbk-good));
+    --fbk-radius: 12px;
+    --fbk-radius-sm: 8px;
+    --fbk-radius-pill: 999px;
+    --fbk-disabled-opacity: 0.38;
+    --fbk-motion: 140ms ease;
+}
+
+/* Devices off — what a glow-less skin does. Nothing may vanish. */
+body.no-devices {
+    --fbk-emph-fill: rgb(var(--fbk-accent));
+    --fbk-emph-border: 1px solid rgb(var(--fbk-accent-hi));
+    --fbk-emph-halo: none;
+    --fbk-lit-halo: none;
+    --fbk-panel-shadow: none;
+    --fbk-panel-inner: none;
+}
+
+body.still { --fbk-motion: none; }
+
+/* The gallery's own chrome — not part of the kit. */
+body {
+    margin: 0;
+    padding: 0 0 60px;
+    background:
+        radial-gradient(120% 60% at 50% 0%, rgb(30 41 59), rgb(5 5 8) 70%);
+    color: rgb(var(--fbk-text));
+    font: var(--fbk-t-body);
+    min-height: 100vh;
+}
+.g-bar {
+    position: sticky; top: 0; z-index: 300;
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 20px;
+    background: rgb(5 5 8 / 0.92);
+    border-bottom: 1px solid rgb(var(--fbk-border));
+    backdrop-filter: blur(6px);
+}
+.g-bar strong { font-size: 13px; letter-spacing: 0.02em; }
+.g-bar span { color: rgb(var(--fbk-dim)); font-size: 11px; }
+.g-wrap { max-width: 1180px; margin: 0 auto; padding: 24px 20px; display: grid; gap: 26px; grid-template-columns: 1fr 1fr; }
+.g-card {
+    border: 1px solid rgb(var(--fbk-border));
+    border-radius: 14px;
+    background: rgb(var(--fbk-surface) / 0.55);
+    padding: 16px 18px 20px;
+}
+.g-card.g-wide { grid-column: 1 / -1; }
+.g-card h2 {
+    margin: 0 0 4px; font-size: 12px; font-weight: 800;
+    letter-spacing: 0.12em; text-transform: uppercase; color: rgb(var(--fbk-accent-hi));
+}
+.g-card p.g-why { margin: 0 0 14px; font-size: 12px; color: rgb(var(--fbk-dim)); }
+.g-grid { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.g-stack { display: grid; gap: 10px; }
+.g-tag {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+    color: rgb(var(--fbk-dim)); margin: 10px 0 2px;
+}
+.g-ruler { display: grid; gap: 6px; }
+.g-ruler div { display: flex; align-items: center; gap: 10px; font-size: 11px; color: rgb(var(--fbk-dim)); }
+.g-ruler i { display: block; height: 10px; border-radius: 3px; background: rgb(var(--fbk-accent) / 0.55); }
+.g-panelbox { position: relative; height: 470px; }
+.g-panelbox .fbk-panel { position: absolute; top: 0; right: 0; }
+</style>
+</head>
+<body>
+
+<div class="g-bar">
+    <strong>fee[dB]ack plugin kit</strong>
+    <span>0.2.0 — every component, every state</span>
+    <span style="flex:1 1 auto"></span>
+    <button class="fbk-btn fbk-btn-small" onclick="document.body.classList.toggle('no-devices')">No devices</button>
+    <button class="fbk-btn fbk-btn-small" onclick="document.body.classList.toggle('still')">Still</button>
+</div>
+
+<div class="g-wrap">
+
+<!-- ── foundations ────────────────────────────────────────────────────── -->
+<section class="g-card">
+    <h2>Type — five steps</h2>
+    <p class="g-why">No element may invent a sixth. Each step is a pair: the
+    <code>font</code> shorthand and its tracking, because a shorthand cannot
+    carry letter-spacing.</p>
+    <div class="g-stack">
+        <div><span class="fbk-t-display">128</span> <span class="g-tag" style="display:inline">display · 22/800/-0.01 — the one big number</span></div>
+        <div><span class="fbk-t-value">85%</span> <span class="g-tag" style="display:inline">value · 16/800 tabular — inline readouts</span></div>
+        <div><span class="fbk-t-body">A passage worth drilling.</span> <span class="g-tag" style="display:inline">body · 13/500</span></div>
+        <div><span class="fbk-t-label">Start drill</span> <span class="g-tag" style="display:inline">label · 11/700 — controls and buttons</span></div>
+        <div><span class="fbk-t-micro">Where you struggle</span> <span class="g-tag" style="display:inline">micro · 10/800/0.1 — headings, key caps</span></div>
+    </div>
+</section>
+
+<section class="g-card">
+    <h2>Space and height</h2>
+    <p class="g-why">A 2px base, six steps, and three control heights. Every
+    margin, padding and gap in the kit is one of the six; every interactive
+    control is exactly one of the three, which is where vertical rhythm comes
+    from.</p>
+    <div class="g-ruler">
+        <div><i style="width:2px"></i> s-1 · 2</div>
+        <div><i style="width:4px"></i> s-2 · 4</div>
+        <div><i style="width:6px"></i> s-3 · 6</div>
+        <div><i style="width:10px"></i> s-4 · 10</div>
+        <div><i style="width:14px"></i> s-5 · 14</div>
+        <div><i style="width:20px"></i> s-6 · 20</div>
+    </div>
+    <div class="g-tag">heights</div>
+    <div class="g-grid">
+        <button class="fbk-btn fbk-btn-small">h-sm · 26</button>
+        <button class="fbk-btn">h-md · 32</button>
+        <button class="fbk-btn fbk-btn-primary" style="width:auto;margin:0">h-lg · 44</button>
+    </div>
+</section>
+
+<!-- ── families ───────────────────────────────────────────────────────── -->
+<section class="g-card">
+    <h2>Family 1 — segmented</h2>
+    <p class="g-why">Pick <strong>one</strong> of a small fixed set. An inset
+    track of cells that light up.</p>
+    <div class="fbk-row">
+        <div class="fbk-seg">
+            <button class="fbk-seg-btn fbk-on">Section</button>
+            <button class="fbk-seg-btn">Phrase</button>
+            <button class="fbk-seg-btn">Bars</button>
+        </div>
+    </div>
+    <div class="g-tag">disabled</div>
+    <div class="fbk-row">
+        <div class="fbk-seg">
+            <button class="fbk-seg-btn fbk-on" disabled>50</button>
+            <button class="fbk-seg-btn" disabled>65</button>
+            <button class="fbk-seg-btn" disabled>80</button>
+            <button class="fbk-seg-btn" disabled>100</button>
+        </div>
+    </div>
+</section>
+
+<section class="g-card">
+    <h2>Family 2 — chips</h2>
+    <p class="g-why">Pick a <strong>subset</strong>. On a rail it doubles as a
+    progress display: four states that must stay visually ranked — <em>now</em>
+    loudest, <em>done</em> green, <em>on</em> outlined, unset quiet.</p>
+    <div class="g-tag">free (wraps)</div>
+    <div class="fbk-row">
+        <div class="fbk-chips">
+            <button class="fbk-chip fbk-on">Intro 1</button>
+            <button class="fbk-chip">Verse 1</button>
+            <button class="fbk-chip fbk-done">Chorus 1</button>
+            <button class="fbk-chip">Bridge 1</button>
+            <button class="fbk-chip">Solo 1</button>
+        </div>
+    </div>
+    <div class="g-tag">on a rail — idle</div>
+    <div class="fbk-row">
+        <span class="fbk-label fbk-label-inline">Climb</span>
+        <div class="fbk-chips fbk-chips-rail">
+            <button class="fbk-chip">50</button>
+            <button class="fbk-chip fbk-on">65</button>
+            <button class="fbk-chip fbk-on">80</button>
+            <button class="fbk-chip fbk-on">90</button>
+            <button class="fbk-chip fbk-on" disabled>100</button>
+        </div>
+        <span class="fbk-badge" title="Below 80% the backing track is audibly time-stretched.">⚠</span>
+    </div>
+    <div class="g-tag">on a rail — running (the same widget)</div>
+    <div class="fbk-row">
+        <span class="fbk-label fbk-label-inline">Climb</span>
+        <div class="fbk-chips fbk-chips-rail">
+            <button class="fbk-chip" disabled>50</button>
+            <button class="fbk-chip fbk-done" disabled>65</button>
+            <button class="fbk-chip fbk-now" disabled>80</button>
+            <button class="fbk-chip fbk-on" disabled>90</button>
+            <button class="fbk-chip fbk-on" disabled>100</button>
+        </div>
+    </div>
+</section>
+
+<section class="g-card">
+    <h2>Family 3 — toggle</h2>
+    <p class="g-why">A boolean. A real checkbox underneath, for the keyboard
+    and the screen reader; only its default rendering goes away.</p>
+    <div class="g-stack">
+        <label class="fbk-toggle"><input type="checkbox"><span class="fbk-toggle-track"></span><span class="fbk-toggle-text">Off</span></label>
+        <label class="fbk-toggle"><input type="checkbox" checked><span class="fbk-toggle-track"></span><span class="fbk-toggle-text">On</span></label>
+        <label class="fbk-toggle"><input type="checkbox" checked disabled><span class="fbk-toggle-track"></span><span class="fbk-toggle-text">On, disabled</span></label>
+    </div>
+</section>
+
+<section class="g-card">
+    <h2>Family 4 — stepper</h2>
+    <p class="g-why">A number you nudge. Circular buttons, matching the
+    player's rail. No text input anywhere: a number you type reads as a form.
+    The value sits in a fixed box so pressing − and + never shuffles the row.</p>
+    <div class="fbk-row">
+        <span class="fbk-label fbk-label-inline">Goal</span>
+        <div class="fbk-stepper">
+            <button class="fbk-step">−</button>
+            <span class="fbk-readout"><span class="fbk-readout-value">85</span><span class="fbk-readout-unit">%</span></span>
+            <button class="fbk-step">+</button>
+        </div>
+        <label class="fbk-toggle fbk-push"><input type="checkbox" checked><span class="fbk-toggle-track"></span><span class="fbk-toggle-text">Widen</span></label>
+    </div>
+    <div class="fbk-row">
+        <span class="fbk-label fbk-label-inline">Bars</span>
+        <div class="fbk-stepper fbk-stepper-wide">
+            <button class="fbk-step" disabled>−</button>
+            <span class="fbk-readout"><span class="fbk-readout-value">1</span><span class="fbk-readout-unit">bars</span></span>
+            <button class="fbk-step">+</button>
+        </div>
+    </div>
+    <div class="g-tag">at the medium height, with glyph buttons</div>
+    <div class="fbk-row">
+        <button class="fbk-step">◀</button>
+        <span style="flex:1 1 auto;text-align:center;font-weight:700">Verse 1</span>
+        <button class="fbk-step">▶</button>
+        <span class="fbk-kbd">, .</span>
+    </div>
+</section>
+
+<section class="g-card">
+    <h2>Slider</h2>
+    <p class="g-why">A HUD gauge that is still an
+    <code>&lt;input type="range"&gt;</code>, because that is the control a
+    keyboard can operate.</p>
+    <div class="fbk-row">
+        <span class="fbk-label fbk-label-inline">Chart</span>
+        <input class="fbk-slider" type="range" min="0" max="100" step="5" value="100">
+        <span class="fbk-readout"><span class="fbk-readout-value">100</span><span class="fbk-readout-unit">%</span></span>
+    </div>
+    <div class="fbk-row">
+        <span class="fbk-label fbk-label-inline">Mix</span>
+        <input class="fbk-slider" type="range" min="0" max="100" value="40">
+        <span class="fbk-readout"><span class="fbk-readout-value">40</span><span class="fbk-readout-unit">%</span></span>
+    </div>
+    <div class="fbk-row">
+        <span class="fbk-label fbk-label-inline">Off</span>
+        <input class="fbk-slider" type="range" min="0" max="100" value="70" disabled>
+        <span class="fbk-readout"><span class="fbk-readout-value">70</span><span class="fbk-readout-unit">%</span></span>
+    </div>
+</section>
+
+<!-- ── buttons ────────────────────────────────────────────────────────── -->
+<section class="g-card">
+    <h2>Buttons — four tiers</h2>
+    <p class="g-why">One primary per panel, on its own line. Stop takes the
+    primary's slot and size and only changes hue, so what you press to stop is
+    as findable as what you pressed to start.</p>
+    <button class="fbk-btn fbk-btn-primary"><span class="fbk-dot" data-state="ready"></span><span class="fbk-btn-label">⏱ Start drill</span><span class="fbk-kbd">D</span></button>
+    <button class="fbk-btn fbk-btn-primary" disabled><span class="fbk-dot" data-state="warn"></span><span class="fbk-btn-label">⏱ Start drill</span><span class="fbk-kbd">D</span></button>
+    <button class="fbk-btn fbk-btn-stop"><span class="fbk-btn-label">✕ End drill</span><span class="fbk-kbd">D</span></button>
+    <div class="g-tag">secondary · quiet · small</div>
+    <div class="g-grid">
+        <button class="fbk-btn">Loop only</button>
+        <button class="fbk-btn fbk-btn-quiet">Clear</button>
+        <button class="fbk-btn fbk-btn-small">Practice weakest</button>
+        <button class="fbk-btn fbk-btn-small fbk-btn-quiet">From playhead</button>
+        <button class="fbk-btn fbk-btn-small" disabled>Disabled</button>
+    </div>
+</section>
+
+<section class="g-card">
+    <h2>Meters and readouts</h2>
+    <p class="g-why">The one shape for measured data. Three columns — name,
+    bar, number — with the number tabular and right-aligned so a column of
+    them lines up. Green means <em>cleared or on target</em> and nothing else.</p>
+    <div class="fbk-plate">
+        <span class="fbk-plate-title">Verse 1</span>
+        <span class="fbk-plate-meta">1:24 → 1:39 · 15.3s · 95 notes · best 33%</span>
+    </div>
+    <div style="margin-top:10px">
+        <button class="fbk-meter-row"><span class="fbk-meter-name">Solo 1</span><span class="fbk-meter" data-band="bad" style="--fbk-fill:8%"></span><span class="fbk-meter-value">8%</span></button>
+        <button class="fbk-meter-row"><span class="fbk-meter-name">Verse 1</span><span class="fbk-meter" data-band="bad" style="--fbk-fill:33%"></span><span class="fbk-meter-value">33%</span></button>
+        <button class="fbk-meter-row"><span class="fbk-meter-name">Intro 1</span><span class="fbk-meter" data-band="mid" style="--fbk-fill:58%"></span><span class="fbk-meter-value">58%</span></button>
+        <button class="fbk-meter-row"><span class="fbk-meter-name">Chorus 1</span><span class="fbk-meter" data-band="mid" style="--fbk-fill:75%"></span><span class="fbk-meter-value">75%</span></button>
+        <button class="fbk-meter-row"><span class="fbk-meter-name">Chorus 2</span><span class="fbk-meter" data-band="good" style="--fbk-fill:92%"></span><span class="fbk-meter-value">92%</span></button>
+    </div>
+    <div class="g-tag">the one big number</div>
+    <span class="fbk-readout fbk-readout-lg"><span class="fbk-readout-value">128</span><span class="fbk-readout-unit">bpm</span></span>
+</section>
+
+<section class="g-card">
+    <h2>Small parts</h2>
+    <p class="g-why">A caveat is a badge with its sentence in the tooltip. A
+    blocked action carries a status dot. A failure gets a line that clears
+    itself — never a box that stays.</p>
+    <div class="g-grid">
+        <span class="fbk-badge" title="A caveat lives in here.">⚠</span>
+        <span class="fbk-badge fbk-badge-bad" title="Something is wrong.">!</span>
+        <span class="fbk-dot" data-state="ready" title="ready"></span>
+        <span class="fbk-dot" data-state="warn" title="present but off"></span>
+        <span class="fbk-dot" data-state="off" title="not installed"></span>
+        <span class="fbk-kbd">D</span>
+        <span class="fbk-kbd">↑ ↓</span>
+        <span class="fbk-kbd">Esc</span>
+    </div>
+    <p class="fbk-flash">The drill engine refused that range — see the console for its reason.</p>
+    <p class="fbk-empty">Nothing measured yet. Play with note detection on and the sections you struggle with will collect a number here.</p>
+</section>
+
+<!-- ── the whole shell ────────────────────────────────────────────────── -->
+<section class="g-card g-wide">
+    <h2>The panel, assembled</h2>
+    <p class="g-why">Parked top-right in the player, portalled to
+    <code>&lt;body&gt;</code>, z-150 — over <code>#player</code> (100), under
+    the drill HUD (210). Shown here in place rather than fixed, so the page can
+    scroll.</p>
+    <div class="g-panelbox">
+        <div class="fbk-panel fbk-panel-open" style="position:absolute" role="dialog" aria-label="Example">
+            <div class="fbk-head">
+                <span class="fbk-title">⏱ Riff Repeater</span>
+                <span class="fbk-subtitle">Metallica — Blackened</span>
+                <button class="fbk-x">✕</button>
+            </div>
+            <div class="fbk-body">
+                <div class="fbk-section"><h4 class="fbk-section-title">What to loop</h4><span class="fbk-section-rule"></span></div>
+                <div class="fbk-row">
+                    <div class="fbk-seg">
+                        <button class="fbk-seg-btn fbk-on">Section</button>
+                        <button class="fbk-seg-btn">Phrase</button>
+                        <button class="fbk-seg-btn">Bars</button>
+                    </div>
+                </div>
+                <div class="fbk-row">
+                    <button class="fbk-step">◀</button>
+                    <span style="flex:1 1 auto;text-align:center;font-weight:700">Verse 1</span>
+                    <button class="fbk-step">▶</button>
+                    <span class="fbk-kbd">, .</span>
+                </div>
+                <div class="fbk-row">
+                    <span class="fbk-label fbk-label-inline">Mark</span>
+                    <button class="fbk-btn fbk-btn-small"><span>Set A</span><span class="fbk-kbd">I</span></button>
+                    <button class="fbk-btn fbk-btn-small"><span>Set B</span><span class="fbk-kbd">O</span></button>
+                </div>
+                <div class="fbk-plate">
+                    <span class="fbk-plate-title">Verse 1</span>
+                    <span class="fbk-plate-meta">1:24 → 1:39 · 15.3s · 95 notes · best 33%</span>
+                </div>
+                <div class="fbk-row">
+                    <span class="fbk-label fbk-label-inline">Trim</span>
+                    <button class="fbk-step">−</button>
+                    <span class="fbk-t-value">1:24</span>
+                    <button class="fbk-step">+</button>
+                    <span style="color:rgb(var(--fbk-dim))">→</span>
+                    <button class="fbk-step">−</button>
+                    <span class="fbk-t-value">1:39</span>
+                    <button class="fbk-step">+</button>
+                </div>
+                <div class="fbk-section"><h4 class="fbk-section-title">How to drill</h4><span class="fbk-section-rule"></span></div>
+                <div class="fbk-row">
+                    <span class="fbk-label fbk-label-inline">Climb</span>
+                    <div class="fbk-chips fbk-chips-rail">
+                        <button class="fbk-chip">50</button>
+                        <button class="fbk-chip fbk-on">65</button>
+                        <button class="fbk-chip fbk-on">80</button>
+                        <button class="fbk-chip fbk-on">90</button>
+                        <button class="fbk-chip fbk-on" disabled>100</button>
+                    </div>
+                    <span class="fbk-badge" title="Below 80% the backing track is audibly time-stretched.">⚠</span>
+                </div>
+                <div class="fbk-row">
+                    <span class="fbk-label fbk-label-inline">Goal</span>
+                    <div class="fbk-stepper">
+                        <button class="fbk-step">−</button>
+                        <span class="fbk-readout"><span class="fbk-readout-value">85</span><span class="fbk-readout-unit">%</span></span>
+                        <button class="fbk-step">+</button>
+                    </div>
+                    <label class="fbk-toggle fbk-push"><input type="checkbox" checked><span class="fbk-toggle-track"></span><span class="fbk-toggle-text">Widen</span></label>
+                </div>
+                <button class="fbk-btn fbk-btn-primary"><span class="fbk-dot" data-state="ready"></span><span class="fbk-btn-label">⏱ Start drill</span><span class="fbk-kbd">D</span></button>
+                <div class="fbk-row fbk-row-tight">
+                    <button class="fbk-btn fbk-btn-small">Loop only</button>
+                    <button class="fbk-btn fbk-btn-small fbk-btn-quiet">Clear</button>
+                </div>
+                <div class="fbk-section"><h4 class="fbk-section-title">Play at</h4><span class="fbk-section-rule"></span></div>
+                <div class="fbk-row">
+                    <div class="fbk-seg">
+                        <button class="fbk-seg-btn">50</button>
+                        <button class="fbk-seg-btn">65</button>
+                        <button class="fbk-seg-btn">80</button>
+                        <button class="fbk-seg-btn">90</button>
+                        <button class="fbk-seg-btn fbk-on">100</button>
+                    </div>
+                    <span class="fbk-kbd">↑ ↓</span>
+                </div>
+                <div class="fbk-row">
+                    <span class="fbk-label fbk-label-inline">Chart</span>
+                    <input class="fbk-slider" type="range" min="0" max="100" step="5" value="100">
+                    <span class="fbk-readout"><span class="fbk-readout-value">100</span><span class="fbk-readout-unit">%</span></span>
+                </div>
+                <div class="fbk-section">
+                    <h4 class="fbk-section-title">Where you struggle</h4>
+                    <span class="fbk-section-rule"></span>
+                    <button class="fbk-btn fbk-btn-small">Practice weakest</button>
+                </div>
+                <p class="fbk-note">This run: 51% over 72 judged notes.</p>
+                <button class="fbk-meter-row"><span class="fbk-meter-name">Solo 1</span><span class="fbk-meter" data-band="bad" style="--fbk-fill:8%"></span><span class="fbk-meter-value">8%</span></button>
+                <button class="fbk-meter-row"><span class="fbk-meter-name">Verse 1</span><span class="fbk-meter" data-band="bad" style="--fbk-fill:33%"></span><span class="fbk-meter-value">33%</span></button>
+                <button class="fbk-meter-row"><span class="fbk-meter-name">Intro 1</span><span class="fbk-meter" data-band="mid" style="--fbk-fill:58%"></span><span class="fbk-meter-value">58%</span></button>
+            </div>
+        </div>
+    </div>
+</section>
+
+</div>
+</body>
+</html>
