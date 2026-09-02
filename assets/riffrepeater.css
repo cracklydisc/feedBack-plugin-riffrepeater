@@ -31,8 +31,6 @@
     text-align: center;
 }
 
-.rr-arrow { color: rgb(var(--fbk-dim, 148 163 184)); }
-
 .rr-acts { margin-top: 6px; }
 
 /* ── the timeline ───────────────────────────────────────────────────────
@@ -188,4 +186,73 @@
 .rr-plate-preview {
     border-color: rgb(var(--fbk-border, 51 65 85) / 0.4);
     border-style: dashed;
+}
+
+/* ── the picker row ──────────────────────────────────────────────────────
+ *
+ * A chevron, the plate, a chevron. This replaced two rows — a stepper that
+ * carried the section's name and a plate whose title was the section's name —
+ * so the name is printed once and the row that existed to hold the duplicate
+ * is gone.
+ */
+
+/*
+ * The nowrap comes from the kit's `.fbk-row-nowrap`, not from here.
+ *
+ * It was here first and did nothing: `.rr-pick` and the kit's `.fbk-row` are
+ * both single-class selectors, so source order decided, and the kit's sheet
+ * was being injected last. `install()` prepends its link now — the kit is a
+ * base layer and has to lose ties — and the modifier lives in the kit, where
+ * "a row that must stay on one line" belongs.
+ */
+.rr-pick { gap: var(--fbk-s-1, 2px); }
+
+.rr-pick .fbk-plate {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: var(--fbk-s-2, 4px) 0;
+}
+
+/*
+ * Quiet, and narrow.
+ *
+ * The section stepper used two filled 26px circles at full weight for a job
+ * the timeline above already does with a click. It is a fallback for a
+ * keyboard or a controller, so it reads like one: borderless until you point
+ * at it, and no wider than the glyph needs.
+ */
+/*
+ * Width from the scale, and big enough to be true.
+ *
+ * At `h-sm` the declared width was a lie: a flex item's `min-width: auto`
+ * resolves to its min-content, and a 16px chevron with its borders measures
+ * 30px, so the box came out 30 whatever the rule said. `h-md` is both on the
+ * scale and above that floor.
+ */
+.rr-chev {
+    flex: 0 0 auto;
+    width: var(--fbk-h-md, 32px);
+    height: var(--fbk-h-lg, 44px);
+    padding: 0;
+    font-size: 16px;
+    line-height: 1;
+}
+
+/*
+ * A and B, as circles with a letter in them.
+ *
+ * The same shape as the steppers they sit between, on purpose: setting an
+ * edge at the playhead and nudging an edge by a bar are the same job from two
+ * directions, and one shape language for one job is the whole point of the
+ * four families.
+ */
+.rr-mark {
+    font-weight: 800;
+    border-color: rgb(var(--fbk-accent, 14 165 233) / 0.5);
+    color: rgb(var(--fbk-accent-hi, 56 189 248));
+}
+
+.rr-mark:hover:not(:disabled) {
+    background: rgb(var(--fbk-accent, 14 165 233) / 0.2);
+    border-color: rgb(var(--fbk-accent, 14 165 233));
 }

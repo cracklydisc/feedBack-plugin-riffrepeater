@@ -1,5 +1,5 @@
 /*
- * kit 0.2.0 — the shared look.
+ * kit 0.3.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -190,6 +190,17 @@
 }
 
 .fbk-row-tight { min-height: 0; margin: var(--fbk-s-1, 2px) 0; }
+
+/*
+ * A row that must stay on one line.
+ *
+ * WRAPPING SHRINKS NOTHING. A wrapping flex container breaks the line before
+ * it shrinks anything, so a row whose children come to 332px in a 296px body
+ * puts its last child on a second line rather than asking the flexible one to
+ * give up 36px — `flex-shrink: 1` and `min-width: 0` are both powerless while
+ * wrapping is allowed. Pair this with `min-width: 0` on whichever child gives.
+ */
+.fbk-row-nowrap { flex-wrap: nowrap; }
 
 /* A label above its control. Use when the label is long or the control is
    full-width. */

@@ -1,5 +1,5 @@
 /*
- * kit 0.2.0 — shortcuts, through the host's own registry.
+ * kit 0.3.0 — shortcuts, through the host's own registry.
  *
  * `window.registerShortcut` is documented as a plugin-facing API and it earns
  * its keep twice: the app's `?` panel and its Settings → Keybinds tab list

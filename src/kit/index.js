@@ -1,5 +1,5 @@
 /*
- * kit 0.2.0 — the entry point.
+ * kit 0.3.0 — the entry point.
  *
  * `install()` does the two things every consumer needs and would otherwise
  * each get slightly wrong: it puts the kit's stylesheet on the page, and it
@@ -24,7 +24,7 @@
 
 import { follow, unfollow } from './theme.js';
 
-export const VERSION = '0.2.0';
+export const VERSION = '0.3.0';
 
 const LINK_ATTR = 'data-fbk-kit';
 
@@ -54,7 +54,21 @@ export function install(o) {
         link.rel = 'stylesheet';
         link.setAttribute(LINK_ATTR, id);
         link.href = href;
-        document.head.appendChild(link);
+        /*
+         * PREPENDED, not appended — the kit is a base layer and has to lose
+         * every tie.
+         *
+         * A consumer's `.rr-pick { flex-wrap: nowrap }` and the kit's
+         * `.fbk-row { flex-wrap: wrap }` are both single-class selectors, so
+         * source order alone decides. Appending put the kit last and it won,
+         * which meant a plugin could not override the kit without inventing
+         * specificity — and the first thing one tried to override silently
+         * did nothing.
+         *
+         * `prepend` puts it ahead of whatever is already in <head> and ahead
+         * of the plugin sheet the host injects, so the consumer always wins.
+         */
+        document.head.prepend(link);
     }
 
     follow(o.recipes || null);

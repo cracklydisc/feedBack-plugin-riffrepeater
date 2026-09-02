@@ -126,16 +126,6 @@ export function createContent(outer, actions) {
      */
     let hits = [];      // [{ key, centre, from, to }] in px, left to right
 
-    // The same navigation without a mouse, and the selection's name.
-    const navRow = c.el('div', 'fbk-row rr-nav');
-    const navPrev = c.button('fbk-step', '◀', 'Previous section', () => actions.stepSection(-1));
-    const navName = c.el('span', 'rr-nav-name');
-    const navNext = c.button('fbk-step', '▶', 'Next section', () => actions.stepSection(1));
-    navRow.appendChild(navPrev);
-    navRow.appendChild(navName);
-    navRow.appendChild(navNext);
-    navRow.appendChild(c.kbd(', .'));
-    body.appendChild(navRow);
 
     // phrase stepper
     const partRow = c.el('div', 'fbk-row rr-parts');
@@ -166,44 +156,59 @@ export function createContent(outer, actions) {
         () => actions.barsAtPlayhead()));
     body.appendChild(barsRow);
 
+
     /*
-     * A and B, from the playhead.
+     * The plate, flanked by the section stepper.
      *
-     * The way a guitarist actually marks a passage: press A, let the song run
-     * to the end of the phrase, press B. The trim row below is for adjusting
-     * afterwards — reading a clock and stepping a number to match it is the
-     * same job done backwards.
+     * These were two rows: a stepper carrying the section's name, then a plate
+     * whose title was the section's name. The name was printed twice, four
+     * rows apart, and the second row existed to hold the duplicate. One row
+     * now — the chevrons step, the plate says what you are on, and it is the
+     * only place that says it.
      */
-    const abRow = c.el('div', 'fbk-row rr-ab');
-    abRow.appendChild(c.el('span', 'fbk-label fbk-label-inline', 'Mark'));
-    const markA = c.button('fbk-btn fbk-btn-small', null,
-        'Set the loop start (A) at the playhead', () => actions.markEdge('start'));
-    markA.appendChild(c.el('span', null, 'Set A'));
-    markA.appendChild(c.kbd('I'));
-    const markB = c.button('fbk-btn fbk-btn-small', null,
-        'Set the loop end (B) at the playhead', () => actions.markEdge('end'));
-    markB.appendChild(c.el('span', null, 'Set B'));
-    markB.appendChild(c.kbd('O'));
-    abRow.appendChild(markA);
-    abRow.appendChild(markB);
-    body.appendChild(abRow);
-
+    const pick = c.el('div', 'fbk-row fbk-row-tight fbk-row-nowrap rr-pick');
+    const navPrev = c.button('fbk-btn fbk-btn-quiet rr-chev', '‹',
+        'Previous section — the , key', () => actions.stepSection(-1));
     const plate = c.plate();
-    body.appendChild(plate.el);
+    const navNext = c.button('fbk-btn fbk-btn-quiet rr-chev', '›',
+        'Next section — the . key', () => actions.stepSection(1));
+    pick.appendChild(navPrev);
+    pick.appendChild(plate.el);
+    pick.appendChild(navNext);
+    body.appendChild(pick);
 
+    /*
+     * The loop's two edges, in one row and with no label.
+     *
+     * This was two rows and two labels — MARK, for putting an edge at the
+     * playhead, and TRIM, for nudging one by a bar — which are the same job
+     * from two directions. One row now: A and B set an edge from where the
+     * song is, and the steppers either side of each time move it a bar.
+     *
+     * No label, because the plate directly above already reads "1:24 → 1:39",
+     * and no arrow glyph between the halves for the same reason. A and B are
+     * the app's own names for these two points, so the letters carry it.
+     */
     const trim = c.el('div', 'fbk-row rr-trim');
-    trim.title = 'Move a loop edge by one whole bar. Bars, not seconds: a boundary '
-        + 'off the grid turns the count-in into a guess.';
-    trim.appendChild(c.el('span', 'fbk-label fbk-label-inline', 'Trim'));
-    trim.appendChild(c.button('fbk-step', '−', 'Start one bar earlier', () => actions.nudge('start', -1)));
+    trim.title = 'A and B put an edge at the playhead; the steppers move one by a whole bar. '
+        + 'Bars, not seconds: a boundary off the grid turns the count-in into a guess.';
+    const markA = c.button('fbk-step rr-mark', 'A',
+        'Set the loop start (A) at the playhead — the I key',
+        () => actions.markEdge('start'));
     const trimStart = c.el('span', 'rr-time');
+    const markB = c.button('fbk-step rr-mark', 'B',
+        'Set the loop end (B) at the playhead — the O key',
+        () => actions.markEdge('end'));
+    const trimEnd = c.el('span', 'rr-time');
+    trim.appendChild(markA);
+    trim.appendChild(c.button('fbk-step', '−', 'Start one bar earlier', () => actions.nudge('start', -1)));
     trim.appendChild(trimStart);
     trim.appendChild(c.button('fbk-step', '+', 'Start one bar later', () => actions.nudge('start', 1)));
-    trim.appendChild(c.el('span', 'rr-arrow', '→'));
+    trim.appendChild(c.el('span', 'fbk-push'));
     trim.appendChild(c.button('fbk-step', '−', 'End one bar earlier', () => actions.nudge('end', -1)));
-    const trimEnd = c.el('span', 'rr-time');
     trim.appendChild(trimEnd);
     trim.appendChild(c.button('fbk-step', '+', 'End one bar later', () => actions.nudge('end', 1)));
+    trim.appendChild(markB);
     body.appendChild(trim);
 
     // ── how to drill ─────────────────────────────────────────────────────
@@ -298,12 +303,11 @@ export function createContent(outer, actions) {
 
     const speedRow = c.el('div', 'fbk-row rr-speed');
     const speed = c.segmented(
-        PRESETS.map((p) => ({ value: p, label: String(p), title: `Play at ${p}% of tempo` })),
+        PRESETS.map((p) => ({ value: p, label: String(p), title: `Play at ${p}% of tempo — the ↑ and ↓ keys step 5%` })),
         (p) => actions.setSpeed(p),
         'Playback speed',
     );
     speedRow.appendChild(speed.el);
-    speedRow.appendChild(c.kbd('↑ ↓'));
     body.appendChild(speedRow);
 
     const diffRow = c.el('div', 'fbk-row rr-diff');
@@ -637,10 +641,9 @@ export function createContent(outer, actions) {
 
         renderTimeline(snap);
 
-        // the section stepper doubles as the selection's name
+        // the chevrons step through the sections; the plate says which one
         const current = snap.sections.find((s) => s.key === snap.sectionKey);
         const at = snap.sections.indexOf(current);
-        navName.textContent = current ? current.label : '—';
         navPrev.disabled = at <= 0;
         navNext.disabled = at < 0 || at >= snap.sections.length - 1;
 

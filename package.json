@@ -1,6 +1,6 @@
 {
   "name": "feedback-plugin-riffrepeater",
-  "version": "0.5.2",
+  "version": "0.5.5",
   "private": true,
   "type": "module",
   "description": "Tests for the Riff Repeater practice plugin for fee[dB]ack.",

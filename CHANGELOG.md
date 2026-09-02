@@ -1,5 +1,67 @@
 # Changelog
 
+## 0.5.5 — less, not restyled
+
+Reported: the panel reads better than it did but is still busy, and there is an
+unidentifiable icon after the right arrow.
+
+**The icon was a key cap reading `, .`** — a comma and a full stop at 10px with
+0.1em tracking, which is two faint dots and no information. Mine, and gone.
+
+Then measured, rather than argued about:
+
+| | before | after |
+| --- | --- | --- |
+| interactive elements | 40 | 40 |
+| visible rows | 9 | **8** |
+| key caps on screen | **6** | **1** |
+| times the section's name is printed | **2** | **1** |
+
+So the answer was **removal, not restyling**:
+
+- **The nav row is gone.** It carried the section's name next to two filled
+  26px circles — and the plate four rows below carried the same name as its
+  title. The row existed to hold a duplicate. The chevrons moved onto the
+  plate's row, quiet and narrow, and the name is printed once.
+- **MARK and TRIM merged.** Putting an edge at the playhead and nudging an
+  edge by a bar are the same job from two directions; they were two rows with
+  two uppercase labels. One row now, no label — the plate directly above
+  already reads `1:24 → 1:39` — with **A** and **B** as circles in the same
+  shape family as the steppers they sit between.
+- **Five of six key caps went into tooltips.** The shortcuts are registered
+  with the host's own registry, so they are already listed in its `?` panel
+  and its Settings → Keybinds tab. Six small dark boxes scattered through a
+  336px panel bought nothing that was not documented in two places. The one
+  on the primary stays, because that is the shortcut worth learning.
+- **Two fewer uppercase labels** in the left column, as a consequence: three
+  where there were five.
+
+### Fixed, and worth writing down
+
+The one-row picker took three attempts, and each failure looked like the
+previous one:
+
+1. **A stale `?v=`.** The host reads `plugin.json` once at startup, so every
+   version bump since the plugin was created had been invisible and the
+   browser was being handed `riffrepeater.css?v=0.1.0`. A stylesheet change
+   needs a version bump *and* a server restart; the `src/` tree live-edits
+   fine because it is served no-cache with ETags.
+2. **A cascade problem.** `.rr-pick { flex-wrap: nowrap }` here and
+   `.fbk-row { flex-wrap: wrap }` in the kit are both single-class selectors,
+   so source order decided — and the kit's sheet was injected last and won.
+   Fixed in the kit: `install()` prepends its link, so the kit is a base layer
+   that loses ties, and `.fbk-row-nowrap` lives there where it belongs.
+3. **A wrong test.** Mine compared the `top` of each child to detect a wrap,
+   which only works when they are all the same height — so a zero-height
+   spacer and a two-line plate both reported as wraps. `align-items: center`
+   puts every child of an unwrapped row on the same vertical *centre*;
+   comparing those says all four rows are on one line and none overflows.
+
+And the CSS lesson underneath all of it: **a wrapping flex container breaks
+the line before it shrinks anything.** `flex-shrink: 1` and `min-width: 0`
+were both already set on the plate and neither could do a thing while
+`flex-wrap: wrap` was in force.
+
 ## 0.5.2 — the thin sections are clickable now
 
 Reported: parts of the timeline are too small to click. Measured on Blackened —
