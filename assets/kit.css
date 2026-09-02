@@ -1,0 +1,772 @@
+/*
+ * kit 0.1.0 — the shared look.
+ *
+ * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
+ * injects a <link>, so real CSS is allowed and is the better choice: this file
+ * carries no utility classes, applies no second preflight, and cannot be
+ * broken by a change to what core's prebuilt Tailwind happens to contain.
+ *
+ * Every colour is a `--fbk-*` role and every DEVICE is a `--fbk-*` recipe
+ * slot, both written by src/theme.js from the host's own theme tokens. There
+ * is no literal hex, no literal glow and no literal gradient below this line
+ * — that is DESIGN.md §6, and it is what lets a glow-less shop skin neutralise
+ * the glow instead of leaving a control that vanished.
+ *
+ * The look is a GAME HUD, not a settings sheet: objects with depth over a dark
+ * stage, lit cells rather than bordered boxes, circular steppers matching the
+ * player's own rail, numbers as readouts, and one glowing primary. See
+ * DESIGN.md §7 and §8 for why each of those.
+ */
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * `hidden` has to actually hide
+ *
+ * The browser's own `[hidden] { display: none }` is a UA rule at specificity
+ * (0,1,0), and so is `.fbk-btn { display: inline-flex }` — and an author rule
+ * beats a UA rule at equal specificity. So every control in this file with an
+ * explicit `display` silently made `el.hidden = true` a no-op, which is how
+ * Riff Repeater ended up showing "Start drill" and "End drill" at the same
+ * time: the JS was correct and the CSS was ignoring it.
+ *
+ * Scoped rather than global — a plugin stylesheet has no business redefining
+ * `[hidden]` for the whole app — but `!important` inside that scope, because
+ * the whole point is to outrank the display rules below.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-panel[hidden],
+.fbk-panel [hidden],
+.fbk-open-btn[hidden] { display: none !important; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * The panel
+ *
+ * Parked top-right, over the player. DESIGN.md §9 has the measured layer map
+ * and the two bug reports that killed anchoring.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-panel {
+    position: fixed;
+    top: 64px;
+    right: 12px;
+    z-index: 150;
+    width: 336px;
+    max-width: calc(100vw - 24px);
+    max-height: 76vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    box-sizing: border-box;
+
+    border-radius: var(--fbk-radius, 12px);
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+    /* A stage-lit object: a real shadow plus a top inner light line. */
+    background:
+        linear-gradient(180deg, rgb(var(--fbk-surface, 30 41 59)), rgb(var(--fbk-bg, 15 23 42)));
+    box-shadow: var(--fbk-panel-shadow, 0 24px 60px rgb(0 0 0 / 0.6)),
+                var(--fbk-panel-inner, inset 0 1px 0 rgb(255 255 255 / 0.06));
+    color: rgb(var(--fbk-text, 248 250 252));
+
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+/* No fade-in. DESIGN.md §10 — a panel froze at 0.8 opacity in a webview. */
+.fbk-panel-open { /* state marker only */ }
+
+.fbk-panel *:focus-visible {
+    outline: 2px solid rgb(var(--fbk-focus, 56 189 248));
+    outline-offset: 2px;
+}
+
+.fbk-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 13px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: rgb(var(--fbk-surface, 30 41 59));
+    border-bottom: 1px solid rgb(var(--fbk-border, 51 65 85));
+    border-radius: var(--fbk-radius, 12px) var(--fbk-radius, 12px) 0 0;
+}
+
+.fbk-title {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+.fbk-subtitle {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: rgb(var(--fbk-dim, 148 163 184));
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fbk-body { padding: 11px 13px 15px; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Structure
+ *
+ * Section headings, and a "field" whose label sits ABOVE its control rather
+ * than in a left-hand column. A column of uppercase labels is what makes a
+ * panel read as a settings table (DESIGN.md §7).
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 15px 0 7px;
+}
+
+.fbk-section:first-child { margin-top: 2px; }
+
+.fbk-section-title {
+    margin: 0;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgb(var(--fbk-dim, 148 163 184));
+}
+
+/* A hairline that fills the rest of the heading's row. Cheap, and it makes a
+   heading read as a divider rather than as another line of text. */
+.fbk-section-rule {
+    flex: 1 1 auto;
+    height: 1px;
+    background: linear-gradient(90deg, rgb(var(--fbk-border, 51 65 85)), transparent);
+}
+
+.fbk-field { margin: 8px 0; }
+
+.fbk-label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: rgb(var(--fbk-dim, 148 163 184));
+}
+
+.fbk-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.fbk-push { margin-left: auto; }
+
+.fbk-note {
+    margin: 6px 0 0;
+    color: rgb(var(--fbk-dim, 148 163 184));
+    font-size: 11px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * A readout — DESIGN.md §7, numbers big and words few
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-readout {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    font-variant-numeric: tabular-nums;
+}
+
+.fbk-readout-value {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1;
+    color: rgb(var(--fbk-text, 248 250 252));
+}
+
+.fbk-readout-unit {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgb(var(--fbk-dim, 148 163 184));
+}
+
+/* A panel-width slab of facts about whatever is selected. */
+.fbk-plate {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 8px 0 4px;
+    padding: 8px 10px;
+    border-radius: var(--fbk-radius-sm, 8px);
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+    box-shadow: var(--fbk-panel-inner, inset 0 1px 0 rgb(255 255 255 / 0.06));
+}
+
+.fbk-plate-title { font-weight: 700; font-size: 13px; }
+
+.fbk-plate-meta {
+    color: rgb(var(--fbk-dim, 148 163 184));
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Family 1 — SEGMENTED: pick one of a small fixed set
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-seg {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    flex: 1 1 auto;
+    border-radius: var(--fbk-radius-sm, 8px);
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+    box-shadow: var(--fbk-panel-inner, inset 0 1px 0 rgb(255 255 255 / 0.06));
+}
+
+.fbk-seg-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    border: 0;
+    border-radius: 6px;
+    padding: 6px 4px;
+    background: transparent;
+    color: rgb(var(--fbk-dim, 148 163 184));
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: color var(--fbk-motion, 140ms ease), background var(--fbk-motion, 140ms ease);
+}
+
+.fbk-seg-btn:hover:not(:disabled):not(.fbk-on) { color: rgb(var(--fbk-text, 248 250 252)); }
+
+/* A LIT cell, not a bordered box. The halo is a slot, so a glow-less skin
+   gets the fill alone and still reads as selected. */
+.fbk-seg-btn.fbk-on {
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
+    color: var(--fbk-lit-on, rgb(var(--fbk-on-accent, 248 250 252)));
+    box-shadow: var(--fbk-lit-halo, none);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Family 2 — CHIPS: pick a subset
+ *
+ * On a rail, so a set of chips that happens to be ordered reads as a track.
+ * That is what lets a chip group double as a progress display (DESIGN.md §5).
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    flex: 1 1 auto;
+}
+
+.fbk-chips-rail {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0;
+    flex: 1 1 auto;
+}
+
+.fbk-chips-rail::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    top: 50%;
+    height: 2px;
+    margin-top: -1px;
+    background: rgb(var(--fbk-border, 51 65 85));
+}
+
+.fbk-chip {
+    position: relative;
+    z-index: 1;
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+    border-radius: var(--fbk-radius-pill, 999px);
+    padding: 4px 9px;
+    margin: 0 2px;
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    color: rgb(var(--fbk-dim, 148 163 184));
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: color var(--fbk-motion, 140ms ease), border-color var(--fbk-motion, 140ms ease);
+}
+
+.fbk-chips-rail .fbk-chip { flex: 1 1 0; min-width: 30px; padding: 4px 2px; }
+
+.fbk-chip:hover:not(:disabled) { color: rgb(var(--fbk-text, 248 250 252)); }
+
+/* In the set. */
+.fbk-chip.fbk-on {
+    border-color: rgb(var(--fbk-accent, 14 165 233));
+    background: rgb(var(--fbk-accent, 14 165 233) / 0.16);
+    color: rgb(var(--fbk-text, 248 250 252));
+}
+
+/* Where we are NOW — the one filled chip, so the eye lands on it. */
+.fbk-chip.fbk-now {
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
+    border-color: rgb(var(--fbk-accent, 14 165 233));
+    color: var(--fbk-lit-on, rgb(var(--fbk-on-accent, 248 250 252)));
+    box-shadow: var(--fbk-lit-halo, none);
+}
+
+/* Cleared. Green is only ever this — DESIGN.md §3. */
+.fbk-chip.fbk-done {
+    border-color: rgb(var(--fbk-good, 34 197 94));
+    background: rgb(var(--fbk-good, 34 197 94) / 0.16);
+    color: rgb(var(--fbk-text, 248 250 252));
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Family 3 — TOGGLE: a boolean
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: rgb(var(--fbk-dim, 148 163 184));
+    font-size: 12px;
+    user-select: none;
+}
+
+/* The real control stays for the keyboard and the screen reader; only its
+   default rendering goes away. */
+.fbk-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.fbk-toggle-track {
+    flex: 0 0 auto;
+    position: relative;
+    width: 34px;
+    height: 19px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+    box-shadow: var(--fbk-panel-inner, inset 0 1px 0 rgb(255 255 255 / 0.06));
+    transition: background var(--fbk-motion, 140ms ease), border-color var(--fbk-motion, 140ms ease);
+}
+
+.fbk-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 13px;
+    height: 13px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-dim, 148 163 184));
+    transition: transform var(--fbk-motion, 140ms ease), background var(--fbk-motion, 140ms ease);
+}
+
+.fbk-toggle input:checked + .fbk-toggle-track {
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
+    border-color: rgb(var(--fbk-accent, 14 165 233));
+    box-shadow: var(--fbk-lit-halo, none);
+}
+
+.fbk-toggle input:checked + .fbk-toggle-track::after {
+    transform: translateX(15px);
+    background: var(--fbk-lit-on, rgb(var(--fbk-on-accent, 248 250 252)));
+}
+
+.fbk-toggle input:focus-visible + .fbk-toggle-track {
+    outline: 2px solid rgb(var(--fbk-focus, 56 189 248));
+    outline-offset: 2px;
+}
+
+.fbk-toggle input:checked ~ .fbk-toggle-text { color: rgb(var(--fbk-text, 248 250 252)); }
+.fbk-toggle input:disabled ~ * { opacity: 0.4; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Family 4 — STEPPER: a number you nudge
+ *
+ * Round, like the player's own rail of circular icon buttons (DESIGN.md §8).
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.fbk-step {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--fbk-radius-pill, 999px);
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    color: rgb(var(--fbk-text, 248 250 252));
+    font: inherit;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--fbk-motion, 140ms ease), border-color var(--fbk-motion, 140ms ease);
+}
+
+.fbk-step:hover:not(:disabled) {
+    background: rgb(var(--fbk-surface, 30 41 59));
+    border-color: rgb(var(--fbk-accent, 14 165 233) / 0.6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * A slider that looks like a HUD gauge rather than a form field
+ *
+ * Still an <input type="range">, because that is the accessible,
+ * keyboard-operable control. Only its skin changes.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-slider {
+    flex: 1 1 110px;
+    min-width: 90px;
+    height: 20px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.fbk-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+}
+
+.fbk-slider::-moz-range-track {
+    height: 6px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+}
+
+.fbk-slider::-moz-range-progress {
+    height: 6px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
+}
+
+.fbk-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    margin-top: -5px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
+    border: 1px solid rgb(var(--fbk-accent-hi, 56 189 248));
+    box-shadow: var(--fbk-lit-halo, none);
+}
+
+.fbk-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
+    border: 1px solid rgb(var(--fbk-accent-hi, 56 189 248));
+    box-shadow: var(--fbk-lit-halo, none);
+}
+
+.fbk-slider:disabled { opacity: 0.4; cursor: default; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Buttons — exactly one primary, on its own line (DESIGN.md §2)
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 30px;
+    box-sizing: border-box;
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+    border-radius: var(--fbk-radius-sm, 8px);
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    color: rgb(var(--fbk-text, 248 250 252));
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 11px;
+    cursor: pointer;
+    transition: background var(--fbk-motion, 140ms ease), border-color var(--fbk-motion, 140ms ease);
+}
+
+.fbk-btn:hover:not(:disabled) { background: rgb(var(--fbk-surface, 30 41 59)); }
+
+.fbk-btn:disabled,
+.fbk-step:disabled,
+.fbk-chip:disabled,
+.fbk-seg-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* THE primary. Its devices are all slots, so a glow-less skin gets a solid
+   fill and a border instead of a glow — and never nothing. */
+.fbk-btn-primary {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    background: var(--fbk-emph-fill, rgb(var(--fbk-accent, 14 165 233)));
+    border: var(--fbk-emph-border, 1px solid rgb(var(--fbk-accent-hi, 56 189 248)));
+    box-shadow: var(--fbk-emph-halo, none);
+    color: var(--fbk-emph-on, rgb(var(--fbk-on-accent, 248 250 252)));
+}
+
+.fbk-btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.fbk-btn-primary:disabled { box-shadow: none; filter: saturate(0.4); }
+
+/* The inverse of the primary: same slot, same size, different hue. */
+.fbk-btn-stop {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 800;
+    background: rgb(var(--fbk-alert, 239 68 68) / 0.18);
+    border: 1px solid rgb(var(--fbk-alert, 239 68 68));
+    box-shadow: none;
+    color: rgb(var(--fbk-text, 248 250 252));
+}
+
+.fbk-btn-stop:hover:not(:disabled) { background: rgb(var(--fbk-alert, 239 68 68) / 0.28); }
+
+.fbk-btn-small { min-height: 26px; padding: 4px 9px; font-size: 11px; font-weight: 600; }
+
+.fbk-btn-quiet {
+    background: transparent;
+    border-color: transparent;
+    color: rgb(var(--fbk-dim, 148 163 184));
+    font-weight: 600;
+}
+
+.fbk-btn-quiet:hover:not(:disabled) {
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    color: rgb(var(--fbk-text, 248 250 252));
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Meters — the one paint for measured data (DESIGN.md §3)
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-meter {
+    position: relative;
+    flex: 1 1 auto;
+    height: 7px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    border: 1px solid rgb(var(--fbk-border, 51 65 85) / 0.7);
+    overflow: hidden;
+}
+
+.fbk-meter::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--fbk-fill, 0%);
+    background: var(--fbk-meter-fill, rgb(var(--fbk-good, 34 197 94)));
+    transition: width var(--fbk-motion, 140ms ease);
+}
+
+.fbk-meter[data-band="good"]::after { background: rgb(var(--fbk-good, 34 197 94)); }
+.fbk-meter[data-band="mid"]::after { background: rgb(var(--fbk-mid, 234 179 8)); }
+.fbk-meter[data-band="bad"]::after { background: rgb(var(--fbk-bad, 239 68 68)); }
+
+/* A clickable row: name, meter, number. */
+.fbk-meter-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    border: 0;
+    border-radius: var(--fbk-radius-sm, 8px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 12px;
+    padding: 4px 6px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.fbk-meter-row:hover { background: rgb(var(--fbk-surface-2, 11 18 32)); }
+
+.fbk-meter-name {
+    flex: 0 0 92px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fbk-meter-value {
+    flex: 0 0 38px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: rgb(var(--fbk-dim, 148 163 184));
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Small parts — badge, status dot, key cap, flash
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* A caveat, with its sentence in the `title`. Never a box of prose. */
+.fbk-badge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 19px;
+    height: 19px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    font-size: 11px;
+    line-height: 1;
+    cursor: help;
+    background: rgb(var(--fbk-mid, 234 179 8) / 0.16);
+    border: 1px solid rgb(var(--fbk-mid, 234 179 8) / 0.5);
+    color: rgb(var(--fbk-mid, 234 179 8));
+}
+
+/* The state of an input, on the control that needs it. */
+.fbk-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-dim, 148 163 184));
+}
+
+.fbk-dot[data-state="ready"] {
+    background: rgb(var(--fbk-good, 34 197 94));
+    box-shadow: 0 0 8px rgb(var(--fbk-good, 34 197 94) / 0.7);
+}
+
+.fbk-dot[data-state="warn"] { background: rgb(var(--fbk-mid, 234 179 8)); }
+.fbk-dot[data-state="off"] { background: rgb(var(--fbk-dim, 148 163 184)); }
+
+/* A key cap. A shortcut nobody can see is a shortcut nobody uses. */
+.fbk-kbd {
+    flex: 0 0 auto;
+    padding: 2px 6px;
+    border-radius: 5px;
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+    background: rgb(var(--fbk-bg, 15 23 42));
+    color: rgb(var(--fbk-dim, 148 163 184));
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+.fbk-btn-primary .fbk-kbd,
+.fbk-btn-stop .fbk-kbd {
+    border-color: rgb(255 255 255 / 0.3);
+    background: rgb(0 0 0 / 0.22);
+    color: inherit;
+}
+
+/*
+ * Why something just FAILED — an event, so it is written imperatively and
+ * clears itself. Why something is BLOCKED is not here: that lives on the
+ * disabled control's own tooltip.
+ */
+.fbk-flash {
+    margin: 8px 0 0;
+    padding: 7px 9px;
+    border-radius: var(--fbk-radius-sm, 8px);
+    background: rgb(var(--fbk-mid, 234 179 8) / 0.12);
+    border: 1px solid rgb(var(--fbk-mid, 234 179 8) / 0.4);
+    color: rgb(var(--fbk-text, 248 250 252));
+    font-size: 11px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * The button the kit puts in the player's plugin-control slot
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-open-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 11px;
+    border-radius: var(--fbk-radius-sm, 8px);
+    border: 1px solid rgb(var(--fbk-border, 51 65 85));
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+    color: rgb(var(--fbk-text, 248 250 252));
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background var(--fbk-motion, 140ms ease), border-color var(--fbk-motion, 140ms ease);
+}
+
+.fbk-open-btn:hover { background: rgb(var(--fbk-surface, 30 41 59)); }
+
+.fbk-open-btn.fbk-on {
+    border-color: rgb(var(--fbk-accent, 14 165 233));
+    background: rgb(var(--fbk-accent, 14 165 233) / 0.16);
+}
+
+.fbk-x {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: transparent;
+    color: rgb(var(--fbk-dim, 148 163 184));
+    font: inherit;
+    cursor: pointer;
+}
+
+.fbk-x:hover {
+    color: rgb(var(--fbk-text, 248 250 252));
+    background: rgb(var(--fbk-surface-2, 11 18 32));
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Narrow windows, and the motion gate's belt-and-braces
+ * ───────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+    .fbk-panel { width: calc(100vw - 24px); }
+    .fbk-meter-name { flex-basis: 72px; }
+}
+
+/*
+ * `--fbk-motion` is set to `none` by src/theme.js from the host's own
+ * `prefersReducedMotion()`, so there is one answer for the whole app. This is
+ * the fallback for a host that predates that API.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .fbk-panel *, .fbk-open-btn { transition: none !important; }
+}

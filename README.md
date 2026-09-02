@@ -155,9 +155,16 @@ apply to.
 
 ### Reads as a HUD, not a preferences sheet
 
-The panel is something you look at with a guitar in your hands, so four rules
-hold, three of them from the control taxonomy the Virtuoso plugin already
-writes down for this app:
+The panel's look and its controls come from
+**[feedBack-plugin-kit](https://github.com/cracklydisc/feedBack-plugin-kit)**,
+vendored into `src/kit/` and `assets/kit.css`. Its `DESIGN.md` carries the
+rules — each one with the Riff Repeater version number of the bug that taught
+it — and its Layer 2 implements the device recipes the app's own
+`docs/host-theme-contract.md` proposes but has not yet shipped, so the glow on
+the primary is a slot a glow-less shop skin can neutralise rather than a
+literal `box-shadow`.
+
+Four of those rules, because they are the ones this panel is shaped by:
 
 **One control family per meaning, and the families must not collide.** A
 segmented control is "pick one of a small fixed set" — the mode tabs, and the
@@ -329,7 +336,14 @@ Two things learned from the DOM, in case that PR is written by somebody else:
 node --test tests/*.test.js
 ```
 
-98 tests, no dependencies, no build step. The four suites cover the pure
+98 tests, no dependencies, no build step.
+
+`src/kit/` and `assets/kit.css` are **vendored** — edit them in
+[feedBack-plugin-kit](https://github.com/cracklydisc/feedBack-plugin-kit) and
+copy them back, never here. There is no shared-library mechanism in this host
+(no import maps, no guaranteed plugin load order, and a plugin can be
+disabled), so a runtime dependency on another plugin would break every consumer
+when one is switched off. The four suites cover the pure
 modules — the range table, the ladder, the per-passage statistics, and the
 store. The host seam, the model's wiring and the panel are verified in the
 running app instead; they are the parts that a unit test can only mock.

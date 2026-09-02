@@ -13,12 +13,13 @@ import * as model from './model.js';
 import * as drill from './drill.js';
 import * as store from './store.js';
 import * as ranges from './ranges.js';
-import { follow, unfollow } from './theme.js';
+import * as kit from './kit/index.js';
 import { normalizeLadder } from './ladder.js';
-import { createPanel } from './ui/panel.js';
-import { createMount } from './ui/mount.js';
+import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
+/** Kept in step with plugin.json — it cache-busts both stylesheets. */
+const VERSION = '0.5.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -38,8 +39,8 @@ const apiListeners = new Set();
 let open = false;
 let tickTimer = null;
 let tickRate = 0;
-let panel = null;
-let mount = null;
+let panel = null;      // the kit's shell
+let content = null;    // this plugin's controls inside it
 
 /**
  * What the running drill is working on.
@@ -201,7 +202,7 @@ function explain(reason) {
  * otherwise fail silently.
  */
 function note(text) {
-    if (panel && typeof panel.say === 'function') panel.say(text);
+    if (panel) panel.say(text);
     if (!open) console.warn(`[${ID}] ${text}`);
 }
 
@@ -210,9 +211,10 @@ function note(text) {
 // ─────────────────────────────────────────────────────────────────────────
 
 function render() {
-    if (!panel) return;
+    if (!content) return;
     const snap = model.snapshot();
-    panel.render(snap);
+    content.render(snap);
+    panel.setSubtitle(snap.songTitle);
 }
 
 function tick() {
@@ -271,17 +273,22 @@ function retick() {
     tickTimer = setInterval(tick, want);
 }
 
-function setOpen(next) {
-    // The panel belongs to the player and nowhere else. The button is hidden
-    // off it, so a user cannot get here — but `api.open()` can, and it did:
-    // the highway keeps the last song's sections after you navigate away, so
-    // the panel opened perfectly happily on top of the song library.
-    if (next && !host.inPlayer()) return;
-    open = !!next;
-    if (!mount) return;
-    if (open) { render(); mount.show(); } else { mount.hide(); }
+/*
+ * Opening and closing is the kit panel's job now, including the in-player
+ * guard (a programmatic open used to succeed over the song library, because
+ * the highway keeps the last song's sections after you navigate away). This
+ * only reacts to it: render before it appears, and re-pace the tick.
+ */
+function onPanelToggle(isOpen) {
+    open = !!isOpen;
+    if (open) render();
     retick();
     announceApi();
+}
+
+function setOpen(next) {
+    if (!panel) return;
+    if (next) { render(); panel.open(); } else { panel.close(); }
 }
 
 function announceApi() {
@@ -324,8 +331,7 @@ function wire() {
     unsubs.push(host.on('screen:changed', (e) => {
         const from = e && e.detail ? e.detail.from : null;
         if (from === 'player') { model.commitRun(); model.rememberSpeed(); }
-        if (mount) mount.syncVisibility();
-        if (open && !host.inPlayer()) setOpen(false);
+        if (panel) panel.syncVisibility();
     }));
 
     // A wrap means the conductor has just scored an iteration.
@@ -387,7 +393,7 @@ const SHORTCUT_SCOPE = 'player';
 const SHORTCUTS = [
     {
         key: 'd',
-        description: 'Riff Repeater: start or end a drill on the selected passage',
+        description: 'start or end a drill on the selected passage',
         handler: () => {
             if (drill.isDrilling()) actions.endDrill();
             else actions.startDrill();
@@ -395,12 +401,12 @@ const SHORTCUTS = [
     },
     {
         key: 'ArrowUp',
-        description: 'Riff Repeater: playback speed +5%',
+        description: 'playback speed +5%',
         handler: () => actions.setSpeed(Math.min(100, host.speedPct() + 5)),
     },
     {
         key: 'ArrowDown',
-        description: 'Riff Repeater: playback speed −5%',
+        description: 'playback speed −5%',
         handler: () => actions.setSpeed(Math.max(15, host.speedPct() - 5)),
     },
     {
@@ -410,43 +416,34 @@ const SHORTCUTS = [
         // shortcut that fights another plugin for a key is worse than one that
         // needs a tooltip.
         key: 'i',
-        description: 'Riff Repeater: set the loop start (A) at the playhead',
+        description: 'set the loop start (A) at the playhead',
         handler: () => actions.markEdge('start'),
     },
     {
         key: 'o',
-        description: 'Riff Repeater: set the loop end (B) at the playhead',
+        description: 'set the loop end (B) at the playhead',
         handler: () => actions.markEdge('end'),
     },
     {
         // Panel-open only: moving a selection you cannot see is not a feature.
         key: ',',
-        description: 'Riff Repeater: previous section (panel open)',
+        description: 'previous section (panel open)',
         handler: () => { if (open) actions.stepSection(-1); },
     },
     {
         key: '.',
-        description: 'Riff Repeater: next section (panel open)',
+        description: 'next section (panel open)',
         handler: () => { if (open) actions.stepSection(1); },
     },
 ];
 
-function wireShortcuts() {
-    if (typeof window.registerShortcut !== 'function') return;
-    for (const s of SHORTCUTS) {
-        try {
-            window.registerShortcut({ ...s, scope: SHORTCUT_SCOPE });
-        } catch (err) {
-            console.warn(`[${ID}] could not register '${s.key}':`, err);
-        }
-    }
-}
+let unwireShortcuts = () => {};
 
-function unwireShortcuts() {
-    if (typeof window.unregisterShortcut !== 'function') return;
-    for (const s of SHORTCUTS) {
-        try { window.unregisterShortcut(s.key, SHORTCUT_SCOPE); } catch (_) { /* going away anyway */ }
-    }
+function wireShortcuts() {
+    unwireShortcuts = kit.shortcuts.register(SHORTCUTS, {
+        scope: SHORTCUT_SCOPE,
+        name: 'Riff Repeater',
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -556,15 +553,15 @@ let booted = false;
 function boot() {
     if (booted || store.isDisabled()) return;
     booted = true;
-    follow();
-    panel = createPanel(actions);
-    mount = createMount({
-        panel: panel.root,
-        onOpen: () => setOpen(true),
-        onClose: () => setOpen(false),
-        isOpen: () => open,
+    kit.install({ id: ID, version: VERSION });
+    panel = kit.createPanel({
+        id: ID,
+        label: '⏱ Riff Repeater',
+        title: 'Riff Repeater — drill a passage',
     });
-    mount.attach();
+    content = createContent(panel.body, actions);
+    panel.onToggle(onPanelToggle);
+    panel.attach();
     wire();
     wireShortcuts();
     model.refreshSong();
@@ -581,9 +578,10 @@ function teardown() {
         try { off(); } catch (_) { /* going away anyway */ }
     }
     unwireShortcuts();
-    if (mount) { try { mount.detach(); } catch (_) { /* ignore */ } mount = null; }
-    panel = null;
-    unfollow();
+    unwireShortcuts = () => {};
+    if (panel) { try { panel.detach(); } catch (_) { /* ignore */ } panel = null; }
+    content = null;
+    kit.uninstall(ID);
     activeDrill = null;
 }
 

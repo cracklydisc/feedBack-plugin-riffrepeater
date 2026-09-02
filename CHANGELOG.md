@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.5.0 — on the kit
+
+Everything shared moved out. `src/kit/` and `assets/kit.css` are vendored from
+[feedBack-plugin-kit](https://github.com/cracklydisc/feedBack-plugin-kit), and
+this plugin is its first consumer.
+
+| | before | after |
+| --- | --- | --- |
+| this plugin's stylesheet | 866 lines | **187** |
+| the token bridge | `src/theme.js`, 65 lines | the kit's |
+| the panel shell and the rail button | `src/ui/mount.js`, 155 lines | the kit's |
+| the four control families | hand-rolled in CSS | `kit.controls.*` |
+| shortcut registration and teardown | inline | `kit.shortcuts.register()` |
+
+What is left in `src/ui/panel.js` is what is genuinely about drilling a
+passage: the timeline, the ladder's double life as a progress display, the
+per-iteration row, and the wiring. Everything else is a kit call.
+
+**The look is a game HUD now, not a settings sheet.** The kit implements
+**Layer 2 of the app's own proposed theme contract** — every device is a
+`--fbk-*` slot with `none` legal — so the panel has real depth (a glow on the
+primary, a top inner light line, lit cells instead of bordered boxes) while a
+glow-less shop skin can still neutralise the glow and get a solid border
+instead of a control that vanished. A test in the kit reads the source and
+fails on any literal hex or gradient.
+
+Concretely, in this panel: the primary is a 42px gradient slab with a glow and
+a status dot; steppers are circles, matching the player's own rail of circular
+icons; section headings carry a hairline divider; numbers are 20px tabular
+readouts instead of 11px text; and the difficulty slider is a HUD gauge that
+is still an `<input type="range">`, because that is the control a keyboard can
+operate.
+
+### Fixed
+
+- **"Start drill" and "End drill" showed at the same time.** The kit's
+  `.fbk-btn { display: inline-flex }` beat the browser's own
+  `[hidden] { display: none }` — same specificity, and an author rule wins —
+  so `el.hidden = true` had quietly become a no-op. Fixed in the kit with a
+  scoped `[hidden] { display: none !important }`, which closes it for every
+  future consumer.
+- A fourth instance of the `Number(null) === 0` trap, in the kit's new stepper:
+  `set(null)` walked it to its minimum. There is one `num()` in the kit now and
+  every number goes through it.
+
+### Not deduplicated, and why
+
+`settings.html` keeps its own copy of the retry dance. The kit ships
+`settings-mount.js` for it, but a settings panel runs as a **classic** inline
+script whose relative imports resolve against the document root, not the
+plugin's asset route — so it cannot `import` the kit without hard-coding an
+absolute plugin path and breaking if the plugin is ever renamed. Twenty-five
+duplicated lines is the cheaper risk.
+
 ## 0.4.0 — A and B, from the playhead
 
 The panel could set a loop from a section, a phrase, a bar count or a drag, and
