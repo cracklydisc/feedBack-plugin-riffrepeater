@@ -1284,7 +1284,15 @@
     filter: brightness(0.96);
 }
 
-/* The inverse of the primary: same slot, same size, different hue. */
+/*
+ * The inverse of the primary: same slot, same size, same WEIGHT, different hue.
+ *
+ * It used to be a wash — the alert colour at low alpha over the panel — which
+ * is how a secondary looks, and next to a solid START it read as disabled.
+ * Reported exactly that way. The two are the same control in two states, so
+ * they have to be the same object: filled, haloed, dark ink. Only the hue
+ * carries the difference, which is the whole of §3.
+ */
 .fbk-btn-stop {
     width: 100%;
     height: var(--fbk-h-lg, 56px);
@@ -1296,13 +1304,46 @@
        shouts. Uppercase with real tracking reads as a legend on hardware. */
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    background: rgb(var(--fbk-alert, 229 72 77) / 0.16);
+    /*
+     * FILLED, like the primary — because it IS the primary, in its other state.
+     *
+     * It was the alert colour at 0.16 alpha over the panel, which is how a
+     * secondary looks, and next to a solid START it read as disabled.
+     * Reported exactly that way. Start and End are one control in two states,
+     * so they have to be the same object: filled, haloed, dark ink. Only the
+     * hue carries the difference, which is the whole of §3.
+     */
+    background: linear-gradient(180deg,
+        rgb(var(--fbk-alert, 229 72 77)),
+        rgb(var(--fbk-alert, 229 72 77) / 0.82));
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-alert, 229 72 77));
-    box-shadow: none;
+    box-shadow: 0 0 0 1px rgb(var(--fbk-alert, 229 72 77) / 0.45),
+                0 8px 24px rgb(var(--fbk-alert, 229 72 77) / 0.3),
+                var(--fbk-control-lift, none);
+    /*
+     * WHITE INK, chosen after measuring both.
+     *
+     * On `#E5484D` the panel's text colour is **3.37 : 1** and the well is
+     * 5.15. The threshold that applies is 3.0, because this label is 15px at
+     * weight 800 — WCAG's "large text" — so both are legal and white is the
+     * one that was preferred. Recorded rather than left implicit: the next
+     * person to read this rule should know 3.37 was seen and accepted, not
+     * that nobody looked.
+     *
+     * Note it does NOT generalise to the primary. There the accent is light
+     * enough that white is 2.22:1, which is legal at no size — see the key-cap
+     * note above. Same question, opposite answer, because the fill is a
+     * different brightness.
+     */
     color: rgb(var(--fbk-text, 232 238 252));
 }
 
-.fbk-btn-stop:hover:not(:disabled) { background: rgb(var(--fbk-alert, 229 72 77) / 0.26); }
+.fbk-btn-stop:hover:not(:disabled) {
+    /* Same (0,3,0) hole as the primary's — a `.fbk-btn:hover` would otherwise
+       paint the secondary's wash over this fill. */
+    background: rgb(var(--fbk-alert, 229 72 77));
+    filter: brightness(1.08);
+}
 
 .fbk-btn-small {
     height: var(--fbk-h-sm, 24px);
@@ -2153,8 +2194,18 @@
  * Hanging them off the outside edges means the pair always reads left-to-right
  * and the selection outline stays visible between them however thin it is.
  */
-.fbk-strip-handle[data-edge="start"] { right: 100%; margin-right: -2px; }
-.fbk-strip-handle[data-edge="end"] { left: 100%; margin-left: -2px; }
+/*
+ * A GAP, not an overlap, however narrow the selection is.
+ *
+ * They hung flush against the selection's edges, so a one-bar phrase — a few
+ * pixels wide on a five-minute song — put them almost touching, and two
+ * identical rounded boxes side by side read as one blob `AB` rather than as
+ * two edges. Pushing them 3px OUTWARD guarantees air between them whatever the
+ * selection does, and the outline stays visible in the middle: the pair always
+ * reads as "this edge, that edge, and the loop between".
+ */
+.fbk-strip-handle[data-edge="start"] { right: 100%; margin-right: 3px; }
+.fbk-strip-handle[data-edge="end"] { left: 100%; margin-left: 3px; }
 
 .fbk-strip-handle:hover:not(:disabled) { background: rgb(var(--fbk-accent-hi, 96 194 255)); }
 
@@ -2346,6 +2397,28 @@
  * a layout read as boxes in boxes. The field is the boundary now, so the
  * things it contains give theirs up.
  */
+/*
+ * CONCENTRIC CORNERS.
+ *
+ * A button sitting 2px inside a 12px well wants a 10px corner, not an 8px
+ * one: the two arcs share a centre only when the inner radius is the outer
+ * radius minus the gap. At 8 the inner corner is tighter than its container's
+ * and the 2px gap visibly widens at each corner — which is the "concentricity
+ * could be better" report, and it is arithmetic rather than taste.
+ */
+.fbk-stepper > .fbk-step:first-child {
+    border-radius: calc(var(--fbk-radius-well, 12px) - var(--fbk-s-1, 2px))
+        var(--fbk-radius-sm, 8px) var(--fbk-radius-sm, 8px)
+        calc(var(--fbk-radius-well, 12px) - var(--fbk-s-1, 2px));
+}
+
+.fbk-stepper > .fbk-step:last-child {
+    border-radius: var(--fbk-radius-sm, 8px)
+        calc(var(--fbk-radius-well, 12px) - var(--fbk-s-1, 2px))
+        calc(var(--fbk-radius-well, 12px) - var(--fbk-s-1, 2px))
+        var(--fbk-radius-sm, 8px);
+}
+
 .fbk-field .fbk-seg,
 .fbk-field .fbk-stepper {
     border: 0;

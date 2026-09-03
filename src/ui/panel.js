@@ -349,9 +349,15 @@ export function createContent(outer, actions, foot) {
         'Stop the drill and restore your speed', () => actions.endDrill());
     endBtn.appendChild(c.el('span', 'fbk-btn-label', 'End drill'));
 
-    const loopBtn = c.button('fbk-btn rr-alt', 'Free loop',
-        'Loop the passage and leave it alone — no goal, no ladder, no grading',
-        () => actions.loopOnly());
+    /*
+     * One button, two jobs, decided by the state it is displaying — which is
+     * the only honest way to label a toggle: the words say what pressing does
+     * NEXT, so they cannot disagree with what it will do.
+     */
+    const loopBtn = c.button('fbk-btn rr-alt', 'Free loop', null, () => {
+        if (lastSnap && lastSnap.loopArmed && !lastSnap.drill.active) actions.clearLoop();
+        else actions.loopOnly();
+    });
 
     actionRow.appendChild(startBtn);
     actionRow.appendChild(endBtn);
@@ -526,7 +532,29 @@ export function createContent(outer, actions, foot) {
         startBtn.hidden = running;
         endBtn.hidden = !running;
         startBtn.disabled = !canDrill;
-        loopBtn.disabled = !snap.selectionUsable || running;
+
+        /*
+         * FREE LOOP IS A TOGGLE, and it has to look like one.
+         *
+         * Reported: starting a drill visibly changes the panel and starting a
+         * free loop does not, so there was no way to tell the instrument was
+         * looping. The button was a one-shot that armed a loop and then sat
+         * there unchanged, which is a control lying about its own state — and
+         * the state was already in the snapshot (`loopArmed`, read from the
+         * host, added when `Clear` was fixed for exactly this class of
+         * problem).
+         *
+         * So it says what it will do next, and lights while the loop runs. A
+         * drill owns the loop while it climbs, hence the `!running` guard:
+         * during a drill this is not the thing that would stop it.
+         */
+        const looping = snap.loopArmed && !running;
+        loopBtn.textContent = looping ? 'Stop loop' : 'Free loop';
+        loopBtn.classList.toggle('rr-alt-on', looping);
+        loopBtn.title = looping
+            ? 'Drop the loop and play on'
+            : 'Loop the passage and leave it alone — no goal, no ladder, no grading';
+        loopBtn.disabled = running || (!looping && !snap.selectionUsable);
 
         /*
          * Why the footswitch is dead, in words, right above it — and nothing

@@ -98,3 +98,28 @@
    nothing when there is nothing to explain. */
 .fbk-status { margin-bottom: var(--fbk-s-3, 6px); }
 .fbk-status[hidden] { margin: 0; }
+
+/*
+ * STOP LOOP — destructive, like END DRILL, and for the same reason.
+ *
+ * It was lit in the accent, which made "stop" blue here and red two inches
+ * away on END DRILL: one meaning, two colours, which is exactly what §3
+ * forbids. A stop is a stop.
+ *
+ * NOT filled, though. END DRILL is filled because it is the PRIMARY's other
+ * state; this is the alternative's other state, so it keeps its tier — an
+ * alert stroke and alert ink. Two solid buttons in one bar would compete for
+ * "this is the one", and there is no contest: a plain loop is running and the
+ * drill is still the thing you might want next.
+ */
+.rr-alt-on {
+    border-color: rgb(var(--fbk-alert, 229 72 77));
+    background: rgb(var(--fbk-alert, 229 72 77) / 0.18);
+    color: rgb(var(--fbk-alert, 229 72 77));
+}
+
+.rr-alt-on:hover:not(:disabled) {
+    background: rgb(var(--fbk-alert, 229 72 77) / 0.32);
+    border-color: rgb(var(--fbk-alert, 229 72 77));
+    color: rgb(var(--fbk-text, 232 238 252));
+}
