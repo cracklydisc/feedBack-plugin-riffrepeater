@@ -1,5 +1,5 @@
 /*
- * kit 0.6.0 — the shared look.
+ * kit 0.7.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -137,6 +137,62 @@
 .fbk-body {
     padding: var(--fbk-s-4, 10px) var(--fbk-s-5, 14px) var(--fbk-s-5, 14px);
 }
+
+/*
+ * The sticky footer — where the panel's one verb lives.
+ *
+ * Same mechanism as the head, mirrored: it travels with the content until it
+ * reaches the bottom of the viewport box and then stays. A short panel keeps
+ * it in the natural flow; a long one always has the action on screen. One
+ * layout, two behaviours, no media query.
+ *
+ * `:empty` collapses it completely, so a panel with no single action pays no
+ * padding, no hairline and no space for a footer it never fills.
+ */
+.fbk-foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding: var(--fbk-s-3, 6px) var(--fbk-s-5, 14px) var(--fbk-s-4, 10px);
+    background: rgb(var(--fbk-bg, 15 23 42));
+    border-top: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    border-radius: 0 0 var(--fbk-radius, 12px) var(--fbk-radius, 12px);
+}
+
+.fbk-foot:empty {
+    padding: 0;
+    border-top: 0;
+}
+
+/*
+ * In the footer the primary loses its outer margins — the footer's own
+ * padding is the spacing now, and a 10px margin inside a 6px padding is how a
+ * pinned bar ends up looking loose at the top and tight at the bottom.
+ */
+.fbk-foot .fbk-btn-primary,
+.fbk-foot .fbk-btn-stop { margin: 0; }
+
+/*
+ * SUPPORTING TEXT, and the reason it is not `.fbk-note`.
+ *
+ * `.fbk-note` means "a control here is not working" and is drawn only then —
+ * that scarcity is what makes it readable. A hint is the other thing: prose
+ * that explains what a control DOES, always present, and it belongs where
+ * verbosity is affordable (inside a fold, under a group heading) rather than
+ * in a panel's default view.
+ *
+ * Refactoring UI's rule for it is the whole styling: give supporting text
+ * less visual weight. Same size as a note, dimmer, and never bold.
+ */
+.fbk-hint {
+    margin: var(--fbk-s-2, 4px) 0 var(--fbk-s-3, 6px);
+    font: var(--fbk-t-body, 500 13px/1.45 sans-serif);
+    font-size: 11px;
+    font-weight: 400;
+    color: rgb(var(--fbk-dim, 148 163 184) / 0.85);
+}
+
+.fbk-hint:last-child { margin-bottom: 0; }
 
 /* ═══ 2. Structure ═══════════════════════════════════════════════════════
  *

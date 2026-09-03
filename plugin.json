@@ -1,7 +1,7 @@
 {
   "id": "riffrepeater",
   "name": "Riff Repeater",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "One place to drill a passage. Pick a section, a phrase or a bar range, set a speed ladder and a goal, and the drill steps the tempo up as you clear it. Remembers your practice speed per song and keeps a best-per-passage map of where you actually struggle.",
   "category": "practice",
   "script": "screen.js",

@@ -340,7 +340,6 @@ body {
     <p class="g-why">One primary per panel, on its own line. Stop takes the
     primary's slot and size and only changes hue, so what you press to stop is
     as findable as what you pressed to start.</p>
-    <button class="fbk-btn fbk-btn-primary"><span class="fbk-dot" data-state="ready"></span><span class="fbk-btn-label">⏱ Start drill</span><span class="fbk-kbd">D</span></button>
     <button class="fbk-btn fbk-btn-primary" disabled><span class="fbk-dot" data-state="warn"></span><span class="fbk-btn-label">⏱ Start drill</span><span class="fbk-kbd">D</span></button>
     <button class="fbk-btn fbk-btn-stop"><span class="fbk-btn-label">✕ End drill</span><span class="fbk-kbd">D</span></button>
     <div class="g-tag">secondary · quiet · small</div>
@@ -496,6 +495,42 @@ body {
     </div>
 </section>
 
+<section class="g-card g-wide">
+    <h2>The footer, and supporting text</h2>
+    <p class="g-why">A panel of this shape is a form with one verb at the end
+    of it. Put the verb wherever the controls happen to stop and it lands
+    mid-scroll — you configure, then hunt — and everything below it reads as
+    though it comes <em>after</em> pressing. <code>panel.foot</code> is sticky
+    rather than fixed: a short panel keeps it in the flow, a long one always
+    has it on screen. It shares its line with at most one thing, and only with
+    an alternative to itself. DESIGN.md §2.</p>
+    <div class="g-panelbox" style="height:200px">
+        <div class="fbk-panel fbk-panel-open" style="position:absolute;max-height:180px" role="dialog" aria-label="Footer example">
+            <div class="fbk-head"><span class="fbk-title">⏱ Example</span><button class="fbk-x">✕</button></div>
+            <div class="fbk-body">
+                <div class="fbk-section"><h4 class="fbk-section-title">Something long</h4><span class="fbk-section-rule"></span></div>
+                <p class="fbk-hint">Scroll this panel: the bar below travels with the content until it reaches the bottom, then stays.</p>
+                <div class="fbk-row"><button class="fbk-btn">A row</button></div>
+                <div class="fbk-row"><button class="fbk-btn">Another row</button></div>
+                <div class="fbk-row"><button class="fbk-btn">And another</button></div>
+                <div class="fbk-row"><button class="fbk-btn">And another</button></div>
+            </div>
+            <div class="fbk-foot">
+                <div class="fbk-row fbk-row-tight fbk-row-nowrap">
+                    <button class="fbk-btn fbk-btn-primary" style="width:auto;flex:1 1 auto"><span class="fbk-btn-label">⏱ Start drill</span><span class="fbk-kbd">D</span></button>
+                    <button class="fbk-btn">Loop</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p class="g-why"><code>.fbk-hint</code> above is supporting prose, and it
+    is deliberately <strong>not</strong> <code>.fbk-note</code>: a note means
+    "a control here is not working" and is drawn only then, and that scarcity
+    is what makes it readable. A hint explains what a control does and is
+    always present — so it belongs inside a fold or under a group heading,
+    where verbosity is affordable, never in a panel's default view.</p>
+</section>
+
 <!-- ── the whole shell ────────────────────────────────────────────────── -->
 <section class="g-card g-wide">
     <h2>The panel, assembled</h2>
@@ -578,6 +613,12 @@ body {
                 <button class="fbk-meter-row"><span class="fbk-meter-name">Solo 1</span><span class="fbk-meter" data-band="bad" style="--fbk-fill:8%"></span><span class="fbk-meter-value">8%</span></button>
                 <button class="fbk-meter-row"><span class="fbk-meter-name">Verse 1</span><span class="fbk-meter" data-band="bad" style="--fbk-fill:33%"></span><span class="fbk-meter-value">33%</span></button>
                 <button class="fbk-meter-row"><span class="fbk-meter-name">Intro 1</span><span class="fbk-meter" data-band="mid" style="--fbk-fill:58%"></span><span class="fbk-meter-value">58%</span></button>
+            </div>
+            <div class="fbk-foot">
+                <div class="fbk-row fbk-row-tight fbk-row-nowrap">
+                    <button class="fbk-btn fbk-btn-primary" style="width:auto;flex:1 1 auto"><span class="fbk-btn-label">⏱ Start drill</span><span class="fbk-kbd">D</span></button>
+                    <button class="fbk-btn">Loop</button>
+                </div>
             </div>
         </div>
     </div>

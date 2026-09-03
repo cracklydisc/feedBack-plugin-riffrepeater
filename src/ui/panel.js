@@ -62,7 +62,7 @@ function pct(v) {
  * nothing else. That is what makes the eventual core version a matter of
  * re-wiring one object.
  */
-export function createContent(outer, actions) {
+export function createContent(outer, actions, foot) {
     /*
      * Two children of the panel body: the message for when there is nothing
      * to control, and everything else. Toggling one container beats hiding
@@ -287,6 +287,19 @@ export function createContent(outer, actions) {
     how.head.title = 'The ladder and the goal. These are preferences: they apply to '
         + 'every passage of every song, not just the one selected.';
     /*
+     * The scope, as a hint INSIDE the fold.
+     *
+     * It used to replace the summary when the fold opened, and it arrived as
+     * "applies to every passage, every …" — the summary is the flexible cell
+     * of a three-cell row, about 165px here, so a sentence there cannot fit.
+     * A value belongs in that slot; prose belongs where it has the full width
+     * and sits next to the controls it describes. Which is also the moment it
+     * is needed: you are reading it because you are about to change one.
+     */
+    how.body.appendChild(c.el('p', 'fbk-hint',
+        'These are preferences, not part of the passage: they apply to every '
+        + 'passage of every song.'));
+    /*
      * Repaint the head the instant it is toggled, rather than waiting for the
      * next tick — the summary and the scope note swap on open, and half a
      * second of the wrong one is half a second of the panel lying about what
@@ -346,67 +359,34 @@ export function createContent(outer, actions) {
         onChange: (v) => actions.setGoal(v),
     });
     goalRow.appendChild(goal.el);
-    const widen = c.toggle('Widen',
-        'Once the passage is clean, grow the loop by a bar each side (up to two) '
-        + 'so it goes back into its surroundings before you leave it.',
-        (on) => actions.setWiden(on));
-    widen.el.classList.add('fbk-push');
-    goalRow.appendChild(widen.el);
     how.body.appendChild(goalRow);
 
-    // ── the primary, alone on its line ───────────────────────────────────
     /*
-     * No status dot on it any more.
+     * `Widen`, with a row of its own and a sentence.
      *
-     * It was 8px of `--fbk-good` green on a saturated sky fill — two hues at
-     * similar luminance, so it read as a smudge, reported as "the green
-     * disappears". But recolouring it was the wrong fix, because of what it
-     * said: on an ENABLED primary the dot was ALWAYS `ready`, since a blocked
-     * engine is exactly what disables the button. It was visible precisely
-     * when it carried nothing, and when it carried something the button was
-     * dimmed and the reason was in a tooltip.
+     * Asked outright: "what is the Widen button for?" — which is the answer.
+     * It was a two-syllable verb with no object, wedged onto the end of the
+     * goal row where there was no space for more, and its only explanation
+     * was a tooltip. A transitive verb with the object restored says it:
+     * *widen when clean*. The sentence underneath says the rest.
      *
-     * So the reason moved into the note below instead — words, where a colour
-     * was doing the work. Kit DESIGN.md §16.
+     * Room for that is precisely what the fold bought. This is policy, it is
+     * shut by default, and inside a shut fold verbosity costs nothing — so
+     * the thing that needed thirty words to be usable can have them.
      */
-    const startBtn = c.button('fbk-btn fbk-btn-primary', null, null, () => actions.startDrill());
-    startBtn.appendChild(c.el('span', 'fbk-btn-label', '⏱ Start drill'));
-    startBtn.appendChild(c.kbd('D'));
-    body.appendChild(startBtn);
+    const widenRow = c.el('div', 'fbk-row rr-widen');
+    const widen = c.toggle('Widen when clean',
+        'Grow the loop outward once you have the passage, so you never leave it '
+        + 'able to play the phrase only in isolation.',
+        (on) => actions.setWiden(on));
+    widenRow.appendChild(widen.el);
+    how.body.appendChild(widenRow);
+    how.body.appendChild(c.el('p', 'fbk-hint',
+        'Once you clear the goal at full speed, the loop grows by one bar each '
+        + 'side (up to two) so you play the passage back into the music around '
+        + 'it before the drill lets go.'));
 
-    const endBtn = c.button('fbk-btn fbk-btn-stop', null,
-        'Stop the drill and restore your speed', () => actions.endDrill());
-    endBtn.appendChild(c.el('span', 'fbk-btn-label', '✕ End drill'));
-    endBtn.appendChild(c.kbd('D'));
-    body.appendChild(endBtn);
 
-    /*
-     * The alternative to the primary, directly under it and quieter.
-     *
-     * One button, because `Clear` moved to the heading it belongs to. What is
-     * left is a real alternative — loop the passage with no goal and no ramp —
-     * and Refactoring UI's answer for that is to de-emphasise rather than to
-     * find it a louder home: it reads as "or just loop it", which is what it
-     * is. Centred, so it is plainly attached to the full-width button above
-     * rather than starting a new left-aligned column of its own.
-     */
-    const acts = c.el('div', 'fbk-row fbk-row-tight rr-acts');
-    const loopBtn = c.button('fbk-btn fbk-btn-small fbk-btn-quiet', 'Loop only',
-        'Loop the passage with no goal and no ramp — no drill, no speed ladder',
-        () => actions.loopOnly());
-    acts.appendChild(loopBtn);
-    body.appendChild(acts);
-
-    /*
-     * Why the three controls above are dead, next to the controls above.
-     *
-     * A note under the difficulty slider four rows down would be a sentence
-     * about the passage filed under the chart, and `diffNote` already had a
-     * job. The rule is that a `.fbk-note` explains a control that is not
-     * working (DESIGN.md, Structure) — so it goes where the control is.
-     */
-    const deadNote = c.el('p', 'fbk-note');
-    body.appendChild(deadNote);
 
     // ── live drill ───────────────────────────────────────────────────────
     const live = c.el('div', 'rr-live');
@@ -720,10 +700,15 @@ export function createContent(outer, actions) {
      * something you will be living with on every passage of every song.
      */
     function renderHow(snap) {
+        /*
+         * Open, the head shows the title and nothing else: the controls ARE
+         * the content now, and the summary's 165px cell cannot hold a
+         * sentence — which is how "applies to every passage, every song"
+         * reached the screen as "applies to every passage, every …". The
+         * scope is a hint at the top of the body instead.
+         */
         if (how.isOpen()) {
-            how.setSummary(snap.drill.active
-                ? 'the drill owns these while it runs'
-                : 'applies to every passage, every song');
+            how.setSummary('');
             return;
         }
         const running = snap.drill.active;
@@ -837,6 +822,63 @@ export function createContent(outer, actions) {
             }));
         }
     }
+
+    /* ── the footer: the verb, and the one alternative to it ──────────────
+     *
+     * It used to sit where the controls happened to stop — after the passage
+     * picker, before the speed row — which is halfway down a panel that
+     * scrolls. Reported as "does it make sense to have the main action
+     * halfway down the panel?", and it did not: you configured and then
+     * hunted, and the three groups below it read as though they came *after*
+     * pressing. The footer is sticky, so a short panel keeps it in the flow
+     * and a long one always has it on screen. Kit DESIGN.md §2.
+     *
+     * `Loop` sits BESIDE the primary rather than under it, which was the
+     * other half of the same report: "that you can start with either Start
+     * drill or Loop only isn't clear". A quieter button underneath a primary
+     * does not read as a choice, it reads as a caption. Beside it, at a lower
+     * tier, it reads as the alternative it is — and the glow still answers
+     * "what do I press?" on its own.
+     *
+     * No status dot on the primary. It was 8px of green on a saturated sky
+     * fill, two hues at similar luminance, so it read as a smudge — but
+     * recolouring was the wrong fix, because on an ENABLED primary the dot
+     * was ALWAYS `ready`: a blocked engine is exactly what disables the
+     * button. Visible precisely when it carried nothing. Kit DESIGN.md §16.
+     */
+
+    /*
+     * Why the primary is dead, directly ABOVE the primary.
+     *
+     * This note used to sit under `Loop only`, one control further down, and
+     * the report was "start drill is disabled and I can't tell why, or
+     * whether something isn't configured" — with the sentence already on
+     * screen, two rows from the button it was about. Proximity is the whole
+     * of its job.
+     */
+    const deadNote = c.el('p', 'fbk-note rr-dead');
+    foot.appendChild(deadNote);
+
+    const actionRow = c.el('div', 'fbk-row fbk-row-tight fbk-row-nowrap rr-actions');
+
+    const startBtn = c.button('fbk-btn fbk-btn-primary rr-primary', null, null,
+        () => actions.startDrill());
+    startBtn.appendChild(c.el('span', 'fbk-btn-label', '⏱ Start drill'));
+    startBtn.appendChild(c.kbd('D'));
+
+    const endBtn = c.button('fbk-btn fbk-btn-stop rr-primary', null,
+        'Stop the drill and restore your speed', () => actions.endDrill());
+    endBtn.appendChild(c.el('span', 'fbk-btn-label', '✕ End drill'));
+    endBtn.appendChild(c.kbd('D'));
+
+    const loopBtn = c.button('fbk-btn rr-alt', 'Loop',
+        'Loop the passage and leave it alone — no goal, no speed ladder, no grading',
+        () => actions.loopOnly());
+
+    actionRow.appendChild(startBtn);
+    actionRow.appendChild(endBtn);
+    actionRow.appendChild(loopBtn);
+    foot.appendChild(actionRow);
 
     function render(snap) {
         lastSnap = snap;

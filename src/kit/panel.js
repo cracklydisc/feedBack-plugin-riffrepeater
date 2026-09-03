@@ -1,5 +1,5 @@
 /*
- * kit 0.6.0 — the parked panel, and the button in the player that opens it.
+ * kit 0.7.0 — the parked panel, and the button in the player that opens it.
  *
  * Two plugins wrote this before it lived here: Riff Repeater (155 lines) and
  * Live Tab (~410 lines across `mountControls`, `panelCSS` and
@@ -69,6 +69,30 @@ export function createPanel(o) {
     const body = document.createElement('div');
     body.className = 'fbk-body';
     root.appendChild(body);
+
+    /*
+     * A sticky footer, for the action the panel exists to perform.
+     *
+     * Reported on Riff Repeater: "does it make sense to have the main action
+     * halfway down the panel?" It did not. A panel of this shape is a form
+     * with one verb at the end of it, and if the verb sits wherever the
+     * controls happen to stop then it lands mid-scroll — you configure, then
+     * hunt. Worse, everything BELOW it (a speed row, a difficulty slider,
+     * a statistics list) reads as though it comes after pressing, which is
+     * backwards.
+     *
+     * Sticky, not fixed, and the same mechanism the head uses: it scrolls
+     * with the content until it reaches the bottom edge and then stays. So a
+     * short panel has its footer in the natural flow and a long one always has
+     * the verb on screen, without two layout modes to reason about.
+     *
+     * Empty until a consumer puts something in it, and `.fbk-foot:empty` in
+     * kit.css collapses it — so a panel that has no single action pays
+     * nothing for this.
+     */
+    const foot = document.createElement('div');
+    foot.className = 'fbk-foot';
+    root.appendChild(foot);
 
     /*
      * The one imperative surface, and the one exception to "the panel reads
@@ -209,6 +233,13 @@ export function createPanel(o) {
     return {
         /** Append your controls here. */
         body,
+        /**
+         * The sticky footer, for the one action the panel is for.
+         *
+         * Put the primary here and nothing else that is not an alternative to
+         * it — DESIGN.md §2. Left empty it collapses to nothing.
+         */
+        foot,
         root,
 
         attach,

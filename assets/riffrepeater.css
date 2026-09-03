@@ -41,17 +41,6 @@
     text-align: center;
 }
 
-/*
- * The alternative action under the primary: centred, and tight to it.
- *
- * Centred because it belongs to the full-width button above — left-aligned it
- * started a second column and read as an unrelated control, which is half of
- * why the old pair looked placed at random.
- */
-.rr-acts {
-    justify-content: center;
-    margin-top: 0;
-}
 
 /* ── the timeline ───────────────────────────────────────────────────────
  *
@@ -312,3 +301,31 @@
     background: rgb(var(--fbk-accent, 14 165 233) / 0.2);
     border-color: rgb(var(--fbk-accent, 14 165 233));
 }
+
+/* ── the footer's action bar ─────────────────────────────────────────────
+ *
+ * The primary takes the room, the alternative takes what it needs. Kit
+ * DESIGN.md §2: at most one thing shares the primary's line, and only an
+ * alternative to it.
+ */
+
+.rr-actions { gap: var(--fbk-s-3, 6px); }
+
+/*
+ * `width: auto` overrides the kit's full-width primary, because here it is
+ * one of two children of a flex row rather than a block on its own line.
+ * `flex: 1 1 auto` with `min-width: 0` so the label ellipsizes rather than
+ * pushing `Loop` off the row on a narrow panel.
+ */
+.rr-primary {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.rr-alt { flex: 0 0 auto; }
+
+/* No top margin: the note above it is either present with its own spacing or
+   collapsed to nothing, and the footer's padding is the rest. */
+.rr-dead { margin: 0 0 var(--fbk-s-3, 6px); }
+.rr-dead[hidden] { margin: 0; }

@@ -1,5 +1,85 @@
 # Changelog
 
+## 0.10.0 — the verb moves to the bottom, and Widen explains itself
+
+Four reports, and the fourth is the one that reorganised the panel.
+
+### "Does it make sense to have the main action halfway down the panel?"
+
+It did not. The primary sat where the controls happened to stop — after the
+passage picker, before the speed row — which on a scrolling panel is
+mid-scroll. You configured, then hunted. Worse, the three groups *below* it
+(speed, chart difficulty, the weak list) read as though they came **after**
+pressing, which is backwards.
+
+It is in a **sticky footer** now — new in kit 0.7.0, and the same mechanism
+the panel's head already used, mirrored. A short panel keeps it in the natural
+flow; a long one always has the verb on screen. One layout, no media query.
+
+### "That you can start with either Start drill or Loop only isn't clear"
+
+Also right, and it was a placement problem rather than a wording one: a
+quieter button **underneath** a primary does not read as a choice, it reads as
+a caption. Beside it, at a lower tier, it reads as the alternative it is.
+
+```
+┌──────────────────────────────┬────────┐
+│      ⏱ Start drill      D    │  Loop  │
+└──────────────────────────────┴────────┘
+```
+
+The kit's DESIGN.md §2 said "one lit primary, **on its own line**", so this
+amends that rule rather than quietly breaking it. The old wording was the
+right fix for the version that put the primary in a row with two siblings of
+similar weight — where it read weaker than the segmented control above it —
+and the wrong rule to generalise from that bug. The rule now: the primary
+shares its line with at most one thing, and only with an alternative to
+itself. A glow beside a bordered secondary never raises "what do I press?";
+it answers "is there another way?", which the caption could not.
+
+### "Start drill is disabled and I can't tell why"
+
+The sentence explaining it was already on screen — and two rows below, under
+`Loop only`, separated from the button it was about by another control. It is
+in the footer now, immediately above the primary. Verified for all three
+states:
+
+| | note | primary |
+| --- | --- | --- |
+| detection off | *Turn on note detection in the player — a drill is graded from what you play.* | dead |
+| passage with no notes | *This passage has no notes in it, so there is nothing to drill.* | dead |
+| ready | hidden | live |
+
+### "The text on the right is truncated when the menu opens"
+
+The fold's summary is the flexible cell of a three-cell row — about 165px on a
+336px panel — so the scope note put there arrived as *"applies to every
+passage, every …"*. A summary that has stopped summarising.
+
+That slot is for a **value**. The prose is a `.fbk-hint` at the top of the
+fold's body now, at full width, next to the controls it describes — which is
+also the moment it is wanted, since you are reading it because you are about
+to change one. Open, the head shows the title and nothing else.
+
+### "What is the Widen button for?"
+
+The answer is the report. It was a two-syllable verb with no object, wedged
+onto the end of the goal row where there was no room for more, explained only
+by a tooltip.
+
+Restoring the object says most of it — **Widen when clean** — and it has its
+own row and a sentence now:
+
+> Once you clear the goal at full speed, the loop grows by one bar each side
+> (up to two) so you play the passage back into the music around it before the
+> drill lets go.
+
+Room for that is exactly what the fold bought. This is policy, it is shut by
+default, and inside a shut fold verbosity costs nothing — so the control that
+needed thirty words to be usable can have them.
+
+114 tests.
+
 ## 0.9.0 — a dead end, a stray pair, and Refactoring UI by measurement
 
 Four reports. The first is a bug I shipped in 0.8.0; the rest are the panel

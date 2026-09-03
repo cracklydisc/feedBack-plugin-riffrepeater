@@ -19,7 +19,7 @@ import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.9.0';
+const VERSION = '0.10.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -555,7 +555,7 @@ function boot() {
         label: '⏱ Riff Repeater',
         title: 'Riff Repeater — drill a passage',
     });
-    content = createContent(panel.body, actions);
+    content = createContent(panel.body, actions, panel.foot);
     panel.onToggle(onPanelToggle);
     panel.attach();
     wire();

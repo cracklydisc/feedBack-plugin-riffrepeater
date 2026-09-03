@@ -1,5 +1,5 @@
 /*
- * kit 0.6.0 — the four control families, as builders.
+ * kit 0.7.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -162,11 +162,19 @@ export function fold(opts = {}) {
         /** The three head cells, in DOM order: chevron, title, summary. */
         parts: { chev, title: heading, summary: sum },
         /**
-         * The value, kept visible while the body is shut.
+         * The VALUE, kept visible while the body is shut.
          *
          * Whatever the controls inside say, said in one line. A fold whose
          * summary does not answer the question the controls answer is a fold
          * that hides rather than folds.
+         *
+         * A value, and not a sentence: this slot is the flexible cell of a
+         * three-cell row, so on a 336px panel it is about 165px and anything
+         * longer ellipsizes. Riff Repeater put "applies to every passage,
+         * every song" here when open and it arrived as "applies to every
+         * passage, every …", which is a summary that has stopped summarising.
+         * Prose belongs in a `.fbk-hint` at the top of `body`, where it has
+         * the full width and is next to the controls it describes.
          */
         setSummary(text) { sum.textContent = text === null || text === undefined ? '' : String(text); },
         setOpen,

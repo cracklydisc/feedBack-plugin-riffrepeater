@@ -157,6 +157,15 @@ says whose it is. The kit's [DESIGN.md §15](https://github.com/cracklydisc/feed
 generalises it — *follow the write* — and 0.7.0's changelog has the four other
 places the same question found something.
 
+**Widen when clean** is the third setting in there, and it earns its
+sentence: once you clear the goal at full speed the loop grows by one bar each
+side (up to two), so you play the passage back into the music around it before
+the drill lets go. It was labelled just "Widen" until 0.10.0 — a verb with no
+object, wedged onto the end of the goal row with only a tooltip — and the
+question "what is that button for?" was the report that fixed it. Room for the
+explanation is what the fold bought: policy is shut by default, and inside a
+shut fold verbosity costs nothing.
+
 Pick the ladder as rungs — **50 · 65 · 80 · 90 · 100** — and a goal. The
 engine's default ladder is `[80, 90, 100]` and its floor of 80% is a judgement
 about time-stretch artefacts, which is reasonable about the sound and not
@@ -218,12 +227,18 @@ A toggle pill is a boolean. Version 0.2 drew the ladder and the speed as the
 same rail of pills with the same five numbers, which is two different things
 wearing one costume; they are different shapes and different words now.
 
-**One lit primary, on its own line.** Nothing else in the panel is accent-
-filled, so there is never a question about what to press. Nothing rides on it
-either: it carried a status dot until 0.8.0, and the dot was always `ready`
-whenever the button was enabled — because a blocked engine is what disables
-it. A signal visible exactly when it says nothing. The blocked reason is a
-sentence under the button now.
+**One lit primary, in a sticky footer, with one alternative beside it.**
+Nothing else in the panel is accent-filled, so there is never a question about
+what to press. It sat mid-panel until 0.10.0 — after the passage picker,
+before the speed row — which meant you configured and then hunted, and the
+groups below it read as though they came *after* pressing. It is pinned to the
+bottom now, with `Loop` next to it rather than under it: a quieter button
+underneath a primary reads as a caption, not as a choice.
+
+Nothing else rides on it. It carried a status dot until 0.8.0, and the dot was
+always `ready` whenever the button was enabled — because a blocked engine is
+what disables it. A signal visible exactly when it said nothing. The reason a
+drill cannot start is a sentence directly above the button instead.
 
 **Every size comes from the scale, so touch is one change.** Under
 `(pointer: coarse)` the kit swaps the height scale to 32 · 44 · 52 and all
