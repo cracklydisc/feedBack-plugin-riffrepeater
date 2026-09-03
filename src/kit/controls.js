@@ -1,5 +1,5 @@
 /*
- * kit 0.7.0 — the four control families, as builders.
+ * kit 0.8.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -386,32 +386,32 @@ export function stepper(opts = {}) {
 
 /** A HUD gauge that is still an `<input type="range">`, for the keyboard. */
 /**
- * A gauge you drag, in one row or as a full-width field.
+ * A gauge you drag: label, value, track — in that order, on one row.
  *
- * `wide: true` (with a `label`) gives the second shape:
+ *     CHART  100 %   ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  *
- *     CHART                                              100 %
- *     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━●
+ * The order is the point. Version 0.4 put the value AFTER the track, which
+ * spends the row on three separated things and leaves the track 129px of a
+ * 306px body — 42% of the width for the only part you touch. 0.5 fixed the
+ * width by stacking a label line above a full-width track, and that cost a
+ * row and left the label and its value at opposite ends of it.
  *
- * The one-row shape spends the row on three things — label, track, value — so
- * the track gets whatever is left, which on a 306px panel body was 129px:
- * 42% of the width for the only part of the control you actually touch. The
- * wide shape gives the track the whole width and puts the value at the end of
- * the label's line, where the track's own maximum is. Use it whenever the
- * value is a *quantity being set* rather than one field among several; keep
- * the row shape when the control sits in a stack of same-shaped rows and
- * breaking the rhythm would cost more than the pixels are worth.
+ * Putting the value next to its label fixes both: they read as one thing
+ * (Refactoring UI's "combine labels and values"), and the track gets
+ * everything left over — 216px here — on one row.
  */
 export function slider(opts = {}) {
     const {
         min = 0, max = 100, step = 1, unit = '%',
         ariaLabel, onInput = () => {},
-        wide = false, label = '',
+        label = '',
     } = opts;
+
+    const wrap = el('div', 'fbk-row fbk-slider-row');
 
     const input = document.createElement('input');
     input.type = 'range';
-    input.className = wide ? 'fbk-slider fbk-slider-full' : 'fbk-slider';
+    input.className = 'fbk-slider';
     input.min = String(min);
     input.max = String(max);
     input.step = String(step);
@@ -423,26 +423,16 @@ export function slider(opts = {}) {
         onInput(Number(input.value));
     });
 
-    let wrap;
-    let head = null;
-    if (wide) {
-        wrap = el('div', 'fbk-field');
-        head = el('div', 'fbk-field-head');
-        head.appendChild(el('span', 'fbk-label', label));
-        head.appendChild(out.el);
-        wrap.appendChild(head);
-        wrap.appendChild(input);
-    } else {
-        wrap = el('div', 'fbk-row');
-        wrap.appendChild(input);
-        wrap.appendChild(out.el);
-    }
+    const heading = label ? el('span', 'fbk-label fbk-label-inline fbk-slider-label', label) : null;
+    if (heading) wrap.appendChild(heading);
+    wrap.appendChild(out.el);
+    wrap.appendChild(input);
 
     return {
         el: wrap,
         input,
-        /** The label/value line, for a caller that wants to hang a badge on it. */
-        head,
+        /** The label node, for a caller that wants to retitle it. */
+        label: heading,
         /** Skipped while focused, so it cannot fight the user's drag. */
         set(v) {
             const n = num(v);
@@ -453,12 +443,6 @@ export function slider(opts = {}) {
     };
 }
 
-/**
- * A clickable meter row: name, bar, number.
- *
- * The one shape for measured data. `band` is 'good' | 'mid' | 'bad', matching
- * the host's own accuracy palette — do not invent thresholds.
- */
 export function meterRow(opts = {}) {
     const { label = '', value = 0, band = null, title = '', onClick = null, suffix = null } = opts;
     const row = el(onClick ? 'button' : 'div', 'fbk-meter-row');

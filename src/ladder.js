@@ -24,7 +24,20 @@ export const PRESETS = [50, 65, 80, 90, 100];
 /** The conductor's own default, as percentages. Ticking nothing gets you this. */
 export const DEFAULT_LADDER = [80, 90, 100];
 
-export const DEFAULT_GOAL_PCT = 85;
+/*
+ * 100, not the engine's 85.
+ *
+ * A product decision, and worth naming the cost: at 100 a passage has to be
+ * played with every judged note clean before the ladder steps up, so the
+ * climb is slower and a rung can be repeated many times. The conductor's own
+ * default is 0.85 for exactly that reason.
+ *
+ * The argument for 100 anyway is that "clean" is the standard this kind of
+ * practice tool is measured against, and a goal that graduates you at 85%
+ * teaches a passage you can nearly play. The stepper reaches down to 50 in
+ * five-point steps for a passage where that is too much to ask.
+ */
+export const DEFAULT_GOAL_PCT = 100;
 
 /**
  * The goal's ONE legal range.

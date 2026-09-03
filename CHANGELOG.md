@@ -1,5 +1,105 @@
 # Changelog
 
+## 0.11.0 — the review, point by point
+
+Eight items. Seven are implemented as asked; one is implemented differently
+and this says why.
+
+### 1a. "Arrows on arrows"
+
+Two stepper-shaped controls stacked: `◄ Whole section · 3 phrases ►` and
+`‹ Chorus 1 ›`. The **chevrons** are the pair that had to go, because they are
+the ones the timeline already does — a click on a block picks a section in one
+gesture instead of counting presses. The phrase stepper cannot be replaced
+that way, since the strip carries no phrase marks.
+
+The `,` and `.` shortcuts stay registered, so section stepping is still there
+for a keyboard or a controller and still listed in the host's help panel. What
+went is the visible duplicate. **Rows of arrows: 4 → 3.**
+
+### 1b. A and B looked like isolated keys
+
+They were, and it was mine: 0.8.0 pushed each nudge cluster to the far right
+on the reasoning that the gap says "setting an edge and nudging it are two
+jobs". A 130px gap between a button and the value it writes says they are
+**unrelated**, which is louder than any distinction it was drawing. A sits
+against its own stepper now — `[A] [−] 0:32 [+]`, measured at x=0 and x=38.
+
+### 2. The open accordion was dead space
+
+Right, and §4 of the kit's DESIGN.md had said so before I wrote it: *no
+paragraph of explanation, and no box drawn to hold one*. I added two anyway in
+0.10.0, justified with "inside a shut fold verbosity costs nothing" — and the
+fold made the prose **cheap**, which is not the same as making it **wanted**.
+
+Both gone. The scope note is on the heading's tooltip; the `Widen when clean`
+sentence is on a `?` badge, which is the device the kit already documents for
+something you may want to read once. **Paragraphs in the fold: 2 → 0.**
+
+The label keeps its object, though — `Widen when clean`, not `Widen`. That
+half of 0.10.0 stands: a bare tooltip on a two-syllable verb is what made the
+question necessary in the first place.
+
+### 3. "Which speed wins?" — done, but not the way the review asked
+
+The review asked for `PLAY AT` to grey out **when the accordion is open** or
+when a drill starts. The second half already worked (`speed.disable` on
+`drill.active`), and the first I did not do: opening a fold to *read* your
+ladder should not disable a live playback control, because nothing has changed
+except that you looked.
+
+The real gap was that nothing answered the question **before** pressing, which
+is when it is asked. So the heading answers it, in five words, and only when
+the answer is not already obvious — when a drill would start at a speed other
+than the one selected:
+
+```
+PLAY AT ──────────────── a drill starts at 80%
+50   65   80   90  [100]
+```
+
+It disappears when they agree, and reads *the drill is driving this* while one
+runs. Five words that appear on a genuine discrepancy are the opposite of a
+paragraph.
+
+### 4. `CHART` and `100 %` were detached
+
+Third shape in three versions, and this one is right. As a one-row
+`CHART` + track + `100 %` the track got **129px** of a 306px body. As a field
+— label line above a full-width track — it got 296px but cost a row, and left
+the label and its value at opposite ends of it. Value beside its label answers
+both: they read as one unit and the track gets **194px**, on one row.
+
+The kit's DESIGN.md §18 now records that this **overruled its own** "use fewer
+alignments" advice from one version earlier. That rule was describing a
+symptom of a layout with no system; "combine labels and values" is the more
+specific one and wins.
+
+### 5. The bottom bar
+
+- **The `D` cap**: 20px of side padding is right for a full-width primary on
+  its own line; beside an alternative the primary is ~204px and 20px reads as
+  the cap jammed into the corner. Now 10px of padding and 11px on a 22px cap
+  against a 14px label — **79%** of the label's size, which is a key rather
+  than a scrap.
+- **`Loop` → `Free loop`.** One word was too generic to contrast with
+  anything. `Free` is the contrast that matters: the drill has a goal, a
+  ladder and a grade; this has none of them.
+
+### 6. The default goal is 100%
+
+Worth naming the cost, since it is a real one: at 100 a passage has to be
+played with **every judged note clean** before the ladder steps up, so the
+climb is slower and a rung can repeat many times. The conductor's own default
+is 0.85 for exactly that reason.
+
+The argument for 100 anyway is that "clean" is the standard this kind of tool
+is measured against, and a goal that graduates you at 85% teaches a passage
+you can *nearly* play. The stepper still reaches 50 in five-point steps for a
+passage where that is too much to ask.
+
+114 tests.
+
 ## 0.10.0 — the verb moves to the bottom, and Widen explains itself
 
 Four reports, and the fourth is the one that reorganised the panel.

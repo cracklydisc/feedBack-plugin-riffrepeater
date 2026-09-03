@@ -1,5 +1,5 @@
 /*
- * kit 0.7.0 — the shared look.
+ * kit 0.8.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -173,26 +173,29 @@
 .fbk-foot .fbk-btn-stop { margin: 0; }
 
 /*
- * SUPPORTING TEXT, and the reason it is not `.fbk-note`.
+ * Less side padding in the footer, because the primary is narrower there.
  *
- * `.fbk-note` means "a control here is not working" and is drawn only then —
- * that scarcity is what makes it readable. A hint is the other thing: prose
- * that explains what a control DOES, always present, and it belongs where
- * verbosity is affordable (inside a fold, under a group heading) rather than
- * in a panel's default view.
- *
- * Refactoring UI's rule for it is the whole styling: give supporting text
- * less visual weight. Same size as a note, dimmer, and never bold.
+ * 20px of padding is right for a full-width button on its own line. Beside an
+ * alternative the primary is ~220px, and 20px then reads as the key cap being
+ * jammed into the corner — reported as "the D badge is too close to the edge".
  */
-.fbk-hint {
-    margin: var(--fbk-s-2, 4px) 0 var(--fbk-s-3, 6px);
-    font: var(--fbk-t-body, 500 13px/1.45 sans-serif);
+.fbk-foot .fbk-btn-primary,
+.fbk-foot .fbk-btn-stop { padding: 0 var(--fbk-s-4, 10px); }
+
+/*
+ * And the cap itself is one step bigger on a primary.
+ *
+ * 18px next to a 14px/800 label reads as a scrap rather than a key — the
+ * other half of the same report. It stays smaller than the label, because it
+ * is a hint about the keyboard and not part of the sentence.
+ */
+.fbk-foot .fbk-btn-primary .fbk-kbd,
+.fbk-foot .fbk-btn-stop .fbk-kbd {
+    height: 22px;
     font-size: 11px;
-    font-weight: 400;
-    color: rgb(var(--fbk-dim, 148 163 184) / 0.85);
 }
 
-.fbk-hint:last-child { margin-bottom: 0; }
+
 
 /* ═══ 2. Structure ═══════════════════════════════════════════════════════
  *
@@ -424,27 +427,21 @@
 .fbk-push { margin-left: auto; }
 
 /*
- * A FIELD — a label line, then the control at full width.
+ * WITHDRAWN in 0.8.0: `.fbk-field` and `.fbk-hint`.
  *
- * The alternative to `.fbk-label-inline`, and the right one whenever the
- * control is a track you drag: a one-row slider spends the row on label,
- * track and value, and the track gets what is left — 129px of a 306px body,
- * 42% of the width for the only part you touch. Here the value sits at the
- * end of the label's line, which is where the track's maximum is, and the
- * track gets the whole width.
+ * `.fbk-field` (a label line above a full-width control) existed for one
+ * version, to widen a slider that was being squeezed by its own value. Putting
+ * the value next to its LABEL instead does the same job on one row, so the
+ * field was solving a problem that had a cheaper answer. A class with no
+ * consumer is a class nobody has tested.
+ *
+ * `.fbk-hint` (supporting prose under a group heading) lasted one version too,
+ * and §4 had already answered it: no paragraph of explanation, and no box
+ * drawn to hold one. Riff Repeater used it for two, and the report was blunt —
+ * "dead space; nobody playing a music game reads paragraphs of explanation
+ * every time". A `?` badge with the sentence in its tooltip is the device this
+ * kit already had for that, and §4 is why.
  */
-.fbk-field { margin: var(--fbk-s-3, 6px) 0; }
-
-.fbk-field-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--fbk-s-3, 6px);
-}
-
-/* The label is a block element by default, and its bottom margin would push
-   the value off the shared baseline. */
-.fbk-field-head .fbk-label { margin-bottom: 0; }
 
 .fbk-note {
     margin: var(--fbk-s-3, 6px) 0 0;
@@ -847,12 +844,16 @@
  * twice on purpose.
  * ═══════════════════════════════════════════════════════════════════════ */
 
-/* The full-width variant: `flex: none` so a flex parent cannot shrink it back
-   to its content, and 100% so it reaches both edges of the body. */
-.fbk-slider-full {
-    flex: none;
-    width: 100%;
-}
+/*
+ * The value sits next to its label, so the track can have the rest.
+ *
+ * `.fbk-slider-label` drops the label column's fixed width: `CHART` and its
+ * `100 %` have to read as one unit, and a 62px column with a 40px word in it
+ * puts 22px of nothing between them.
+ */
+.fbk-slider-label { flex: 0 0 auto; width: auto; }
+
+.fbk-slider-row .fbk-readout { flex: 0 0 auto; margin-right: var(--fbk-s-3, 6px); }
 
 .fbk-slider {
     flex: 1 1 auto;

@@ -229,53 +229,16 @@
 
 /* ── the picker row ──────────────────────────────────────────────────────
  *
- * A chevron, the plate, a chevron. This replaced two rows — a stepper that
- * carried the section's name and a plate whose title was the section's name —
- * so the name is printed once and the row that existed to hold the duplicate
- * is gone.
+ * Just the plate now. It had a chevron either side that stepped through the
+ * sections, and those were the "arrows on arrows" — a second stepper-shaped
+ * control directly under the phrase stepper. They went rather than the phrase
+ * stepper, because a click on the timeline already picks a section in one
+ * gesture, while the strip carries no phrase marks. The `,` and `.` shortcuts
+ * are still registered.
  */
 
-/*
- * The nowrap comes from the kit's `.fbk-row-nowrap`, not from here.
- *
- * It was here first and did nothing: `.rr-pick` and the kit's `.fbk-row` are
- * both single-class selectors, so source order decided, and the kit's sheet
- * was being injected last. `install()` prepends its link now — the kit is a
- * base layer and has to lose ties — and the modifier lives in the kit, where
- * "a row that must stay on one line" belongs.
- */
-.rr-pick { gap: var(--fbk-s-1, 2px); }
+.rr-pick .fbk-plate { margin: var(--fbk-s-2, 4px) 0; }
 
-.rr-pick .fbk-plate {
-    flex: 1 1 auto;
-    min-width: 0;
-    margin: var(--fbk-s-2, 4px) 0;
-}
-
-/*
- * Quiet, and narrow.
- *
- * The section stepper used two filled 26px circles at full weight for a job
- * the timeline above already does with a click. It is a fallback for a
- * keyboard or a controller, so it reads like one: borderless until you point
- * at it, and no wider than the glyph needs.
- */
-/*
- * Width from the scale, and big enough to be true.
- *
- * At `h-sm` the declared width was a lie: a flex item's `min-width: auto`
- * resolves to its min-content, and a 16px chevron with its borders measures
- * 30px, so the box came out 30 whatever the rule said. `h-md` is both on the
- * scale and above that floor.
- */
-.rr-chev {
-    flex: 0 0 auto;
-    width: var(--fbk-h-md, 32px);
-    height: var(--fbk-h-lg, 44px);
-    padding: 0;
-    font-size: 16px;
-    line-height: 1;
-}
 
 /*
  * A and B — the same shape as the steppers beside them, accented.
@@ -329,3 +292,23 @@
    collapsed to nothing, and the footer's padding is the rest. */
 .rr-dead { margin: 0 0 var(--fbk-s-3, 6px); }
 .rr-dead[hidden] { margin: 0; }
+
+/*
+ * An aside on a section heading — five words, and only when they are needed.
+ *
+ * The panel already puts a section-level control on a heading row (`Clear`,
+ * `Practice weakest`), so this is the same slot used for a sentence fragment
+ * rather than a button. Dim and lower case on purpose: it must not read as a
+ * second heading, and it must not read as a warning.
+ */
+.rr-head-note {
+    flex: 0 0 auto;
+    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: rgb(var(--fbk-dim, 148 163 184) / 0.9);
+}
+
+/* The `?` sits against the toggle it explains, not at the row's end. */
+.rr-widen .fbk-badge { margin-left: var(--fbk-s-2, 4px); }

@@ -319,18 +319,19 @@ body {
         <input class="fbk-slider" type="range" min="0" max="100" value="70" disabled>
         <span class="fbk-readout"><span class="fbk-readout-value">70</span><span class="fbk-readout-unit">%</span></span>
     </div>
-    <p class="g-why">The <strong>wide</strong> shape, for when the value is a
-    quantity being set rather than one field among several. A one-row slider
-    spends the row on label, track and value and the track gets what is left —
-    129px of a 306px body, 42% of the width for the only part you touch.</p>
+    <p class="g-why"><strong>Label, value, track — in that order.</strong>
+    Version 0.4 put the value after the track, which spends the row on three
+    separated things and leaves the track 129px of a 306px body: 42% of the
+    width for the only part you touch. 0.5 stacked a label line above a
+    full-width track, which cost a row and put the label and its value at
+    opposite ends of it. Putting the value beside its label fixes both — they
+    read as one thing, and the track gets everything left over, on one row.</p>
     <div class="g-grid g-grid-1" style="max-width:306px">
-        <div class="fbk-field">
-            <div class="fbk-field-head">
-                <span class="fbk-label">Chart</span>
-                <span class="fbk-readout"><span class="fbk-readout-value">100</span><span class="fbk-readout-unit">%</span></span>
-            </div>
-            <input class="fbk-slider fbk-slider-full" type="range" min="0" max="100" step="5" value="100">
-        </div>
+                <div class="fbk-row fbk-slider-row">
+                    <span class="fbk-label fbk-label-inline fbk-slider-label">Chart</span>
+                    <span class="fbk-readout"><span class="fbk-readout-value">100</span><span class="fbk-readout-unit">%</span></span>
+                    <input class="fbk-slider" type="range" min="0" max="100" step="5" value="100">
+                </div>
     </div>
 </section>
 
@@ -509,7 +510,6 @@ body {
             <div class="fbk-head"><span class="fbk-title">⏱ Example</span><button class="fbk-x">✕</button></div>
             <div class="fbk-body">
                 <div class="fbk-section"><h4 class="fbk-section-title">Something long</h4><span class="fbk-section-rule"></span></div>
-                <p class="fbk-hint">Scroll this panel: the bar below travels with the content until it reaches the bottom, then stays.</p>
                 <div class="fbk-row"><button class="fbk-btn">A row</button></div>
                 <div class="fbk-row"><button class="fbk-btn">Another row</button></div>
                 <div class="fbk-row"><button class="fbk-btn">And another</button></div>
@@ -523,12 +523,12 @@ body {
             </div>
         </div>
     </div>
-    <p class="g-why"><code>.fbk-hint</code> above is supporting prose, and it
-    is deliberately <strong>not</strong> <code>.fbk-note</code>: a note means
-    "a control here is not working" and is drawn only then, and that scarcity
-    is what makes it readable. A hint explains what a control does and is
-    always present — so it belongs inside a fold or under a group heading,
-    where verbosity is affordable, never in a panel's default view.</p>
+    <p class="g-why">Scroll it: the bar travels with the content until it
+    reaches the bottom, then stays. <code>.fbk-hint</code> lived here for one
+    version as a home for supporting prose, and was withdrawn — §4 had already
+    answered it, and the report on the panel that used it was blunt. A
+    <code>?</code> badge with the sentence in its tooltip is the device this
+    kit already had.</p>
 </section>
 
 <!-- ── the whole shell ────────────────────────────────────────────────── -->
@@ -597,12 +597,10 @@ body {
                         <button class="fbk-seg-btn fbk-on">100</button>
                     </div>
                 </div>
-                <div class="fbk-field">
-                    <div class="fbk-field-head">
-                        <span class="fbk-label">Chart</span>
-                        <span class="fbk-readout"><span class="fbk-readout-value">100</span><span class="fbk-readout-unit">%</span></span>
-                    </div>
-                    <input class="fbk-slider fbk-slider-full" type="range" min="0" max="100" step="5" value="100">
+                <div class="fbk-row fbk-slider-row">
+                    <span class="fbk-label fbk-label-inline fbk-slider-label">Chart</span>
+                    <span class="fbk-readout"><span class="fbk-readout-value">100</span><span class="fbk-readout-unit">%</span></span>
+                    <input class="fbk-slider" type="range" min="0" max="100" step="5" value="100">
                 </div>
                 <div class="fbk-section">
                     <h4 class="fbk-section-title">Where you struggle</h4>

@@ -631,7 +631,18 @@ export function snapshot() {
         selectionUsable: ranges.isUsable(sel ? decorate(sel) : null, duration),
 
         settings: { ...state.settings },
+        /** The speed the song is PLAYING at — the audio element's rate. */
         speedPct: host.speedPct(),
+        /**
+         * The speed the USER picked — the host's own slider.
+         *
+         * Both, because they disagree while a drill runs: `window.setSpeed`
+         * moves the rate and the label but never writes the slider. The panel
+         * lights the playing one and compares the chosen one against the
+         * ladder's first rung, which is the only way to answer "which speed
+         * wins when I press start" without lying in one state or the other.
+         */
+        chosenSpeedPct: host.chosenSpeedPct(),
         difficultyPct: host.difficultyPct(),
         hasPhraseData: host.hasPhraseData(),
 

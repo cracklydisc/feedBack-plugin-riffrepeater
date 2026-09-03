@@ -163,23 +163,23 @@ export function createContent(outer, actions, foot) {
     body.appendChild(partRow);
 
     /*
-     * The plate, flanked by the section stepper.
+     * The plate, alone on its row.
      *
-     * These were two rows: a stepper carrying the section's name, then a plate
-     * whose title was the section's name. The name was printed twice, four
-     * rows apart, and the second row existed to hold the duplicate. One row
-     * now — the chevrons step, the plate says what you are on, and it is the
-     * only place that says it.
+     * It was flanked by two chevrons that stepped through the sections, and
+     * the report was "arrows on arrows" — two stepper-shaped controls stacked
+     * one above the other, doing different things. Fair, and the chevrons are
+     * the pair that had to go, because they are the ones the timeline already
+     * does: a click on a block picks a section, which is one gesture instead
+     * of counting presses. The phrase stepper above cannot be replaced that
+     * way, since the strip has no phrase marks on it.
+     *
+     * The `,` and `.` shortcuts stay registered, so section stepping is still
+     * there for a keyboard or a controller and still listed in the host's own
+     * help panel and keybinds tab. What went is the visible duplicate.
      */
-    const pick = c.el('div', 'fbk-row fbk-row-tight fbk-row-nowrap rr-pick');
-    const navPrev = c.button('fbk-btn fbk-btn-quiet rr-chev', '‹',
-        'Previous section — the , key', () => actions.stepSection(-1));
+    const pick = c.el('div', 'fbk-row fbk-row-tight rr-pick');
     const plate = c.plate();
-    const navNext = c.button('fbk-btn fbk-btn-quiet rr-chev', '›',
-        'Next section — the . key', () => actions.stepSection(1));
-    pick.appendChild(navPrev);
     pick.appendChild(plate.el);
-    pick.appendChild(navNext);
     body.appendChild(pick);
 
     /*
@@ -245,8 +245,19 @@ export function createContent(outer, actions, foot) {
         nudger.appendChild(c.button('fbk-step', '−', 'One bar earlier', () => actions.nudge(edge, -1)));
         nudger.appendChild(time);
         nudger.appendChild(c.button('fbk-step', '+', 'One bar later', () => actions.nudge(edge, 1)));
+        /*
+         * A DIRECTLY AGAINST ITS OWN STEPPER.
+         *
+         * 0.8.0 pushed the cluster to the far right, on the reasoning that
+         * the space between them says "setting an edge and nudging it are two
+         * jobs". The report says what that actually achieved: "the A and B
+         * buttons aren't visually connected to their timers — they look like
+         * two isolated keys". Correct, and the more important association
+         * lost: a 130px gap between a button and the value it writes says
+         * they are unrelated, which is louder than any distinction it was
+         * drawing between neighbours.
+         */
         row.appendChild(mark);
-        row.appendChild(c.el('span', 'fbk-push'));
         row.appendChild(nudger);
         body.appendChild(row);
         edgeRows.push(row);
@@ -287,18 +298,16 @@ export function createContent(outer, actions, foot) {
     how.head.title = 'The ladder and the goal. These are preferences: they apply to '
         + 'every passage of every song, not just the one selected.';
     /*
-     * The scope, as a hint INSIDE the fold.
+     * The scope is on the heading's tooltip and nowhere else.
      *
-     * It used to replace the summary when the fold opened, and it arrived as
-     * "applies to every passage, every …" — the summary is the flexible cell
-     * of a three-cell row, about 165px here, so a sentence there cannot fit.
-     * A value belongs in that slot; prose belongs where it has the full width
-     * and sits next to the controls it describes. Which is also the moment it
-     * is needed: you are reading it because you are about to change one.
+     * It was a paragraph at the top of the fold, and before that a sentence
+     * crammed into the summary's 165px cell where it truncated. Both were
+     * wrong for the same reason, and DESIGN.md §4 had said so before either
+     * was written: no paragraph of explanation, and no box drawn to hold one.
+     * The fold made the prose cheap, which is not the same as making it
+     * wanted — "nobody playing a music game reads paragraphs of explanation
+     * every time".
      */
-    how.body.appendChild(c.el('p', 'fbk-hint',
-        'These are preferences, not part of the passage: they apply to every '
-        + 'passage of every song.'));
     /*
      * Repaint the head the instant it is toggled, rather than waiting for the
      * next tick — the summary and the scope note swap on open, and half a
@@ -380,11 +389,21 @@ export function createContent(outer, actions, foot) {
         + 'able to play the phrase only in isolation.',
         (on) => actions.setWiden(on));
     widenRow.appendChild(widen.el);
-    how.body.appendChild(widenRow);
-    how.body.appendChild(c.el('p', 'fbk-hint',
+    /*
+     * The sentence lives in a `?`, not on the panel.
+     *
+     * 0.10.0 printed it as a paragraph under the toggle, because the question
+     * "what is Widen for?" had been asked and a bare tooltip on a two-syllable
+     * verb had failed to answer it. Both halves of that were right: the label
+     * needed its object back — `Widen when clean` — and the tooltip needed
+     * somewhere visible to hang from. A badge is that somewhere, and it is the
+     * device this kit already documents for a sentence you may want once.
+     */
+    widenRow.appendChild(c.badge('?',
         'Once you clear the goal at full speed, the loop grows by one bar each '
         + 'side (up to two) so you play the passage back into the music around '
         + 'it before the drill lets go.'));
+    how.body.appendChild(widenRow);
 
 
 
@@ -401,7 +420,27 @@ export function createContent(outer, actions, foot) {
     body.appendChild(live);
 
     // ── play at ──────────────────────────────────────────────────────────
-    body.appendChild(c.section('Play at'));
+
+    /*
+     * "Which speed wins when I press Start drill?"
+     *
+     * A real ambiguity: `CLIMB 80 → 90 → 100` and `PLAY AT 100` are both on
+     * screen and only one of them applies once a drill runs. The row already
+     * disables itself while one is running — that half was covered — but
+     * nothing answered the question BEFORE pressing, which is when it is
+     * asked.
+     *
+     * So the heading says it, in five words, and only when the answer is not
+     * already obvious: when the drill would start at a different speed from
+     * the one selected here. A note that appears whenever there is a genuine
+     * discrepancy and never otherwise is the opposite of a paragraph
+     * (DESIGN.md §4) — and it goes on the heading row, which is where this
+     * panel already puts a section-level aside.
+     */
+    const speedHead = c.section('Play at');
+    const speedNote = c.el('span', 'rr-head-note');
+    speedHead.appendChild(speedNote);
+    body.appendChild(speedHead);
 
     const speedRow = c.el('div', 'fbk-row rr-speed');
     const speed = c.segmented(
@@ -413,18 +452,21 @@ export function createContent(outer, actions, foot) {
     body.appendChild(speedRow);
 
     /*
-     * The difficulty, as a FIELD rather than a row.
+     * The difficulty: `CHART 100 %` as one unit, then the track.
      *
-     * In a row it was `CHART` + track + `100 %`, and the track got 129px of a
-     * 306px body — 42% of the width for the only part of the control you
-     * touch, with the label column and the readout taking the rest. The value
-     * now sits at the end of the label's line, which is where the track's
-     * maximum is anyway, and the track spans the panel. Kit 0.5.0's
-     * `slider({ wide: true })`; DESIGN.md's component table says when to keep
-     * the row shape instead.
+     * Three shapes in three versions, and the third is the right one. As a
+     * one-row `CHART` + track + `100 %` the track got 129px of a 306px body.
+     * As a field — label line above a full-width track — the track got 296px
+     * but it cost a row, and the report was that the label and the value read
+     * as detached with the slider stranded underneath. They were: right-
+     * aligning a value puts the panel's whole width between it and the word
+     * that says what it is.
+     *
+     * Value beside its label answers both: they read as one thing, and the
+     * track still gets 216px — on one row. Kit DESIGN.md §18 records that
+     * this overruled its own "use fewer alignments" advice.
      */
     const difficulty = c.slider({
-        wide: true,
         label: 'Chart',
         min: 0,
         max: 100,
@@ -871,7 +913,15 @@ export function createContent(outer, actions, foot) {
     endBtn.appendChild(c.el('span', 'fbk-btn-label', '✕ End drill'));
     endBtn.appendChild(c.kbd('D'));
 
-    const loopBtn = c.button('fbk-btn rr-alt', 'Loop',
+    /*
+     * "Free loop", not "Loop".
+     *
+     * The one word was too generic to contrast with anything — reported as
+     * exactly that. `Free` is the contrast that matters: the drill has a goal,
+     * a ladder and a grade, and this has none of them. It is also the shorter
+     * of the two names the review offered, which keeps the primary wide.
+     */
+    const loopBtn = c.button('fbk-btn rr-alt', 'Free loop',
         'Loop the passage and leave it alone — no goal, no speed ladder, no grading',
         () => actions.loopOnly());
 
@@ -888,11 +938,8 @@ export function createContent(outer, actions, foot) {
 
         renderTimeline(snap);
 
-        // the chevrons step through the sections; the plate says which one
+        // the timeline picks the section; the plate says which one
         const current = snap.sections.find((s) => s.key === snap.sectionKey);
-        const at = snap.sections.indexOf(current);
-        navPrev.disabled = at <= 0;
-        navNext.disabled = at < 0 || at >= snap.sections.length - 1;
 
         /*
          * custom range -> whole section -> part 1 -> part 2 -> …
@@ -1015,6 +1062,15 @@ export function createContent(outer, actions, foot) {
         speed.el.title = snap.drill.active
             ? 'The drill owns the speed while it runs.'
             : 'The speed the song is playing at now.';
+        // Only when the two answers differ. `rungs[0]` is where a drill
+        // begins, because normalizeLadder sorts ascending.
+        const firstRung = (snap.settings.ladder || [])[0];
+        const showsConflict = !snap.drill.active
+            && Number.isFinite(firstRung)
+            && firstRung !== snap.chosenSpeedPct;
+        speedNote.textContent = snap.drill.active
+            ? 'the drill is driving this'
+            : (showsConflict ? `a drill starts at ${firstRung}%` : '');
         difficulty.set(snap.difficultyPct);
         difficulty.disable(!snap.hasPhraseData || snap.drill.active);
 
