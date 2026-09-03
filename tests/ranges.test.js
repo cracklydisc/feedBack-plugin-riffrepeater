@@ -35,6 +35,7 @@ import {
     snapToBar,
     rangeFromDrag,
     MIN_RANGE_SEC,
+    tile,
 } from '../src/ranges.js';
 
 // ── names ────────────────────────────────────────────────────────────────
@@ -411,4 +412,57 @@ test('the start of the song is a boundary, not a place to snap away from', () =>
     assert.equal(snapToBar(bars, 4), 3);
     assert.equal(snapToBar(bars, 4.6), 5);
     assert.equal(snapToBar(bars, 99), 7);
+});
+
+test('tiling fills the time no zone covers', () => {
+    /*
+     * A real chart's first eight and a half percent belonged to no phrase and
+     * no section — a count-in — so the strip drew nothing there and the map
+     * read as broken rather than as the song not having started.
+     */
+    const list = [
+        { kind: 'part', key: 'a', start: 25, end: 40 },
+        { kind: 'part', key: 'b', start: 40, end: 60 },
+        { kind: 'part', key: 'c', start: 65, end: 90 },
+    ];
+    const out = tile(list, 100);
+
+    /* It covers the whole song, end to end, with no overlaps. */
+    let cursor = 0;
+    for (const z of out) {
+        assert.equal(z.start, cursor, `zone starts where the last ended: ${z.key}`);
+        cursor = z.end;
+    }
+    assert.equal(cursor, 100, 'and reaches the duration');
+
+    /* The three real zones survive untouched, in order. */
+    assert.deepEqual(out.filter((z) => z.kind === 'part').map((z) => z.key), ['a', 'b', 'c']);
+
+    /*
+     * A gap declares itself EMPTY. `events: 0` is what every refusal
+     * downstream already keys off — the hit table drops it, so it cannot be
+     * selected, and `isUsable` rejects it. Reporting `null` would mean "not
+     * counted yet" and make it clickable.
+     */
+    const gaps = out.filter((z) => z.kind === 'gap');
+    assert.equal(gaps.length, 3, 'before, between and after');
+    for (const g of gaps) assert.equal(g.events, 0);
+    assert.equal(isUsable(gaps[0], 100), false);
+});
+
+test('tiling ignores a gap too small to be a hole', () => {
+    /* Rounding between two phrases is not a stretch of silence. */
+    const out = tile([
+        { kind: 'part', key: 'a', start: 0, end: 10 },
+        { kind: 'part', key: 'b', start: 10.05, end: 20 },
+    ], 20);
+    assert.equal(out.length, 2, 'no gap invented for 50ms');
+    assert.deepEqual(out.map((z) => z.key), ['a', 'b']);
+});
+
+test('tiling a song with no duration changes nothing', () => {
+    /* Before the chart arrives there is no "whole song" to cover. */
+    const list = [{ kind: 'part', key: 'a', start: 0, end: 10 }];
+    assert.deepEqual(tile(list, 0).map((z) => z.key), ['a']);
+    assert.deepEqual(tile(list, null).map((z) => z.key), ['a']);
 });

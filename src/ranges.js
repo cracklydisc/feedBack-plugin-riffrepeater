@@ -456,3 +456,50 @@ export function clock(sec, decimals = 0) {
     }
     return `${m}:${String(Math.floor(rest)).padStart(2, '0')}`;
 }
+
+/**
+ * Fill the time no zone covers, so the strip tiles the whole song.
+ *
+ * WHY THIS EXISTS: the first eight and a half percent of a real chart belonged
+ * to no phrase and no section — a count-in — and the strip drew nothing there.
+ * Reported as looking strange, and it did: a hole in a map reads as the map
+ * being broken, not as the song having nothing in it yet.
+ *
+ * A gap is a first-class zone with `events: 0`, so everything downstream that
+ * already refuses an empty range refuses these too: they fall out of the hit
+ * table, they cannot be selected, and `isUsable` rejects them. Its `kind` says
+ * what it is, because a gap and an EMPTY zone are two different nothings and
+ * the strip draws them differently.
+ *
+ * `min` is how short a gap has to be before it is not worth saying — a few
+ * milliseconds of rounding between two phrases is not a hole.
+ */
+export function tile(list, duration, min = 0.25) {
+    const total = fin(duration);
+    const items = (Array.isArray(list) ? list : [])
+        .filter((r) => Number.isFinite(fin(r?.start)) && Number.isFinite(fin(r?.end)))
+        .slice()
+        .sort((a, b) => fin(a.start) - fin(b.start));
+    if (!Number.isFinite(total) || total <= 0) return items;
+
+    const gap = (start, end) => ({
+        kind: 'gap',
+        key: rangeKey('gap', start, end),
+        label: 'No notes',
+        start,
+        end,
+        events: 0,
+    });
+
+    const out = [];
+    let cursor = 0;
+    for (const it of items) {
+        const start = fin(it.start);
+        const end = fin(it.end);
+        if (start - cursor >= min) out.push(gap(cursor, start));
+        out.push(it);
+        cursor = Math.max(cursor, end);
+    }
+    if (total - cursor >= min) out.push(gap(cursor, total));
+    return out;
+}

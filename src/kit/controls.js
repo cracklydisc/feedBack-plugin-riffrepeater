@@ -332,6 +332,24 @@ const SNAP_PX = 14;
 const BLOCK_GAP_PX = 3;
 
 /**
+ * The least air between two zones — they must never touch.
+ *
+ * A proportional gap alone gives a four-pixel phrase a gap you cannot see, so
+ * a row of thin zones reads as one bar again. Half a pixel each side is a
+ * hairline, which is all "these are two things" needs.
+ */
+const BLOCK_GAP_MIN_PX = 0.5;
+
+/**
+ * Below this a zone cannot afford to give any away.
+ *
+ * A sub-pixel block asked for the minimum gap would spend its whole width on
+ * it and paint nothing — visible-as-nothing while still being clickable, which
+ * is worse than touching its neighbour.
+ */
+const BLOCK_GAP_FLOOR_PX = 2;
+
+/**
  * How far apart the two brackets have to be before both letters fit.
  *
  * They are centred on their own rails, so the pair overlaps only when the
@@ -675,8 +693,24 @@ export function rangeStrip(opts = {}) {
      * its right, and `rect()` measures it. Everything that converts a pixel to
      * a second reads that one box.
      */
+    /*
+     * THE PLAYHEAD IS A LINE.
+     *
+     * It used to be a lit LEFT EDGE of whichever block held the playhead,
+     * which gets two things wrong at once: it takes the block's corner radius,
+     * so the mark is curved, and it can only ever be where a block begins — so
+     * it jumps from zone to zone instead of moving. Reported as both.
+     *
+     * A one-pixel line placed at a fraction of the track has neither problem.
+     * It is square because it is an instant, and it is as tall as the zones
+     * because that is what it is crossing.
+     */
+    const head = el('div', 'fbk-strip-head');
+    head.hidden = true;
+
     const track = el('div', 'fbk-strip-track');
     track.appendChild(blocks);
+    track.appendChild(head);
     track.appendChild(sel);
     wrap.appendChild(track);
 
@@ -851,9 +885,14 @@ export function rangeStrip(opts = {}) {
                 const node = nodes.get(it.key);
                 if (!node) continue;
                 const px = duration > 0 ? ((it.end - it.start) / duration) * stripW : 0;
-                const gap = Math.max(0, Math.min(BLOCK_GAP_PX, px / 4));
+                const gap = px < BLOCK_GAP_FLOOR_PX
+                    ? 0
+                    : Math.min(BLOCK_GAP_PX, Math.max(BLOCK_GAP_MIN_PX, px / 6));
                 node.style.setProperty('--fbk-block-gap', gap.toFixed(2) + 'px');
                 node.dataset.band = it.band || 'none';
+                /* What KIND of zone — a phrase, a section, or time no zone
+                   covers. The last of those is drawn differently. */
+                node.dataset.kind = it.kind || '';
                 node.dataset.empty = num(it.events) === 0 ? 'true' : 'false';
                 node.classList.toggle('fbk-strip-block-done', !!it.graduated);
                 if (it.title) node.title = it.title;
@@ -929,9 +968,21 @@ export function rangeStrip(opts = {}) {
                  */
             }
         },
-        /** Light the block under the playhead's key, or nothing. */
-        mark(key) {
-            for (const [k, node] of nodes) node.classList.toggle('fbk-strip-block-at', k === key);
+        /**
+         * Put the playhead at `seconds`, or hide it with null.
+         *
+         * Called as often as the caller likes — it writes one property and
+         * reads nothing, so driving it from a frame loop is the intended use.
+         * That is the other half of "it should move smoothly": at the panel's
+         * own twice-a-second render, even a correctly placed line steps.
+         */
+        playhead(seconds) {
+            const t = Number(seconds);
+            const ok = Number.isFinite(t) && duration > 0 && seconds !== null && seconds !== undefined;
+            head.hidden = !ok;
+            if (!ok) return;
+            const at = Math.max(0, Math.min(1, t / duration));
+            head.style.left = (at * 100) + '%';
         },
         disable(off) {
             handleA.disabled = !!off;

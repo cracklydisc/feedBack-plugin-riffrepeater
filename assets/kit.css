@@ -2114,10 +2114,17 @@
     /*
      * THE CASE IS TALLER THAN THE ZONES, and that is the whole point.
      *
-     * `h-lg` around an `h-md` row of zones leaves `s-4` of the dark ground
-     * above and below them — which is where the bracket corners and the two
-     * letters sit. It used to be `h-md` plus a hair, with the frame standing
-     * proud of the box and into the row's MARGIN: so the letters left the case
+     * `s-2` of the dark ground above and below an `h-md` row of zones — which
+     * is where the bracket corners and the two letters sit. `s-4` was the
+     * first try and it was too much: half the strip's height was ground, and
+     * a selector reads as a map, not as a mount.
+     *
+     * The height is the two of them added up rather than a step off the
+     * height scale, because that is what it IS: change the air and the case
+     * follows, where `h-lg` would have quietly stopped matching.
+     *
+     * Before either, the case was the zones' own height and the frame stood
+     * proud of the box into the row's MARGIN — so the letters left the case
      * and read as escaping the card, worst of all at the two ends.
      *
      * Nothing overhangs now, so the margin that used to reserve the overhang
@@ -2125,7 +2132,7 @@
      * neighbours, and a margin left behind for a mechanism that no longer
      * exists is how two of the last three layout bugs here happened.
      */
-    height: var(--fbk-h-lg, 56px);
+    height: calc(var(--fbk-h-md, 40px) + 2 * var(--fbk-s-2, 4px));
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     border-radius: var(--fbk-radius-well, 12px);
     background: rgb(var(--fbk-bg, 5 7 12));
@@ -2145,12 +2152,16 @@
 .fbk-strip-track {
     position: absolute;
     /*
-     * Inset on all four sides: the zones are a band floating in the case, with
-     * the dark ground showing above, below and at both ends. The horizontal
-     * air is where a bracket at bar one stands; the vertical air is where its
-     * corners and its letter go.
+     * Inset on all four sides, but NOT by the same amount.
+     *
+     * The vertical air is where a bracket's corners and its letter go, and
+     * `s-2` is enough for that — at `s-4` half the strip's height was ground.
+     * The horizontal air is doing a different job: it is the room a letter
+     * centred on a rail at bar one needs in order not to touch the case, and
+     * halving that is what would put it back on the edge. Two jobs, two
+     * values.
      */
-    inset: var(--fbk-s-4, 8px);
+    inset: var(--fbk-s-2, 4px) var(--fbk-s-4, 8px);
     border-radius: var(--fbk-radius-seg, 5px);
 }
 
@@ -2178,14 +2189,24 @@
      * because how much air a zone can spare depends on how wide it is.
      */
     border-inline: var(--fbk-block-gap, 0px) solid transparent;
-    background-clip: padding-box;
     border-radius: var(--fbk-radius-seg, 5px);
-    background: rgb(var(--fbk-border, 42 46 58));
+    /*
+     * LONGHANDS, and that is not a style preference.
+     *
+     * `background:` is a shorthand, so it resets `background-clip` to
+     * `border-box` — and it sat BELOW the clip in this rule, which meant the
+     * transparent border painted through and the gap between zones was never
+     * drawn at all. The property was being set correctly the whole time; I had
+     * verified the input and not the paint. Every band rule below would have
+     * reset it again anyway.
+     */
+    background-color: rgb(var(--fbk-border, 42 46 58));
+    background-clip: padding-box;
 }
 
-.fbk-strip-block[data-band="good"] { background: rgb(var(--fbk-good, 61 220 132)); }
-.fbk-strip-block[data-band="mid"] { background: rgb(var(--fbk-mid, 245 165 36)); }
-.fbk-strip-block[data-band="bad"] { background: rgb(var(--fbk-bad, 229 72 77)); }
+.fbk-strip-block[data-band="good"] { background-color: rgb(var(--fbk-good, 61 220 132)); }
+.fbk-strip-block[data-band="mid"] { background-color: rgb(var(--fbk-mid, 245 165 36)); }
+.fbk-strip-block[data-band="bad"] { background-color: rgb(var(--fbk-bad, 229 72 77)); }
 
 /*
  * Nothing in it — a Noguitar marker, usually. Hatched rather than merely
@@ -2193,9 +2214,32 @@
  * these are two different nothings.
  */
 .fbk-strip-block[data-empty="true"] {
-    background: repeating-linear-gradient(135deg,
+    background-color: transparent;
+    background-image: repeating-linear-gradient(135deg,
         rgb(var(--fbk-border, 42 46 58) / 0.5) 0 3px,
         rgb(var(--fbk-bg, 5 7 12) / 0) 3px 6px);
+    cursor: default;
+}
+
+/*
+ * TIME NO ZONE COVERS — a count-in, a tail, a stretch the chart says nothing
+ * about — marked, and marked DIFFERENTLY.
+ *
+ * It used to be bare ground, which read as a hole in the map rather than as a
+ * part of the song: reported as looking strange. But it is not the same
+ * nothing as a zone with no notes in it: that zone EXISTS and is empty, and it
+ * gets the hatch. This is where the chart has nothing to say at all, so it
+ * gets the quieter mark — a rule through the middle, saying time passes here
+ * and there is nothing to play.
+ */
+.fbk-strip-block[data-kind="gap"] {
+    background-color: transparent;
+    background-image: linear-gradient(rgb(var(--fbk-border, 42 46 58) / 0.7),
+                                      rgb(var(--fbk-border, 42 46 58) / 0.7));
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 100% var(--fbk-hairline, 1px);
+    border-radius: 0;
     cursor: default;
 }
 
@@ -2206,9 +2250,28 @@
    others, so it is a top edge. */
 .fbk-strip-block-done { box-shadow: inset 0 2px 0 0 rgb(var(--fbk-good, 61 220 132)); }
 
-/* Where the playhead is, as a lit left edge — not a fill, which would compete
-   with the grade the fill already carries (§3). */
-.fbk-strip-block-at { box-shadow: inset 2px 0 0 0 rgb(var(--fbk-text, 232 238 252)); }
+/*
+ * THE PLAYHEAD — a straight line at an instant.
+ *
+ * It was `inset 2px 0 0 0` on whichever BLOCK held the playhead, so it took
+ * that block's corner radius and could only ever sit where a block began: a
+ * curved mark that jumped from zone to zone. Reported as both.
+ *
+ * Square corners, one hairline wide, as tall as the zones it crosses, and
+ * placed at a fraction of the track — so it goes exactly where the time is and
+ * nowhere else. No transition: it is driven from a frame loop, and easing a
+ * value that is already smooth only makes it late.
+ */
+.fbk-strip-head {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: var(--fbk-hairline, 1px);
+    margin-left: calc(-0.5 * var(--fbk-hairline, 1px));
+    border-radius: 0;
+    background: rgb(var(--fbk-text, 232 238 252));
+    pointer-events: none;
+}
 
 /*
  * THE SELECTION IS A FRAME, and it stands proud of the strip.
@@ -2220,8 +2283,8 @@
 .fbk-strip-sel {
     position: absolute;
     /*
-     * It fills the case's interior exactly — `s-4` proud of the zone row at
-     * top and bottom, which is the air the case now carries.
+     * It fills the case's interior exactly — `s-2` proud of the zone row at
+     * top and bottom, which is the air the case carries.
      *
      * AND IT HAS NO OUTLINE. Two blue lines running the selection's whole
      * length said the same thing the brackets already say, twice, and drew a
@@ -2229,8 +2292,8 @@
      * enough: two rails and a tick turning inward at each corner. Reported
      * exactly that way, and it is §18 — one signal per boundary.
      */
-    top: calc(-1 * var(--fbk-s-4, 8px));
-    bottom: calc(-1 * var(--fbk-s-4, 8px));
+    top: calc(-1 * var(--fbk-s-2, 4px));
+    bottom: calc(-1 * var(--fbk-s-2, 4px));
     box-sizing: border-box;
     pointer-events: none;
 }
@@ -2311,9 +2374,10 @@
  * inside the selection need 22px of selection, and a section on a five-minute
  * song is eight to twenty-two, so they were hidden essentially always. On the
  * rail they collide only when the selection is thinner than one letter, and
- * they cannot leave the case either — the rail is already `s-4` inside it, and
- * a letter centred there overhangs by half its width into air that is wider
- * than that.
+ * they cannot leave the case either — the rail is already `s-4` inside it
+ * HORIZONTALLY, and a letter centred there overhangs by half its width into
+ * air that is wider than that. Which is why the horizontal inset did not
+ * halve along with the vertical one when the case's air came down.
  *
  * Which is also what retired the rule that used to flip the handles at the
  * ends of the song to keep them out of the scroll container's clip.

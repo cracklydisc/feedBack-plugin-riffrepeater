@@ -586,7 +586,7 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
         loopRack.el.querySelector('.fbk-rack-aside').dataset.tone = best === null ? '' : 'value';
 
         strip.set(snap.blocks, snap.duration, sel);
-        strip.mark(blockAt(snap));
+        strip.playhead(snap.playhead);
         strip.disable(snap.drill.active);
 
         /*
@@ -607,13 +607,6 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
         }
     }
 
-    /** Which block the playhead is inside, so the strip can mark it. */
-    function blockAt(snap) {
-        const t = c.num(snap.playhead);
-        if (t === null) return null;
-        for (const b of snap.blocks) if (t >= b.start && t < b.end) return b.key;
-        return null;
-    }
 
     function renderDrillRack(snap) {
         const running = snap.drill.active;
@@ -781,6 +774,15 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
 
     return {
         render,
+        /**
+         * Move the playhead alone, without re-rendering the panel.
+         *
+         * The strip's line is placed from a time, so at the panel's own
+         * twice-a-second render it steps visibly however correct each position
+         * is. `main.js` calls this from a frame loop; it writes one property
+         * and reads nothing.
+         */
+        movePlayhead(seconds) { strip.playhead(seconds); },
         /** Called by the action: show the rack even though something runs. */
         showRack() { wantsRack = true; },
     };

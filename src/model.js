@@ -697,7 +697,11 @@ export function snapshot() {
         const live = tally.get(r.key);
         return {
             ...r,
-            events: events.get(r.key) ?? null,
+            /*
+             * A gap knows it is empty; nothing counted it and nothing should.
+             * `?? null` would report "not counted yet" and make it clickable.
+             */
+            events: r.kind === 'gap' ? 0 : (events.get(r.key) ?? null),
             best: stats.displayAccuracy(rec),
             plays: Number(rec?.plays) || 0,
             graduated: !!rec?.graduated,
@@ -811,7 +815,17 @@ export function snapshot() {
          * grain you can pick at all — and a chart with no phrase table would
          * otherwise leave it empty and the panel unusable.
          */
-        blocks: (state.phrases.length ? state.phrases : state.sections).map(decorate),
+        /*
+         * TILED, so the strip has something to draw everywhere.
+         *
+         * A count-in belongs to no phrase and no section, so the first stretch
+         * of a real chart was a hole in the map. `tile` fills those with
+         * `events: 0` zones that everything already refuses.
+         */
+        blocks: ranges.tile(
+            state.phrases.length ? state.phrases : state.sections,
+            duration,
+        ).map(decorate),
 
         /*
          * The rungs a drill WOULD climb, from the stored start and step.

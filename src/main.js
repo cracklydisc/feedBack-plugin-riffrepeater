@@ -19,7 +19,7 @@ import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.30.0';
+const VERSION = '0.31.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -39,6 +39,8 @@ const apiListeners = new Set();
 let open = false;
 let tickTimer = null;
 let tickRate = 0;
+/** The playhead's own frame loop — see `retick`. */
+let headFrame = null;
 let panel = null;      // the kit's shell
 let content = null;    // this plugin's controls inside it
 
@@ -358,6 +360,38 @@ function retick() {
 }
 
 /*
+ * ── THE PLAYHEAD'S OWN LOOP ──────────────────────────────────────────────
+ *
+ * The panel renders every 400ms, which is right for numbers and wrong for a
+ * line that is supposed to slide: two and a half positions a second is a
+ * visible step, however correct each one is. Reported as the playhead jumping.
+ *
+ * So the line gets a frame loop of its own, and it is the cheapest thing in
+ * the plugin: read the clock, write one `left`. Nothing else in the panel is
+ * touched, so this cannot become a second source of truth for anything.
+ *
+ * It runs only while the panel is open, and stops the moment it is not — a
+ * frame loop nobody can see is a frame loop nobody should be paying for.
+ */
+function moveHead() {
+    headFrame = null;
+    if (!open || !content) return;
+    if (content.movePlayhead) content.movePlayhead(host.time());
+    headFrame = window.requestAnimationFrame(moveHead);
+}
+
+function reheadFrame() {
+    if (open && headFrame === null) {
+        headFrame = window.requestAnimationFrame(moveHead);
+        return;
+    }
+    if (!open && headFrame !== null) {
+        window.cancelAnimationFrame(headFrame);
+        headFrame = null;
+    }
+}
+
+/*
  * Opening and closing is the kit panel's job now, including the in-player
  * guard (a programmatic open used to succeed over the song library, because
  * the highway keeps the last song's sections after you navigate away). This
@@ -367,6 +401,7 @@ function onPanelToggle(isOpen) {
     open = !!isOpen;
     if (open) render();
     retick();
+    reheadFrame();
     announceApi();
 }
 
@@ -682,6 +717,9 @@ function teardown() {
     open = false;
     if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
     tickRate = 0;
+    /* The playhead's frame loop too — it re-arms itself, so it has to be
+       cancelled here and not merely left to notice that `open` went false. */
+    if (headFrame !== null) { window.cancelAnimationFrame(headFrame); headFrame = null; }
     while (unsubs.length) {
         const off = unsubs.pop();
         try { off(); } catch (_) { /* going away anyway */ }
