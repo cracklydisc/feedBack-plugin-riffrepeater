@@ -720,6 +720,69 @@
 }
 
 /*
+ * WRAPPED, past four options — the same control, laid out as chips.
+ *
+ * Five named labels in one 360px row get about 66px each, which truncates a
+ * word like `Sight-reading` or stops being a row. So the options break onto a
+ * second line and stop pretending to be a joined switch: each takes its own
+ * ground and its own corner, sized to its label rather than to a share.
+ *
+ * The container drops its own well too. A wrapping group of separate chips is
+ * not one object with segments cut into it, and drawing a box round two ragged
+ * lines only says "this box is the wrong shape".
+ */
+.fbk-seg-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--fbk-s-3, 6px);
+    height: auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+}
+
+.fbk-seg-wrap .fbk-seg-btn {
+    position: relative;
+    flex: 0 0 auto;
+    height: var(--fbk-h-md, 40px);
+    padding: 0 var(--fbk-s-6, 14px);
+    border-radius: var(--fbk-radius-sm, 8px);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
+    box-shadow: var(--fbk-control-lift, none);
+}
+
+.fbk-seg-wrap .fbk-seg-btn:hover:not(:disabled):not(.fbk-on) {
+    background: rgb(var(--fbk-surface, 12 15 22));
+    border-color: rgb(var(--fbk-dim, 138 160 200) / 0.5);
+    box-shadow: var(--fbk-control-lift-on, none);
+}
+
+/*
+ * A MARK ON A CHIP, for the fact its label cannot carry.
+ *
+ * "This is the preset you picked" is the chip being lit. "And you have since
+ * changed something under it" is a second fact about the same chip, so it
+ * cannot be another chip — it is a dot on this one, in the same hue the rack's
+ * header uses for EDITED, because they are saying one thing in two places.
+ */
+.fbk-seg-mark {
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    margin-left: var(--fbk-s-3, 6px);
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-mid, 245 165 36));
+}
+
+.fbk-seg-mark[data-tone="warn"] { background: rgb(var(--fbk-bad, 229 72 77)); }
+
+/* The label needs a box of its own now that a chip can hold two things. */
+.fbk-seg-btn { display: inline-flex; align-items: center; justify-content: center; }
+.fbk-seg-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/*
  * The HEADER size: a unit or a mode set once, in a rack's header slot.
  *
  * AFTER `.fbk-seg` and `.fbk-seg-btn` on purpose: both are single-class
@@ -2855,4 +2918,116 @@
  */
 @media (prefers-reduced-motion: reduce) {
     .fbk-panel *, .fbk-open-btn, .fbk-fold-chev { transition: none !important; }
+}
+
+/* ═══ 23. The select — one of a list too long, or too changeable, to lay out ══
+ *
+ * The third answer to "pick one", and the option COUNT is what decides which
+ * you get: up to four a segmented row, past that wrapping chips, and past the
+ * point where chips would be a wall — or when the app supplies the list at
+ * runtime so nobody knows how many there will be — the choice collapses to the
+ * one that is current.
+ *
+ * The element is a NATIVE `<select>` and the list it opens is the platform's.
+ * A hand-drawn sheet was built here first and withdrawn: what it cost was
+ * keyboard, type-ahead, screen readers, a gamepad and a list allowed to be
+ * taller than the panel. What is ours is the well it sits in.
+ */
+
+.fbk-select { position: relative; width: 100%; }
+
+/*
+ * THE WELL, and the select is transparent on top of it.
+ *
+ * `h-lg`, because this is the whole control rather than one value inside a
+ * field: it is what you aim at, and on a touch pointer it grows with the scale
+ * like everything else. `appearance: none` takes away the platform's own arrow
+ * so the rack can put back one of its own.
+ */
+.fbk-select-input {
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--fbk-h-lg, 56px);
+    padding: 0 var(--fbk-h-lg, 56px) 0 var(--fbk-s-5, 10px);
+    border-radius: var(--fbk-radius, 14px);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+    background: rgb(var(--fbk-bg, 5 7 12));
+    box-shadow: var(--fbk-panel-inner, none);
+    color: rgb(var(--fbk-text, 232 238 252));
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
+    letter-spacing: var(--fbk-t-label-track, 0);
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: border-color var(--fbk-motion, 140ms ease),
+                box-shadow var(--fbk-motion, 140ms ease);
+}
+
+.fbk-select-input:hover:not(:disabled) {
+    border-color: rgb(var(--fbk-dim, 138 160 200) / 0.5);
+}
+
+.fbk-select-input:focus-visible {
+    outline: none;
+    border-color: rgb(var(--fbk-accent, 41 168 255));
+    box-shadow: var(--fbk-edge-glow, none);
+}
+
+.fbk-select-input:disabled { opacity: var(--fbk-disabled-opacity, 0.38); cursor: default; }
+
+/*
+ * The list the platform opens is the platform's, but the closed element still
+ * inherits our ink — so the OPTIONS need a ground of their own or they render
+ * as dark text on a dark sheet on the platforms that honour this at all.
+ */
+.fbk-select-input option {
+    background: rgb(var(--fbk-surface, 12 15 22));
+    color: rgb(var(--fbk-text, 232 238 252));
+}
+
+/* A chosen value that is no longer IN the list — a board uninstalled while it
+   was the one picked. Said rather than swallowed. */
+.fbk-select-input[data-missing="true"] { border-color: rgb(var(--fbk-mid, 245 165 36) / 0.7); }
+
+/*
+ * OUR CHEVRON, and it is inert: the press has to reach the select underneath,
+ * because the well is the target — all of it.
+ */
+.fbk-select-chevron {
+    position: absolute;
+    top: 50%;
+    right: var(--fbk-s-2, 4px);
+    transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    width: var(--fbk-h-md, 40px);
+    height: var(--fbk-h-md, 40px);
+    border-radius: var(--fbk-radius-sm, 8px);
+    background: rgb(var(--fbk-surface-2, 30 34 44));
+    pointer-events: none;
+}
+
+.fbk-select-chevron::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgb(var(--fbk-dim, 138 160 200));
+    border-bottom: 2px solid rgb(var(--fbk-dim, 138 160 200));
+    transform: translateY(-2px) rotate(45deg);
+}
+
+.fbk-select-input:focus-visible + .fbk-select-chevron {
+    background: rgb(var(--fbk-accent, 41 168 255));
+}
+
+.fbk-select-input:focus-visible + .fbk-select-chevron::after {
+    border-color: rgb(var(--fbk-on-accent, 5 7 12));
+}
+
+/* The derived companion to a value: what you asked for, then what is on
+   screen. Dim, because §21 — you cannot type into it. */
+.fbk-readout-aside {
+    font: var(--fbk-t-num, 700 11px/1.2 monospace);
+    letter-spacing: var(--fbk-t-num-track, 0.02em);
+    color: rgb(var(--fbk-dim, 138 160 200));
 }

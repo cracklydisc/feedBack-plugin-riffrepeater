@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  kit 0.2.0 — the component gallery.
+  kit 0.26.0 — the component gallery.
 
   Every component in every state, on one page, so the details get LOOKED at
   rather than guessed. It is also the proof for the two rules that are
@@ -149,7 +149,7 @@ body {
 
 <div class="g-bar">
     <strong>fee[dB]ack plugin kit</strong>
-    <span>0.2.0 — every component, every state</span>
+    <span>0.26.0 — every component, every state</span>
     <span style="flex:1 1 auto"></span>
     <button class="fbk-btn fbk-btn-small" onclick="document.body.classList.toggle('no-devices')">No devices</button>
     <button class="fbk-btn fbk-btn-small" onclick="document.body.classList.toggle('still')">Still</button>
@@ -201,19 +201,103 @@ body {
     track of cells that light up.</p>
     <div class="fbk-row">
         <div class="fbk-seg">
-            <button class="fbk-seg-btn fbk-on">Section</button>
-            <button class="fbk-seg-btn">Phrase</button>
-            <button class="fbk-seg-btn">Bars</button>
+            <button class="fbk-seg-btn fbk-on"><span class="fbk-seg-label">Section</span></button>
+            <button class="fbk-seg-btn"><span class="fbk-seg-label">Phrase</span></button>
+            <button class="fbk-seg-btn"><span class="fbk-seg-label">Bars</span></button>
         </div>
     </div>
-    <div class="g-tag">disabled</div>
+    <div class="g-tag">four is the most a row holds</div>
     <div class="fbk-row">
         <div class="fbk-seg">
-            <button class="fbk-seg-btn fbk-on" disabled>50</button>
-            <button class="fbk-seg-btn" disabled>65</button>
-            <button class="fbk-seg-btn" disabled>80</button>
-            <button class="fbk-seg-btn" disabled>100</button>
+            <button class="fbk-seg-btn fbk-on" disabled><span class="fbk-seg-label">50</span></button>
+            <button class="fbk-seg-btn" disabled><span class="fbk-seg-label">65</span></button>
+            <button class="fbk-seg-btn" disabled><span class="fbk-seg-label">80</span></button>
+            <button class="fbk-seg-btn" disabled><span class="fbk-seg-label">100</span></button>
         </div>
+    </div>
+
+    <p class="g-why"><strong>Past four it wraps</strong>, and the count decides
+    &mdash; not the author. Five named labels in one 360px row get about 66px
+    each, which truncates a word like <em>Sight-reading</em>. So they break onto
+    a second line and stop pretending to be a joined switch: each takes its own
+    ground and its own corner, sized to its label rather than to a share, and
+    the container drops its well &mdash; a box round two ragged lines only says
+    the box is the wrong shape.</p>
+    <div class="g-tag">five options &middot; wrapped &middot; amber mark = changed underneath</div>
+    <div class="fbk-row">
+        <div class="fbk-seg fbk-seg-wrap">
+            <button class="fbk-seg-btn"><span class="fbk-seg-label">Live</span></button>
+            <button class="fbk-seg-btn fbk-on"><span class="fbk-seg-label">Study</span><span class="fbk-seg-mark"></span></button>
+            <button class="fbk-seg-btn"><span class="fbk-seg-label">Sight-reading</span></button>
+            <button class="fbk-seg-btn"><span class="fbk-seg-label">Arcade</span></button>
+            <button class="fbk-seg-btn"><span class="fbk-seg-label">Minimal</span></button>
+        </div>
+    </div>
+    <p class="g-why">The mark is the fact a label cannot carry. &ldquo;This is
+    the preset you picked&rdquo; is the chip being lit; &ldquo;and you have
+    changed something under it&rdquo; is a <em>second</em> fact about the same
+    chip, so it cannot be another chip.</p>
+</section>
+
+<section class="g-card">
+    <h2>Family 1b &mdash; select</h2>
+    <p class="g-why">The third answer to &ldquo;pick one&rdquo;, and the same
+    rule reaches it: the option <strong>count</strong> decides. Up to four a
+    segmented row, past that wrapping chips, and past the point where chips
+    would be a wall &mdash; or when the app supplies the list at runtime so
+    nobody knows how many there will be &mdash; the choice collapses to the one
+    that is current.</p>
+    <p class="g-why">It is a <strong>native <code>&lt;select&gt;</code></strong>.
+    A hand-drawn sheet was built here first and withdrawn: what it cost was
+    keyboard, type-ahead, screen readers, a gamepad and a list allowed to be
+    taller than the panel. What stays ours is the well it sits in &mdash; the
+    chassis, the corner, the chevron in its own lit square, inert so the press
+    reaches the element underneath.</p>
+    <div class="fbk-row">
+        <div class="fbk-select">
+            <select class="fbk-select-input" aria-label="Board above the tab">
+                <option>3D Highway</option>
+                <option>Jumping Tab</option>
+                <option>Staff View</option>
+                <option>None (tab only)</option>
+            </select>
+            <span class="fbk-select-chevron"></span>
+        </div>
+    </div>
+    <div class="g-tag">a chosen value no longer in the list &mdash; said, not swallowed</div>
+    <div class="fbk-row">
+        <div class="fbk-select">
+            <select class="fbk-select-input" data-missing="true" aria-label="A board that was uninstalled">
+                <option>Drum Highway (missing)</option>
+            </select>
+            <span class="fbk-select-chevron"></span>
+        </div>
+    </div>
+    <div class="g-tag">disabled &mdash; the field a condition took away</div>
+    <div class="fbk-row">
+        <div class="fbk-select">
+            <select class="fbk-select-input" disabled aria-label="Not available while the tab turns pages">
+                <option>3D Highway</option>
+            </select>
+            <span class="fbk-select-chevron"></span>
+        </div>
+    </div>
+</section>
+
+<section class="g-card">
+    <h2>A derived companion to a value</h2>
+    <p class="g-why"><code>5 &rarr; 7.8</code>: what you asked for, and what is
+    on screen once the tempo widened the window. It sits beside the value
+    rather than in a hint, because it is a <em>reading</em> that changes while
+    you play &mdash; and it is never what the control writes to (&sect;21). On
+    the readout rather than on the slider, because a stepper's value has the
+    same question.</p>
+    <div class="fbk-row">
+        <span class="fbk-readout">
+            <span class="fbk-readout-value">5</span>
+            <span class="fbk-readout-unit">beats</span>
+            <span class="fbk-readout-aside">&rarr; 7.8</span>
+        </span>
     </div>
 </section>
 
@@ -549,8 +633,8 @@ body {
                     <span class="fbk-rack-aside">INTRO 1 · BEST 58%</span>
                     <div class="fbk-rack-header">
                         <div class="fbk-seg fbk-seg-header">
-                            <button class="fbk-seg-btn fbk-on">TIME</button>
-                            <button class="fbk-seg-btn">BARS</button>
+                            <button class="fbk-seg-btn fbk-on"><span class="fbk-seg-label">TIME</span></button>
+                            <button class="fbk-seg-btn"><span class="fbk-seg-label">BARS</span></button>
                         </div>
                     </div>
                 </div>
@@ -757,11 +841,11 @@ body {
                 <div class="fbk-section"><h4 class="fbk-section-title">Play at</h4><span class="fbk-section-rule"></span></div>
                 <div class="fbk-row">
                     <div class="fbk-seg">
-                        <button class="fbk-seg-btn">50</button>
-                        <button class="fbk-seg-btn">65</button>
-                        <button class="fbk-seg-btn">80</button>
-                        <button class="fbk-seg-btn">90</button>
-                        <button class="fbk-seg-btn fbk-on">100</button>
+                        <button class="fbk-seg-btn"><span class="fbk-seg-label">50</span></button>
+                        <button class="fbk-seg-btn"><span class="fbk-seg-label">65</span></button>
+                        <button class="fbk-seg-btn"><span class="fbk-seg-label">80</span></button>
+                        <button class="fbk-seg-btn"><span class="fbk-seg-label">90</span></button>
+                        <button class="fbk-seg-btn fbk-on"><span class="fbk-seg-label">100</span></button>
                     </div>
                 </div>
                 <div class="fbk-row fbk-slider-row">

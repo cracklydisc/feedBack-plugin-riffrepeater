@@ -1168,8 +1168,30 @@ export function readout(unit) {
     const value = el('span', 'fbk-readout-value', '–');
     wrap.appendChild(value);
     if (unit) wrap.appendChild(el('span', 'fbk-readout-unit', unit));
+
+    /*
+     * A SECOND NUMBER, derived, after the one you set.
+     *
+     * `5 -> 7.8`: what you asked for, and what is actually on screen once the
+     * tempo has widened the window. It belongs beside the value rather than in
+     * a hint, because it is a READING that changes while you play.
+     *
+     * On the READOUT rather than on the slider, because every readout has the
+     * same question: a stepper's value can have a derived companion too. And it
+     * must never be what the control writes to — §21.
+     */
+    const aside = el('span', 'fbk-readout-aside');
+    aside.hidden = true;
+    wrap.appendChild(aside);
+
     return {
         el: wrap,
+        /** The derived companion, or null to hide it. */
+        setAside(text) {
+            const t = (text === null || text === undefined || text === '') ? null : String(text);
+            aside.hidden = t === null;
+            aside.textContent = t === null ? '' : t;
+        },
         set(v) { value.textContent = (v === null || v === undefined) ? '–' : String(v); },
     };
 }
@@ -1206,12 +1228,32 @@ export function segmented(items, onPick, ariaLabel, opts = {}) {
      * and want different sizes, because one of them you set on the first day
      * and the other you reach for every passage.
      */
-    const wrap = el('div', opts.size === 'header' ? 'fbk-seg fbk-seg-header' : 'fbk-seg');
+    /*
+     * PAST FOUR OPTIONS IT WRAPS, and that is not a second widget.
+     *
+     * Five named choices in one row gives each of them a fifth of the panel —
+     * `Sight-reading` in 66 pixels — so the row either truncates the words or
+     * stops being a row. The same pick, laid out as chips over two lines, keeps
+     * every label whole and reads as one group because it still is one.
+     *
+     * DERIVED from the option count, like the strip's zone gap and its corner
+     * radius: whoever declares five options should not also have to know that
+     * five is where a row stops working. `opts.wrap` forces it either way for
+     * the case the count cannot see.
+     */
+    const many = (items || []).length > SEG_MAX_INLINE;
+    const laid = (opts.wrap === undefined) ? many : !!opts.wrap;
+    const cls = ['fbk-seg'];
+    if (opts.size === 'header') cls.push('fbk-seg-header');
+    if (laid) cls.push('fbk-seg-wrap');
+    const wrap = el('div', cls.join(' '));
     wrap.setAttribute('role', 'group');
     if (ariaLabel) wrap.setAttribute('aria-label', ariaLabel);
     const nodes = new Map();
+    const marks = new Map();
     for (const it of (items || [])) {
-        const b = button('fbk-seg-btn', it.label, it.title || null, () => onPick(it.value));
+        const b = button('fbk-seg-btn', null, it.title || null, () => onPick(it.value));
+        b.appendChild(el('span', 'fbk-seg-label', it.label));
         b.setAttribute('aria-pressed', 'false');
         nodes.set(it.value, b);
         wrap.appendChild(b);
@@ -1226,9 +1268,152 @@ export function segmented(items, onPick, ariaLabel, opts = {}) {
                 b.setAttribute('aria-pressed', on ? 'true' : 'false');
             }
         },
+        /**
+         * Put a mark on one option, or clear it with null.
+         *
+         * For the thing a label cannot say: this preset is the one you picked
+         * AND you have since changed something under it. Two facts about one
+         * chip, so the second one cannot be another chip — it is a dot on this
+         * one, in the alert-adjacent hue the rack's own header uses to say
+         * EDITED.
+         */
+        mark(value, tone) {
+            for (const [v, b] of nodes) {
+                const want = (v === value) ? (tone || 'edit') : null;
+                const had = marks.get(v) || null;
+                if (want === had) continue;
+                marks.set(v, want);
+                const old = b.querySelector('.fbk-seg-mark');
+                if (old) old.remove();
+                if (want) {
+                    const d = el('span', 'fbk-seg-mark');
+                    d.dataset.tone = want;
+                    b.appendChild(d);
+                }
+            }
+        },
         disable(off) { for (const [, b] of nodes) b.disabled = !!off; },
         node(value) { return nodes.get(value) || null; },
         values() { return [...nodes.keys()]; },
+    };
+}
+
+/**
+ * How many options a single row of a segmented control can hold.
+ *
+ * Four, because the panel is 360px wide and a well takes some of that: five
+ * named labels get about 66px each, which is not enough for a word like
+ * `Sight-reading`. Past this the same control lays its options out as wrapping
+ * chips — see the note in `segmented`.
+ */
+export const SEG_MAX_INLINE = 4;
+
+/**
+ * FAMILY 1b — a SELECT. One of a list too long, or too changeable, to lay out.
+ *
+ *     ┌────────────────────────────────────────┬───┐
+ *     │  3D Highway                            │ v │
+ *     └────────────────────────────────────────┴───┘
+ *
+ * The third answer to "pick one", and the rule for reaching it is the same as
+ * the other two: it is the option COUNT that decides, not the author. Up to
+ * four, a segmented row; past that, chips — until the list is long enough that
+ * chips would be a wall, or the app supplies it at runtime so nobody knows how
+ * many there will be. Then the choice collapses to the one that is current.
+ *
+ * IT IS A NATIVE `<select>`, and the list it opens is the platform's.
+ *
+ * The first build of this drew its own sheet under the well: rows, hover
+ * states, a document-level pointer listener to close it, focus handling,
+ * Escape. Withdrawn on the reader's call — "the sheet is not necessary, the
+ * select is enough" — and they were right for more reasons than the one given.
+ * A list of installed boards is not a place you design; it is a place you go
+ * and come straight back from. Native gets keyboard, type-ahead, screen
+ * readers, a gamepad, and a list that can be taller than the panel, none of
+ * which a hand-drawn sheet had, and all of which have to keep working.
+ *
+ * What is ours is the WELL it sits in: the chassis, the corner, the chevron in
+ * its own lit square. The element is transparent on top of that, so the control
+ * looks like the rest of the rack and behaves like the platform.
+ */
+export function select(items, onPick, opts = {}) {
+    const { ariaLabel = null, placeholder = 'Choose' } = opts;
+
+    const wrap = el('div', 'fbk-select');
+
+    const input = document.createElement('select');
+    input.className = 'fbk-select-input';
+    if (ariaLabel) input.setAttribute('aria-label', ariaLabel);
+    input.addEventListener('change', () => onPick(input.value));
+    wrap.appendChild(input);
+
+    /*
+     * The chevron is OURS and inert.
+     *
+     * A native select draws its own arrow, which is the platform's shape in the
+     * platform's colour and lands wherever it lands. `appearance: none` takes
+     * it away and this puts back one that belongs to the rack. `pointer-events`
+     * are off in the stylesheet so the press still reaches the select
+     * underneath — the well is the target, all of it.
+     */
+    wrap.appendChild(el('span', 'fbk-select-chevron'));
+
+    let list = [];
+
+    function build(next) {
+        list = Array.isArray(next) ? next.slice() : [];
+        input.textContent = '';
+        for (const it of list) {
+            const o = document.createElement('option');
+            o.value = String(it.value);
+            o.textContent = it.note ? `${it.label} — ${it.note}` : it.label;
+            if (it.title) o.title = it.title;
+            input.appendChild(o);
+        }
+        input.dataset.empty = list.length ? 'false' : 'true';
+    }
+
+    build(items);
+
+    return {
+        el: wrap,
+        /** The `<select>` itself, for a caller that wants to focus it. */
+        input,
+        /**
+         * Show `value` as current.
+         *
+         * A value that is not in the list leaves the element showing whatever
+         * the platform picks, so it is reported rather than swallowed: a board
+         * that was uninstalled while it was the chosen one is a real state, and
+         * the panel above this should say so rather than quietly reading as
+         * something else.
+         */
+        set(value) {
+            const has = list.some((it) => String(it.value) === String(value));
+            input.value = has ? String(value) : '';
+            input.dataset.missing = has ? 'false' : 'true';
+            return has;
+        },
+        /**
+         * Replace the list, but only when it CHANGED.
+         *
+         * The board list comes from the app and can arrive after the panel does,
+         * so this gets called on every render — and rebuilding a select's
+         * options while its list is open closes it under the reader's hand.
+         * `signature` is whatever string identifies the current list.
+         */
+        rebuild(signature, next) {
+            if (wrap.dataset.sig === signature) return false;
+            wrap.dataset.sig = signature;
+            const was = input.value;
+            build(next);
+            if (was) input.value = was;
+            return true;
+        },
+        disable(off) { input.disabled = !!off; },
+        values() { return list.map((it) => String(it.value)); },
+        /** The placeholder, for a list that has not arrived yet. */
+        placeholder,
     };
 }
 
@@ -1514,6 +1699,13 @@ export function slider(opts = {}) {
         input,
         /** The label node, for a caller that wants to retitle it. */
         label: heading,
+        /**
+         * The derived companion to the value, or null to hide it.
+         *
+         * Passed straight through to the readout, which owns it — see the note
+         * there. A slider that shows `5 -> 7.8` still writes only the 5.
+         */
+        setAside(text) { out.setAside(text); },
         /** Skipped while focused, so it cannot fight the user's drag. */
         set(v) {
             const n = num(v);
