@@ -2086,14 +2086,53 @@
  * to let you land where nothing can happen.
  * ═══════════════════════════════════════════════════════════════════════ */
 
+/*
+ * THE TRACK, and the row it sits in is taller than it is.
+ *
+ * The bracket frame stands `s-4` proud of the blocks top and bottom — that is
+ * what makes it read as a frame OVER the map rather than another block on it —
+ * so the row reserves the overhang as margin. Sixteen pixels is the whole cost
+ * of the new edges, and it buys the one thing the old tabs could not have: the
+ * selection and the blocks are different kinds of object.
+ */
 .fbk-strip {
     position: relative;
-    height: var(--fbk-h-md, 40px);
-    border-radius: var(--fbk-radius-sm, 8px);
+    box-sizing: border-box;
+    /*
+     * `h-md` for the blocks plus `s-2` of inner air, and it is a WELL — the
+     * strip is one object, like a stepper, not a bare band of colour.
+     *
+     * The frame stands `s-4` proud top and bottom, so the row reserves that as
+     * margin: sixteen pixels is the whole cost of the new edges, and it buys
+     * the thing the old tabs could not, which is that the selection and the
+     * blocks are different kinds of object.
+     *
+     * These declarations used to be split across two `.fbk-strip` rules in two
+     * sections, both setting `height`. That is the drift trap this file has
+     * already been bitten by twice; there is one rule now.
+     */
+    height: calc(var(--fbk-h-md, 40px) + var(--fbk-s-2, 4px));
+    margin-block: var(--fbk-s-4, 8px);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+    border-radius: var(--fbk-radius-well, 12px);
     background: rgb(var(--fbk-bg, 5 7 12));
     cursor: pointer;
     touch-action: none;             /* the drag is ours, not the browser's */
     user-select: none;
+}
+
+/*
+ * THE TRACK — the timeline itself, inset from the case at both ends.
+ *
+ * The air is what the brackets stand in at bar one and at the last bar; see the
+ * note on `rangeStrip`'s `track` for why this cannot be padding on the strip.
+ * Time zero is this box's left edge, and `rect()` measures it, so a drag, a
+ * snap and a hit all agree about where the song starts.
+ */
+.fbk-strip-track {
+    position: absolute;
+    inset: 0 var(--fbk-s-4, 8px);
+    border-radius: var(--fbk-radius-seg, 5px);
 }
 
 .fbk-strip-blocks { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
@@ -2112,7 +2151,16 @@
     top: 0;
     bottom: 0;
     box-sizing: border-box;
-    border-right: var(--fbk-hairline, 1px) solid rgb(var(--fbk-bg, 5 7 12));
+    /*
+     * THE GAP IS A TRANSPARENT BORDER, so the box the pointer and the layout
+     * see is still the zone's true extent — only the paint shrinks. It
+     * replaced a hairline separator, which drew a line BETWEEN neighbours and
+     * left the row reading as one hatched bar; the width comes from JS,
+     * because how much air a zone can spare depends on how wide it is.
+     */
+    border-inline: var(--fbk-block-gap, 0px) solid transparent;
+    background-clip: padding-box;
+    border-radius: var(--fbk-radius-seg, 5px);
     background: rgb(var(--fbk-border, 42 46 58));
 }
 
@@ -2144,111 +2192,137 @@
 .fbk-strip-block-at { box-shadow: inset 2px 0 0 0 rgb(var(--fbk-text, 232 238 252)); }
 
 /*
- * The selection: an outline, never a fill. `pointer-events: none` on the box
- * itself matters — it lies over the blocks and a tap has to reach what is
- * underneath — but the handles inside it are interactive again.
+ * THE SELECTION IS A FRAME, and it stands proud of the strip.
+ *
+ * `pointer-events: none` on the box itself matters — it lies over the blocks
+ * and a tap has to reach what is underneath — but the brackets inside it are
+ * interactive again.
  */
 .fbk-strip-sel {
     position: absolute;
-    top: 0;
-    bottom: 0;
+    top: calc(-1 * var(--fbk-s-4, 8px));
+    bottom: calc(-1 * var(--fbk-s-4, 8px));
     box-sizing: border-box;
-    border: 2px solid rgb(var(--fbk-accent, 41 168 255));
-    border-radius: var(--fbk-radius-seg, 5px);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent, 41 168 255) / 0.55);
+    border-radius: var(--fbk-radius-sm, 8px);
     pointer-events: none;
 }
 
 /*
- * A handle: 28 wide with a 44 hit area.
+ * A BRACKET: an invisible column you drag, with a visible mark down its middle.
  *
- * The visible grip is small because it sits ON the map and a fat one would
- * cover the blocks it is meant to point at; the target is large because it is
- * dragged mid-song. `::before` grows the touch area without growing the paint
- * — the same split as the strip's own hit table, one level down.
- */
-/*
- * 20 wide, not 28.
- *
- * 28px of grip on each side of a selection that can be four pixels wide is
- * 56px of furniture pointing at nothing — reported as the handles being far
- * too thick and getting in the way. 20 still carries the letter, and the 44px
- * hit area comes from `::before` rather than from the paint, which is the same
- * split the strip's own hit table uses one level up.
+ * The column is `h-md` — 40 at a desk, 48 under a finger — centred ON the edge
+ * rather than hung outside it. The mockup asked for 44, which is the single
+ * number the web uses when it has to pick one for both; the height scale
+ * already answers the question twice and adapts, so it wins here (DESIGN.md
+ * §17). Centred is what lets the mark sit exactly where the edge is: the old
+ * tabs sat beside the selection, which is why two of them on a four-pixel loop
+ * read as one object.
  */
 .fbk-strip-handle {
     position: absolute;
-    top: -2px;
-    bottom: -2px;
-    width: 20px;
+    /*
+     * Flush with the FRAME, which already carries the overhang — the bracket
+     * is part of the frame, not a second thing standing proud of it. Outsetting
+     * again here made the column and its letter sixteen pixels taller than the
+     * box they belong to.
+     */
+    top: 0;
+    bottom: 0;
+    width: var(--fbk-h-md, 40px);
     padding: 0;
     border: 0;
-    border-radius: var(--fbk-radius-seg, 5px);
-    background: rgb(var(--fbk-accent, 41 168 255));
-    color: rgb(var(--fbk-on-accent, 5 7 12));
-    font: var(--fbk-t-rack, 900 10px/1.2 sans-serif);
-    letter-spacing: var(--fbk-t-rack-track, 0.16em);
+    background: none;
     cursor: ew-resize;
     pointer-events: auto;
     touch-action: none;
 }
 
-.fbk-strip-handle::before {
+.fbk-strip-handle[data-edge="start"] { left: 0; transform: translateX(-50%); }
+.fbk-strip-handle[data-edge="end"] { right: 0; transform: translateX(50%); }
+
+/* The mark: a rail down the edge with a tick turning inward at each corner. */
+.fbk-strip-bracket {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-accent, 41 168 255));
+    transition: background var(--fbk-motion, 140ms ease);
+}
+
+.fbk-strip-bracket::before,
+.fbk-strip-bracket::after {
     content: '';
     position: absolute;
-    top: -8px;
-    bottom: -8px;
-    left: -8px;
-    right: -8px;
+    width: 8px;
+    height: 3px;
+    background: inherit;
+    border-radius: inherit;
 }
 
-/*
- * OUTSIDE the selection, not inside it.
- *
- * They were inset (`left: -2px` / `right: -2px`), which is fine until the
- * selection is narrower than two handles — and then they overlap and B renders
- * to the LEFT of A, which is a picture of a backwards loop. A one-bar phrase on
- * a five-minute song is a few pixels wide, so this is the common case, not the
- * edge one.
- *
- * Hanging them off the outside edges means the pair always reads left-to-right
- * and the selection outline stays visible between them however thin it is.
- */
-/*
- * A GAP, not an overlap, however narrow the selection is.
- *
- * They hung flush against the selection's edges, so a one-bar phrase — a few
- * pixels wide on a five-minute song — put them almost touching, and two
- * identical rounded boxes side by side read as one blob `AB` rather than as
- * two edges. Pushing them 3px OUTWARD guarantees air between them whatever the
- * selection does, and the outline stays visible in the middle: the pair always
- * reads as "this edge, that edge, and the loop between".
- */
-.fbk-strip-handle[data-edge="start"] { right: 100%; margin-right: 3px; }
-.fbk-strip-handle[data-edge="end"] { left: 100%; margin-left: 3px; }
+.fbk-strip-bracket::before { top: 0; }
+.fbk-strip-bracket::after { bottom: 0; }
+
+/* Which way "inward" is, is the only thing that differs between the two. */
+.fbk-strip-handle[data-edge="start"] .fbk-strip-bracket::before,
+.fbk-strip-handle[data-edge="start"] .fbk-strip-bracket::after { left: 0; }
+
+.fbk-strip-handle[data-edge="end"] .fbk-strip-bracket::before,
+.fbk-strip-handle[data-edge="end"] .fbk-strip-bracket::after { right: 0; }
 
 /*
- * At the extremes they turn inward, because outside the strip is outside the
- * scroll container that clips it — reported as the handles being cut at the
- * ends. It is the one place inside cannot be ambiguous: at the very start
- * there is nothing to the left of A to confuse it with.
+ * The letter, small and always INSIDE.
+ *
+ * Small because the steppers underneath carry the big A and B — up here it
+ * only says which bracket your finger is on. Anchored inward, which is also
+ * what retired the rule that used to flip the handles at the ends of the song
+ * to keep them out of the scroll container's clip: there is nothing to flip
+ * when the mark is on the edge and the letter is already inside it.
  */
-.fbk-strip-sel[data-at-start="true"] .fbk-strip-handle[data-edge="start"] {
-    right: auto;
-    left: -2px;
-    margin: 0;
+.fbk-strip-tag {
+    position: absolute;
+    top: 0;
+    min-width: 12px;
+    padding: 0 2px;
+    border-radius: 3px;
+    background: rgb(var(--fbk-accent, 41 168 255));
+    color: rgb(var(--fbk-on-accent, 5 7 12));
+    font: var(--fbk-t-field, 600 9px/1.2 sans-serif);
+    letter-spacing: 0;
+    text-align: center;
 }
 
-.fbk-strip-sel[data-at-end="true"] .fbk-strip-handle[data-edge="end"] {
-    left: auto;
-    right: -2px;
-    margin: 0;
-}
+.fbk-strip-handle[data-edge="start"] .fbk-strip-tag { left: 50%; }
+.fbk-strip-handle[data-edge="end"] .fbk-strip-tag { right: 50%; }
 
-.fbk-strip-handle:hover:not(:disabled) { background: rgb(var(--fbk-accent-hi, 96 194 255)); }
+/*
+ * NO LETTERS ON A NARROW SELECTION.
+ *
+ * Both tags are anchored inward, so on a one-bar loop on a five-minute song
+ * they are anchored into the same twelve pixels and draw over each other — the
+ * narrow case is the common one here, not the edge one.
+ *
+ * They are the right thing to drop: the rails and their inward ticks still say
+ * where the two edges are, and the steppers underneath carry the big A and B.
+ * The letter up here only ever said which bracket your finger was on, and with
+ * the selection this thin there is only one place a finger can be.
+ */
+.fbk-strip-sel[data-narrow="true"] .fbk-strip-tag { display: none; }
+
+.fbk-strip-handle:hover .fbk-strip-bracket,
+.fbk-strip-handle:focus-visible .fbk-strip-bracket {
+    background: rgb(var(--fbk-accent-hi, 96 194 255));
+    box-shadow: var(--fbk-lit-halo, none);
+}
 
 .fbk-strip-handle:focus-visible {
     outline: 2px solid rgb(var(--fbk-focus, 41 168 255));
     outline-offset: 2px;
+    border-radius: var(--fbk-radius-sm, 8px);
 }
 
 /* ═══ 21. The folded strip — the panel at reading size ═══════════════ */
@@ -2278,9 +2352,18 @@
 
 .fbk-folded {
     position: relative;
-    display: flex;
-    align-items: stretch;
-    gap: var(--fbk-s-4, 8px);
+    /*
+     * A GRID, and the shape is the design's: the footswitch shares its line
+     * with the live number and the rail, and the row of facts runs the full
+     * width underneath it. As a flex row the pedal sat centred across both and
+     * pushed the lower row out of the corner.
+     */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "main switch" "foot foot";
+    column-gap: var(--fbk-s-4, 8px);
+    row-gap: var(--fbk-s-3, 6px);
+    align-items: start;
     box-sizing: border-box;
     width: 100%;
     /*
@@ -2394,12 +2477,21 @@
 .fbk-folded:has(.fbk-folded-hit:focus-visible) .fbk-folded-grip { opacity: 0; }
 
 .fbk-folded-body {
-    flex: 1 1 auto;
+    grid-area: main;
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: var(--fbk-s-3, 6px);
 }
+
+/* The full-width row, running underneath the footswitch. */
+.fbk-folded-foot {
+    grid-area: foot;
+    min-width: 0;
+    display: block;
+}
+
+.fbk-folded-foot:empty { display: none; }
 
 /*
  * THE WAY OUT — a footswitch, square and centred.
@@ -2418,7 +2510,7 @@
     position: relative;
     z-index: 2;
     pointer-events: auto;
-    flex: 0 0 auto;
+    grid-area: switch;
     align-self: center;
     display: flex;
     flex-direction: column;
@@ -2618,13 +2710,8 @@
     min-height: var(--fbk-h-md, 40px);
 }
 
-/* The strip gets the same treatment, for the same reason: it is one object. */
-.fbk-strip {
-    box-sizing: border-box;
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
-    border-radius: var(--fbk-radius-well, 12px);
-    height: calc(var(--fbk-h-md, 40px) + var(--fbk-s-2, 4px));
-}
+/* The strip gets the same treatment for the same reason — folded into its own
+   rule in §20, because two rules setting one element's height is the mistake. */
 
 /* A ghost that is an invitation rather than an afterthought: accent stroke,
    accent ink, no fill. The design's third button tier. */

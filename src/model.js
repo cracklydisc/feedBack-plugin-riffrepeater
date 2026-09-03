@@ -679,6 +679,14 @@ export function rememberDifficulty() {
 
 export function snapshot() {
     const duration = host.duration();
+    /*
+     * Read ONCE, and used twice.
+     *
+     * `barsAvailable` was calling this every tick already, and the edge bar
+     * numbers need the same list — filtering, mapping and sorting every beat
+     * in the song twice a second, twice, for one boolean and two integers.
+     */
+    const bars = ranges.barLines(host.beats());
     const events = eventsNow();
     const tally = tallyNow();
     const saved = state.songKey ? store.getSong(state.songKey) : null;
@@ -735,7 +743,28 @@ export function snapshot() {
          * a chart with no bars. It replaced a `BARS | TIME` switch: the unit is
          * a fact about the chart, not a choice worth a control.
          */
-        barsAvailable: ranges.barLines(host.beats()).length > 0,
+        barsAvailable: bars.length > 0,
+
+        /*
+         * WHICH BAR each edge is on, or null on a chart with no bar lines.
+         *
+         * The steppers move by a bar and say so, and printing `0:01` under a
+         * label reading `±1 bar` makes the reader do the conversion the panel
+         * already knows how to do: a bar number is what you count while you
+         * play, and it is the number you would say out loud to describe where
+         * the loop starts. The clock stays as the fallback, because on a chart
+         * without bar lines a bar number would be a fiction.
+         */
+        edgeBars: (() => {
+            if (!bars.length) return null;
+            const sel = selection();
+            if (!sel) return null;
+            const at = (t) => {
+                const i = ranges.barIndexAt(bars, t);
+                return i < 0 ? null : bars[i].measure;
+            };
+            return { start: at(sel.start), end: at(sel.end) };
+        })(),
 
         loopArmed: (() => {
             const l = host.loop();

@@ -79,6 +79,13 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
      */
     let tenths = false;
 
+    /*
+     * The bar each edge is on, or null on a chart with no bar lines — read by
+     * the edge formatters for the same reason `tenths` is, and declared beside
+     * it for the same temporal-dead-zone reason.
+     */
+    let edgeBars = null;
+
     // ── RACK 1: the loop ─────────────────────────────────────────────────
     const loopRack = c.rack({ label: 'Loop' });
     body.appendChild(loopRack.el);
@@ -157,7 +164,18 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
              * rather than a constant. Without this the readout would print
              * `3` for three seconds.
              */
-            format: (v) => (tenths ? clock(v, 1) : clock(v)),
+            /*
+             * A BAR NUMBER when the chart has bars, the clock when it does not.
+             *
+             * The label above says `±1 bar`; a readout saying `0:01` under it
+             * asks the reader to convert between two units the panel is
+             * already holding. `bar 12` is what you count while playing.
+             */
+            format: (v) => {
+                const n = edgeBars ? edgeBars[edge] : null;
+                if (Number.isFinite(n)) return 'bar ' + n;
+                return tenths ? clock(v, 1) : clock(v);
+            },
             downTitle: 'One unit earlier',
             upTitle: 'One unit later',
         });
@@ -440,7 +458,16 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
     liveRow.appendChild(liveCount);
 
     strip2.body.appendChild(liveTop);
-    strip2.body.appendChild(liveRow);
+    /*
+     * The facts go in the strip's FULL-WIDTH slot, not under the live stack.
+     *
+     * The footswitch shares its line with the number and the rail; this row
+     * runs the whole width beneath it, divider and all. As a child of `body`
+     * it was boxed into the column left of a 56px pedal — reported as the stop
+     * being in the wrong place, which it was, but the row was the half that
+     * had to move.
+     */
+    strip2.foot.appendChild(liveRow);
     if (foldedSlot) foldedSlot.appendChild(strip2.el);
 
     function renderFolded(snap) {
@@ -568,6 +595,7 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
          */
         const bars = snap.barsAvailable;
         tenths = !bars;
+        edgeBars = snap.edgeBars;
         for (const [e, edge] of [['start', edgeA], ['end', edgeB]]) {
             const t = sel ? (e === 'start' ? sel.start : sel.end) : null;
             edge.label.textContent = (e === 'start' ? 'A' : 'B')

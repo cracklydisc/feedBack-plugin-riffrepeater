@@ -322,6 +322,23 @@ const RAIL_INSET = 10;
  */
 const SNAP_PX = 14;
 
+/**
+ * The most air a zone gives up on each side so the row reads as zones.
+ *
+ * A cap rather than a value: each block gets the smaller of this and a quarter
+ * of its own width, so a chart of ten sections and a chart of seventy-three
+ * phrases both come out as a row of separate things.
+ */
+const BLOCK_GAP_PX = 3;
+
+/**
+ * How wide a selection has to be before both bracket letters fit in it.
+ *
+ * Two 12px tags anchored inward plus air between them. Below this they would
+ * draw over each other, so they go — see the note in kit.css §20.
+ */
+const TAG_ROOM_PX = 34;
+
 export function rail(opts = {}) {
     const { ariaLabel = null } = opts;
     const wrap = el('div', 'fbk-rail');
@@ -612,9 +629,28 @@ export function rangeStrip(opts = {}) {
     wrap.setAttribute('role', 'group');
     if (ariaLabel) wrap.setAttribute('aria-label', ariaLabel);
     const blocks = el('div', 'fbk-strip-blocks');
+    /*
+     * THE SELECTION IS A FRAME AND THE EDGES ARE BRACKETS.
+     *
+     * They were two filled tabs hanging off the outside of the selection —
+     * which is a picture of two blocks either side of it, not of a region with
+     * two edges, and on a narrow loop the pair read as one blob. A bracket
+     * belongs to the thing it encloses: taller than the strip so it reads as a
+     * frame over the map rather than another block on it, with corner ticks
+     * turning inward and a small letter in the corner.
+     *
+     * Small, because the steppers underneath carry the big A and B. Up here
+     * the letter only has to say which bracket you grabbed.
+     */
     const sel = el('div', 'fbk-strip-sel');
-    const handleA = el('button', 'fbk-strip-handle', 'A');
-    const handleB = el('button', 'fbk-strip-handle', 'B');
+    const bracket = (letter) => {
+        const h = el('button', 'fbk-strip-handle');
+        h.appendChild(el('span', 'fbk-strip-bracket'));
+        h.appendChild(el('span', 'fbk-strip-tag', letter));
+        return h;
+    };
+    const handleA = bracket('A');
+    const handleB = bracket('B');
     handleA.type = 'button';
     handleB.type = 'button';
     handleA.dataset.edge = 'start';
@@ -623,8 +659,24 @@ export function rangeStrip(opts = {}) {
     handleB.title = 'Drag to move the loop end — snaps to a phrase edge';
     sel.appendChild(handleA);
     sel.appendChild(handleB);
-    wrap.appendChild(blocks);
-    wrap.appendChild(sel);
+    /*
+     * AN INNER TRACK, and it exists for one reason: air at the ends.
+     *
+     * A loop starting at bar one puts its bracket on the strip's own border,
+     * where a 3px rail and the well's edge are the same line and the letter has
+     * nowhere to sit. Padding the strip does NOT solve it — an absolutely
+     * positioned child's containing block is the padding BOX, so `inset: 0`
+     * lands inside the border and the padding never pushes it in. The inset has
+     * to be on something the blocks and the frame both live in.
+     *
+     * So the track is the timeline: time zero is its left edge, the duration is
+     * its right, and `rect()` measures it. Everything that converts a pixel to
+     * a second reads that one box.
+     */
+    const track = el('div', 'fbk-strip-track');
+    track.appendChild(blocks);
+    track.appendChild(sel);
+    wrap.appendChild(track);
 
     let items = [];          // [{key, start, end, events, band, graduated}]
     let duration = 0;
@@ -632,7 +684,20 @@ export function rangeStrip(opts = {}) {
     let signature = '';
     const nodes = new Map();
 
-    const rect = () => wrap.getBoundingClientRect();
+    /*
+     * THE TRACK'S INNER BOX, not the strip's border box.
+     *
+     * The strip pads itself horizontally so the brackets have somewhere to
+     * stand at bar one and at the last bar — and the moment it does, "where is
+     * time zero" stops being the left edge of the element. Everything that
+     * converts between a pixel and a second reads this, so there is exactly one
+     * answer: the blocks row IS the timeline, and it is already inset by the
+     * padding because it is an absolutely positioned child.
+     *
+     * Measuring `wrap` instead would put every drag, every snap and every hit
+     * out by the padding, in the same direction, invisibly.
+     */
+    const rect = () => track.getBoundingClientRect();
     const timeAt = (clientX) => {
         const r = rect();
         if (!r.width || !duration) return 0;
@@ -768,9 +833,24 @@ export function rangeStrip(opts = {}) {
                 }
             }
 
+            /*
+             * EVERY ZONE LEAVES A GAP, and it is sized from the zone's own
+             * width rather than fixed.
+             *
+             * Contiguous blocks with a hairline between them read as one
+             * hatched bar, and the new brackets need air to sit against. But a
+             * fixed gap is only right at one density: this strip carries ten
+             * sections on one chart and seventy-three phrases on another, and
+             * 3px of padding on a 4px phrase leaves nothing to look at. A
+             * quarter of the block, capped, is a gap at both.
+             */
+            const stripW = rect().width || 0;
             for (const it of items) {
                 const node = nodes.get(it.key);
                 if (!node) continue;
+                const px = duration > 0 ? ((it.end - it.start) / duration) * stripW : 0;
+                const gap = Math.max(0, Math.min(BLOCK_GAP_PX, px / 4));
+                node.style.setProperty('--fbk-block-gap', gap.toFixed(2) + 'px');
                 node.dataset.band = it.band || 'none';
                 node.dataset.empty = num(it.events) === 0 ? 'true' : 'false';
                 node.classList.toggle('fbk-strip-block-done', !!it.graduated);
@@ -808,6 +888,19 @@ export function rangeStrip(opts = {}) {
                 sel.style.left = ((range.start / duration) * 100) + '%';
                 sel.style.width = (((range.end - range.start) / duration) * 100) + '%';
                 /*
+                 * Whether the two bracket letters have room side by side —
+                 * and NOT DECIDED AT ALL when the strip has no width yet.
+                 *
+                 * `set()` runs while the panel is closed, where every element
+                 * measures zero, and `0 < 34` is true: a strip that had never
+                 * been laid out reported a narrow selection and hid both
+                 * letters. Absence read as smallness, which is the same
+                 * mistake as `Number(null) === 0` in a different costume. When
+                 * we cannot measure, we show.
+                 */
+                const selPx = ((range.end - range.start) / duration) * stripW;
+                sel.dataset.narrow = (stripW > 0 && selPx < TAG_ROOM_PX) ? 'true' : 'false';
+                /*
                  * AT THE EXTREMES THE HANDLES TURN INWARD.
                  *
                  * They hang outside the selection so a narrow loop still reads
@@ -821,8 +914,17 @@ export function rangeStrip(opts = {}) {
                  * the left of A to confuse it with.
                  */
                 const eps = duration * 0.01;
-                sel.dataset.atStart = range.start <= eps ? 'true' : 'false';
-                sel.dataset.atEnd = range.end >= duration - eps ? 'true' : 'false';
+                /*
+                 * WHAT USED TO BE HERE: `atStart` / `atEnd`, which turned the
+                 * handles inward at the ends so the scroll container could not
+                 * clip them.
+                 *
+                 * The brackets do not need it. The drag column is centred on
+                 * the edge and INVISIBLE, so nothing is lost when half of it
+                 * falls outside; the mark and the letter are both anchored
+                 * inward by construction. A rule that flipped their side is a
+                 * rule about a mechanism that is gone.
+                 */
             }
         },
         /** Light the block under the playhead's key, or nothing. */
@@ -896,8 +998,23 @@ export function foldedStrip(opts = {}) {
     const cue = el('span', 'fbk-folded-cue', hint ? label + ' \u00b7 ' + hint : label);
     wrap.appendChild(cue);
 
+    /*
+     * TWO ZONES, because the footswitch belongs to the UPPER one.
+     *
+     * It was a flex sibling of the whole readout column, so a 56px pedal beside
+     * an 85px stack sat centred across BOTH rows and squeezed the lower one out
+     * of the corner — reported as the stop being in the wrong place. In the
+     * design the switch shares its line with the live number and the rail, and
+     * the row of facts runs the full width underneath it, divider included.
+     *
+     * So: a grid. `body` is the upper zone next to the switch, `foot` spans
+     * both columns beneath. The consumer decides what goes in each, which is
+     * the only part of this the kit cannot know.
+     */
     const body = el('span', 'fbk-folded-body');
     wrap.appendChild(body);
+    const foot = el('span', 'fbk-folded-foot');
+    wrap.appendChild(foot);
 
     /*
      * THE WAY OUT — a footswitch, and it looks like one.
@@ -933,8 +1050,18 @@ export function foldedStrip(opts = {}) {
         el: wrap,
         /** The full-area target. Exposed so a consumer can focus it. */
         hit,
-        /** Append the readouts here. Nothing pressable — clicks fall through. */
+        /**
+         * The upper zone, beside the footswitch. Nothing pressable — clicks
+         * fall through to the full-area target.
+         */
         body,
+        /**
+         * The full-width row underneath, running past the footswitch.
+         *
+         * For the line of facts that wants the whole width — the passage, a
+         * meter, a count. Left empty it collapses.
+         */
+        foot,
         /** The stop control, or null when no `onEnd` was given. */
         end,
         /**
