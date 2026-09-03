@@ -1241,7 +1241,25 @@ export function segmented(items, onPick, ariaLabel, opts = {}) {
      * five is where a row stops working. `opts.wrap` forces it either way for
      * the case the count cannot see.
      */
-    const many = (items || []).length > SEG_MAX_INLINE;
+    /*
+     * TWO REASONS TO WRAP, and the second one is the half I missed first.
+     *
+     * The count is one: five options in a row get a fifth of the width each.
+     * But four options can overflow just as badly if the labels are long — a
+     * four-way pick whose options read `The fret, with the note name beside it`
+     * has 120 characters in a row with room for about thirty-six, and it does
+     * not wrap, it ESCAPES: the buttons render past the edge of the card.
+     *
+     * Thirty-six characters across all labels is the budget the design's own
+     * notes name, and it is the right unit — what fails is the text not
+     * fitting, so the measure has to be the text.
+     */
+    const list = items || [];
+    const chars = list.reduce(
+        (n, it) => n + ((it.label && it.label.nodeType) ? 0 : String(it.label || '').length),
+        0,
+    );
+    const many = list.length > SEG_MAX_INLINE || chars > SEG_MAX_CHARS;
     const laid = (opts.wrap === undefined) ? many : !!opts.wrap;
     const cls = ['fbk-seg'];
     if (opts.size === 'header') cls.push('fbk-seg-header');
@@ -1253,7 +1271,24 @@ export function segmented(items, onPick, ariaLabel, opts = {}) {
     const marks = new Map();
     for (const it of (items || [])) {
         const b = button('fbk-seg-btn', null, it.title || null, () => onPick(it.value));
-        b.appendChild(el('span', 'fbk-seg-label', it.label));
+        /*
+         * A LABEL CAN BE A NODE, not only a string.
+         *
+         * Some options ARE a picture: `(5) A#` says what a note head shows by
+         * being one, and a word for it would be a caption on a caption. Those
+         * cannot arrive as text, so an item's `label` is appended when it is a
+         * node and set as text when it is not.
+         *
+         * The wrap budget above measures only the string form, which is right:
+         * a drawn option is as wide as it is drawn, not as long as its name.
+         */
+        const label = el('span', 'fbk-seg-label');
+        if (it.label && typeof it.label === 'object' && it.label.nodeType) {
+            label.appendChild(it.label);
+        } else {
+            label.textContent = (it.label === null || it.label === undefined) ? '' : String(it.label);
+        }
+        b.appendChild(label);
         b.setAttribute('aria-pressed', 'false');
         nodes.set(it.value, b);
         wrap.appendChild(b);
@@ -1307,6 +1342,16 @@ export function segmented(items, onPick, ariaLabel, opts = {}) {
  * chips — see the note in `segmented`.
  */
 export const SEG_MAX_INLINE = 4;
+
+/**
+ * How many characters of label a single row can hold, across all its options.
+ *
+ * A count alone is not enough: four options whose labels run to a hundred
+ * characters do not wrap, they escape the card. Thirty-six is what a 360px
+ * panel's row fits at the label step, and a sheet's wider row is still the
+ * place where a long option belongs on its own line rather than stretched.
+ */
+export const SEG_MAX_CHARS = 36;
 
 /**
  * FAMILY 1b — a SELECT. One of a list too long, or too changeable, to lay out.
