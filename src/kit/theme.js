@@ -1,5 +1,5 @@
 /*
- * kit 0.13.0 — the token bridge.
+ * kit 0.14.0 — the token bridge.
  *
  * Reads the host's palette and writes it back as `--fbk-*` custom properties
  * that a stylesheet can use, then follows `theme:changed`. This existed three
@@ -351,8 +351,21 @@ const RECIPES = {
 const PROP_PREFIX = '--fbk-';
 
 /** camelCase role -> the custom property name. `accentHi` -> `--fbk-accent-hi`. */
+/**
+ * A role name -> the custom property it is written as.
+ *
+ * `accentHi` -> `--fbk-accent-hi`, and — this is the part that was missing —
+ * `surface2` -> `--fbk-surface-2`. Without the digit rule the theme wrote
+ * `--fbk-surface2` while the stylesheet read `--fbk-surface-2` **thirty times**,
+ * so the control tone was the hardcoded fallback in every rule that used it,
+ * always, whatever the palette said. It survived a palette rewrite, a
+ * fallback-alignment pass and a mirror test, because every one of those
+ * compared VALUES and none of them asked whether the property existed at all.
+ */
 function propFor(role) {
-    return PROP_PREFIX + role.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase());
+    return PROP_PREFIX + role
+        .replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())
+        .replace(/([a-z])(\d)/g, '$1-$2');
 }
 
 let unsubscribe = null;

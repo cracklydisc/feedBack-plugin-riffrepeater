@@ -1,5 +1,5 @@
 /*
- * kit 0.13.0 — the shared look.
+ * kit 0.14.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -86,9 +86,20 @@
     width: 360px;
     max-width: calc(100vw - var(--fbk-s-6, 14px) * 2);
     max-height: 76vh;
-    overflow-y: auto;
+    /*
+     * A FLEX COLUMN, so the footswitch is PINNED rather than sticky.
+     *
+     * The panel scrolled as a whole with `position: sticky` on its ears, and
+     * sticky pins to the SCROLL BOX — when that box is the panel itself, the
+     * footer travels with the content it is supposed to outlast. Reported as
+     * the buttons needing to stay visible with only the inside scrolling,
+     * which is what a column with one scrolling child gives you, and it needs
+     * no sticky at all.
+     */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     overscroll-behavior: contain;
-    scrollbar-width: thin;
     box-sizing: border-box;
 
     border-radius: var(--fbk-radius, 10px);
@@ -115,10 +126,9 @@
 .fbk-head {
     display: flex;
     align-items: center;
-    gap: var(--fbk-s-3, 6px);
+    gap: var(--fbk-s-4, 8px);
     padding: var(--fbk-s-5, 10px) var(--fbk-s-6, 14px);
-    position: sticky;
-    top: 0;
+    flex: 0 0 auto;
     z-index: 2;
     /*
      * The chassis's top ear, hatched — and the hatch is not decoration for its
@@ -183,6 +193,14 @@
 }
 
 .fbk-body {
+    /* The one scrolling child. `min-height: 0` because a flex item will not
+       shrink below its content without it — which is how a pane meant to
+       scroll ends up merely tall. */
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
     padding: 0 var(--fbk-s-6, 14px);
 }
 
@@ -198,8 +216,7 @@
  * padding, no hairline and no space for a footer it never fills.
  */
 .fbk-foot {
-    position: sticky;
-    bottom: 0;
+    flex: 0 0 auto;
     z-index: 2;
     padding: var(--fbk-s-5, 10px) var(--fbk-s-6, 14px);
     /* The chassis's bottom ear: the same hatch as the head, so the two bracket
@@ -427,7 +444,7 @@
     transition: background var(--fbk-motion, 140ms ease);
 }
 
-.fbk-fold-head:hover { background: rgb(var(--fbk-surface-2, 11 18 32)); }
+.fbk-fold-head:hover { background: rgb(var(--fbk-surface-2, 30 34 44)); }
 
 .fbk-fold-head:hover .fbk-fold-title { color: rgb(var(--fbk-text, 232 238 252)); }
 
@@ -592,7 +609,7 @@
     margin: var(--fbk-s-3, 6px) 0;
     padding: var(--fbk-s-3, 6px) var(--fbk-s-4, 8px);
     border-radius: var(--fbk-radius-sm, 8px);
-    background: rgb(var(--fbk-surface-2, 11 18 32));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
     box-shadow: var(--fbk-panel-inner, none);
 }
 
@@ -624,7 +641,7 @@
     box-sizing: border-box;
     height: var(--fbk-h-md, 40px);
     border-radius: var(--fbk-radius-sm, 8px);
-    background: rgb(var(--fbk-surface-2, 11 18 32));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     box-shadow: var(--fbk-panel-inner, none);
 }
@@ -740,7 +757,7 @@
     padding: 0 var(--fbk-s-4, 8px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     border-radius: var(--fbk-radius-pill, 999px);
-    background: rgb(var(--fbk-surface-2, 11 18 32));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
     color: rgb(var(--fbk-dim, 138 160 200));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     letter-spacing: var(--fbk-t-label-track, 0);
@@ -820,7 +837,7 @@
     width: 34px;
     height: 19px;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: rgb(var(--fbk-surface-2, 11 18 32));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     box-shadow: var(--fbk-panel-inner, none);
     transition: background var(--fbk-motion, 140ms ease),
@@ -959,11 +976,23 @@
     justify-content: center;
     box-sizing: border-box;
     border-radius: var(--fbk-radius-sm, 8px);
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
-    background: rgb(var(--fbk-surface-2, 11 18 32));
+    border: 0;
+    /*
+     * A RAISED FACE, not another hole.
+     *
+     * They carried a border stroke, and inside a well that is already darker a
+     * stroked box reads as one more recess — so a stepper looked like three
+     * dents in a row instead of a value between two buttons. The design draws
+     * them as the control tone with a top light line and no stroke: light
+     * comes from above and a thing you press catches it, which is the whole
+     * difference between "pressable" and "printed".
+     */
+    background: rgb(var(--fbk-surface-2, 30 34 44));
+    box-shadow: inset 0 1px 0 rgb(var(--fbk-text, 232 238 252) / 0.08);
     color: rgb(var(--fbk-text, 232 238 252));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
-    font-size: 13px;               /* the glyphs − + ◀ ▶ need the extra size */
+    font-size: 17px;               /* the glyphs − + ◀ ▶ need the extra size */
+    font-weight: 400;
     letter-spacing: 0;
     cursor: pointer;
     transition: background var(--fbk-motion, 140ms ease),
@@ -972,8 +1001,7 @@
 }
 
 .fbk-step:hover:not(:disabled) {
-    background: rgb(var(--fbk-accent, 41 168 255) / 0.16);
-    border-color: rgb(var(--fbk-accent, 41 168 255));
+    background: rgb(var(--fbk-accent, 41 168 255) / 0.3);
     color: rgb(var(--fbk-text, 232 238 252));
 }
 
@@ -1020,32 +1048,44 @@
 }
 
 .fbk-slider::-webkit-slider-runnable-track {
-    height: 6px;
+    /* 8px and unstroked: a 6px hairlined rail is a form control, and this is a
+       gauge you glance at while playing. The stroke went for the same reason
+       the steppers' did — inside a well it bounded a shape the fill bounds. */
+    height: 8px;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: rgb(var(--fbk-surface-2, 11 18 32));
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
+    border: 0;
 }
 
 .fbk-slider::-moz-range-track {
-    height: 6px;
+    /* 8px and unstroked: a 6px hairlined rail is a form control, and this is a
+       gauge you glance at while playing. The stroke went for the same reason
+       the steppers' did — inside a well it bounded a shape the fill bounds. */
+    height: 8px;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: rgb(var(--fbk-surface-2, 11 18 32));
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
+    border: 0;
 }
 
 /* Firefox can paint the filled part; WebKit cannot, so it is the thumb's halo
    that carries the "this is live" signal there. */
 .fbk-slider::-moz-range-progress {
-    height: 6px;
+    height: 8px;
     border-radius: var(--fbk-radius-pill, 999px);
     background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 41 168 255)));
 }
 
 .fbk-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 15px;
-    height: 15px;
-    margin-top: -5px;
+    /*
+     * 20px with a light ring. 15px on a 6px rail was a bead; 20 on an 8px rail
+     * is a knob. WebKit cannot paint the filled portion of a range, so the
+     * thumb is the only thing carrying "this is live" there — it has to be
+     * findable without hunting.
+     */
+    width: 20px;
+    height: 20px;
+    margin-top: -6px;
     box-sizing: border-box;
     border-radius: var(--fbk-radius-pill, 999px);
     background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 41 168 255)));
@@ -1080,7 +1120,7 @@
     padding: 0 var(--fbk-s-5, 10px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     border-radius: var(--fbk-radius-sm, 8px);
-    background: rgb(var(--fbk-surface-2, 11 18 32));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
     color: rgb(var(--fbk-text, 232 238 252));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 12px;
@@ -1133,8 +1173,31 @@
     color: var(--fbk-emph-on, rgb(var(--fbk-on-accent, 5 7 12)));
 }
 
-.fbk-btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
-.fbk-btn-primary:active:not(:disabled) { filter: brightness(0.96); }
+/*
+ * THE PRIMARY HAS TO RESTATE ITS FILL ON HOVER.
+ *
+ * `filter: brightness()` alone was not enough, and the reason is arithmetic:
+ * `.fbk-btn:hover:not(:disabled)` is **(0,3,0)** — a class and two
+ * pseudo-classes — while `.fbk-btn-primary` is (0,1,0). So pointing at the
+ * footswitch painted the SECONDARY's hover background over the primary's
+ * gradient, and the label, which is dark ink meant for a bright fill, went
+ * dark-on-dark. Reported as "START DRILL disappears on hover"; that is exactly
+ * what it did.
+ *
+ * A `-primary:hover` rule is (0,3,0) as well and comes later, so restating the
+ * fill wins on order. Raising the base rule's specificity instead would have
+ * made every future variant fight it.
+ */
+.fbk-btn-primary:hover:not(:disabled) {
+    background: var(--fbk-emph-fill, rgb(var(--fbk-accent, 41 168 255)));
+    border: var(--fbk-emph-border, none);
+    filter: brightness(1.08);
+}
+
+.fbk-btn-primary:active:not(:disabled) {
+    background: var(--fbk-emph-fill, rgb(var(--fbk-accent, 41 168 255)));
+    filter: brightness(0.96);
+}
 
 /* The inverse of the primary: same slot, same size, different hue. */
 .fbk-btn-stop {
@@ -1175,7 +1238,7 @@
 }
 
 .fbk-btn-quiet:hover:not(:disabled) {
-    background: rgb(var(--fbk-surface-2, 11 18 32));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
     border-color: rgb(var(--fbk-border, 42 46 58));
     color: rgb(var(--fbk-text, 232 238 252));
 }
@@ -1206,7 +1269,7 @@
     flex: 1 1 auto;
     height: 8px;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: rgb(var(--fbk-surface-2, 11 18 32));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58) / 0.8);
     overflow: hidden;
 }
@@ -1246,7 +1309,7 @@
     transition: background var(--fbk-motion, 140ms ease);
 }
 
-.fbk-meter-row:hover { background: rgb(var(--fbk-surface-2, 11 18 32)); }
+.fbk-meter-row:hover { background: rgb(var(--fbk-surface-2, 30 34 44)); }
 
 .fbk-meter-name {
     flex: 0 0 88px;
@@ -1414,7 +1477,7 @@
     padding: 0 var(--fbk-s-4, 8px);
     border-radius: var(--fbk-radius-sm, 8px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
-    background: rgb(var(--fbk-surface-2, 11 18 32));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
     color: rgb(var(--fbk-text, 232 238 252));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 12px;
@@ -1452,7 +1515,7 @@
 
 .fbk-x:hover {
     color: rgb(var(--fbk-text, 232 238 252));
-    background: rgb(var(--fbk-surface-2, 11 18 32));
+    background: rgb(var(--fbk-surface-2, 30 34 44));
 }
 
 /* ═══ 15. The rack — chassis, racks, wells ═══════════════════════════════
@@ -1612,11 +1675,21 @@
  */
 .fbk-rail-dot {
     box-sizing: border-box;
-    width: 10px;
-    height: 10px;
+    /*
+     * 12px, and the current rung is 18.
+     *
+     * 10px with a 2px border was a speck at arm's length. The rail is the only
+     * thing that says which speed you are climbing at, so "here" has to be
+     * findable without looking for it: 18px filled and haloed against 12px
+     * outlines is a difference you catch in peripheral vision, which is what a
+     * HUD is for.
+     */
+    width: 12px;
+    height: 12px;
     border-radius: var(--fbk-radius-pill, 999px);
-    border: 2px solid rgb(var(--fbk-border, 42 46 58));
+    border: 2px solid rgb(var(--fbk-accent, 41 168 255) / 0.4);
     background: rgb(var(--fbk-bg, 5 7 12));
+    transition: width var(--fbk-motion, 140ms ease), height var(--fbk-motion, 140ms ease);
 }
 
 .fbk-rail-dot[data-state="done"] {
@@ -1625,8 +1698,8 @@
 }
 
 .fbk-rail-dot[data-state="on"] {
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
     border-color: rgb(var(--fbk-accent, 41 168 255));
     background: rgb(var(--fbk-accent, 41 168 255));
     box-shadow: var(--fbk-lit-halo, none);

@@ -261,7 +261,14 @@ export function createContent(outer, actions, foot) {
 
     /* Master difficulty — the host's own slider is two clicks away behind a
        rail popover, which is what earns this duplicate its place. */
-    const diffField = c.field({ label: 'Difficulty' });
+    /*
+ * `Chart`, not `Difficulty`.
+ *
+ * It thins the chart to the easier tiers the pack was authored with, and
+ * "difficulty" collides with the drill's own — the GOAL is a difficulty too.
+ * One word, one meaning.
+ */
+    const diffField = c.field({ label: 'Chart' });
     const difficulty = c.slider({
         min: 0,
         max: 100,
