@@ -123,3 +123,49 @@
     border-color: rgb(var(--fbk-alert, 229 72 77));
     color: rgb(var(--fbk-text, 232 238 252));
 }
+
+/* ── the folded strip ────────────────────────────────────────────────────
+ *
+ * What you read while playing: one big live number, the climb rail, and one
+ * row saying which passage and how far in. Layout only — the strip, the rail
+ * and the meter are the kit's.
+ */
+
+.rr-live-top {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--fbk-s-5, 10px);
+}
+
+.rr-live-box { flex: 0 0 auto; display: flex; flex-direction: column; }
+
+/* Dim, because at this size the NUMBER is the content and the word is a
+   legend for it. Two things at full weight and neither wins. */
+.rr-live-cap { color: rgb(var(--fbk-dim, 138 160 200)); }
+
+.rr-live-climb { flex: 1 1 auto; min-width: 0; }
+
+.rr-live-climbcap {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--fbk-s-3, 6px);
+}
+
+.rr-live-goal {
+    font: var(--fbk-t-num, 700 11px/1.2 monospace);
+    letter-spacing: var(--fbk-t-num-track, 0.02em);
+    color: rgb(var(--fbk-dim, 138 160 200));
+    text-align: right;
+}
+
+.rr-live-row {
+    display: flex;
+    align-items: center;
+    gap: var(--fbk-s-3, 6px);
+    padding-top: var(--fbk-s-3, 6px);
+    border-top: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+}
+
+.rr-live-where { flex: 0 0 auto; width: auto; color: rgb(var(--fbk-accent-hi, 96 194 255)); }
+.rr-live-count { flex: 0 0 auto; min-width: 0; white-space: nowrap; }

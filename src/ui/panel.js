@@ -55,7 +55,7 @@ function pct(v) {
  * nothing else. That is what makes the eventual core version a matter of
  * re-wiring one object.
  */
-export function createContent(outer, actions, foot) {
+export function createContent(outer, actions, foot, foldedSlot, panelApi) {
     /*
      * Two children: the message for when there is nothing to control, and
      * everything else. Toggling one container beats hiding three racks, and it
@@ -364,6 +364,93 @@ export function createContent(outer, actions, foot) {
     actionRow.appendChild(loopBtn);
     foot.appendChild(actionRow);
 
+    /* ── the folded state: what you read while playing ───────────────────
+     *
+     * Reported: during a loop the only thing on screen was the DETECTOR's own
+     * HUD, not this panel. Which was true — the panel had one size, the full
+     * rack, and a rack is not what you can take in with a guitar in your
+     * hands.
+     *
+     * So it folds while something is running: one big live number, the climb
+     * rail, and one row saying which passage and how far in. No buttons in it
+     * — the whole block is the target, because the only thing you might want
+     * mid-song is "give me the rest of it", and aiming at a chevron is not a
+     * gesture you can make while playing. Kit DESIGN.md §23.
+     */
+    const strip2 = c.foldedStrip({
+        label: 'OPEN',
+        hint: 'Y',
+        onOpen: () => actions.unfold(),
+    });
+
+    const liveTop = c.el('div', 'rr-live-top');
+    const liveBox = c.el('div', 'rr-live-box');
+    liveBox.appendChild(c.el('span', 'fbk-rack-label rr-live-cap', 'Live'));
+    const liveValue = c.el('span', 'fbk-live-value');
+    const liveNum = c.el('span', null, '–');
+    liveValue.appendChild(liveNum);
+    liveValue.appendChild(c.el('span', 'fbk-live-unit', '%'));
+    liveBox.appendChild(liveValue);
+
+    const climbBox = c.el('div', 'rr-live-climb');
+    const climbCap = c.el('div', 'rr-live-climbcap');
+    climbCap.appendChild(c.el('span', 'fbk-rack-label rr-live-cap', 'Speed'));
+    const climbGoal = c.el('span', 'rr-live-goal');
+    climbCap.appendChild(climbGoal);
+    climbBox.appendChild(climbCap);
+    const climb2 = c.rail({ ariaLabel: 'The speeds this drill climbs' });
+    climbBox.appendChild(climb2.el);
+
+    liveTop.appendChild(liveBox);
+    liveTop.appendChild(climbBox);
+
+    const liveRow = c.el('div', 'rr-live-row');
+    const liveWhere = c.el('span', 'fbk-list-name rr-live-where');
+    const liveMeter = c.ledMeter({ segments: 8 });
+    const liveCount = c.el('span', 'fbk-list-value rr-live-count');
+    liveRow.appendChild(c.el('span', 'fbk-rack-dot'));
+    liveRow.appendChild(liveWhere);
+    liveRow.appendChild(liveMeter.el);
+    liveRow.appendChild(liveCount);
+
+    strip2.body.appendChild(liveTop);
+    strip2.body.appendChild(liveRow);
+    if (foldedSlot) foldedSlot.appendChild(strip2.el);
+
+    function renderFolded(snap) {
+        const d = snap.drill;
+        const running = d.active;
+
+        /*
+         * The one number, and it is the LIVE one — this pass, not the stored
+         * best. While you are playing, "how is this going" is the only
+         * question; the best is what the rack is for.
+         */
+        const live = c.num(running ? d.bestPct : (snap.run.accuracy === null ? null : snap.run.accuracy * 100));
+        liveNum.textContent = live === null ? '–' : Math.round(live);
+        liveValue.dataset.band = live === null ? 'none' : (c.band(live / 100) || 'none');
+
+        const rungs = running ? (d.ladderPct || []) : (snap.ladder || []);
+        const nowPct = running ? rungs[d.rung] : null;
+        climb2.set(rungs.map((v) => ({
+            value: v,
+            label: String(v),
+            state: !running ? 'next'
+                : (v === nowPct ? 'on' : (v < nowPct ? 'done' : 'next')),
+        })));
+        climbGoal.textContent = running
+            ? (nextStepLine(d) || '')
+            : 'loop running';
+
+        const sel = snap.selection;
+        liveWhere.textContent = sel ? sel.label : '—';
+        liveMeter.set(live, live === null ? null : c.band(live / 100));
+        const judged = snap.run.hits + snap.run.misses;
+        liveCount.textContent = running && d.iteration
+            ? `${d.iteration}/${d.reps || 3} · ${judged} notes`
+            : `${judged} notes`;
+    }
+
     /*
      * The last snapshot rendered.
      *
@@ -373,6 +460,15 @@ export function createContent(outer, actions, foot) {
      */
     let lastSnap = null;
 
+    /*
+     * Whether the reader has asked for the full rack while something runs.
+     *
+     * Reset when the run ends, because the override is about THIS run: you
+     * opened the rack to change a goal, and the next passage should start
+     * folded again like the first.
+     */
+    let wantsRack = false;
+
     // ── render ───────────────────────────────────────────────────────────
 
     function render(snap) {
@@ -381,6 +477,22 @@ export function createContent(outer, actions, foot) {
         body.hidden = !snap.ready;
         foot.hidden = !snap.ready;
         if (!snap.ready) return;
+
+        /*
+         * FOLD WHILE SOMETHING IS RUNNING, unless the reader asked to see the
+         * rack. `wantsRack` is the user's own override — opening the rack
+         * mid-drill is a thing you do to change the goal, and it must not
+         * snap shut on the next tick.
+         */
+        if (panelApi) {
+            const busy = snap.drill.active || snap.loopArmed;
+            const small = busy && !wantsRack;
+            if (small) renderFolded(snap);
+            panelApi.fold(small);
+            if (small) return;
+        }
+
+        wantsRack = wantsRack && (snap.drill.active || snap.loopArmed);
 
         renderLoop(snap);
         renderDrillRack(snap);
@@ -594,5 +706,9 @@ export function createContent(outer, actions, foot) {
         startBtn.title = canDrill ? 'Arm the drill on the chosen passage' : '';
     }
 
-    return { render };
+    return {
+        render,
+        /** Called by the action: show the rack even though something runs. */
+        showRack() { wantsRack = true; },
+    };
 }

@@ -19,7 +19,7 @@ import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.26.0';
+const VERSION = '0.27.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -144,6 +144,32 @@ const actions = {
         if (next !== cur) model.setSettings({ goalPct: next });
     },
     setWiden(on) { model.setSettings({ widen: !!on }); },
+
+    /**
+     * Walk the blocks the strip draws — the keyboard's version of tapping one.
+     *
+     * This is what the section chevrons became, and it went MISSING for a
+     * version: the action was written next to `setUnit`, and removing that
+     * switch took the neighbouring block with it. The `,` and `.` shortcuts
+     * went on calling `actions.stepBlock`, which is a thrown TypeError on
+     * every press — silent, because a shortcut handler's throw does not
+     * surface anywhere a user would look.
+     *
+     * Caught only by grepping for the callers while wiring something else.
+     * The lesson is about the DELETION, not the action: removing a block by
+     * pattern is safe for the pattern and blind to what sits beside it.
+     */
+    stepBlock(delta) { model.stepBlock(delta); },
+
+    /**
+     * Show the full rack even though a drill or a loop is running.
+     *
+     * The panel folds itself while something runs — one number and a way back
+     * is what you can read while playing — and this is the way back. An action
+     * rather than a panel-internal toggle, because a shortcut has to be able
+     * to do the same thing without reaching for a pointer.
+     */
+    unfold() { if (content) content.showRack(); model.announce(); },
 
 
     /**
@@ -474,6 +500,17 @@ const SHORTCUTS = [
         handler: () => actions.markEdge('end'),
     },
     {
+        /*
+         * `y` opens the rack while something runs, which is what the folded
+         * strip's own corner hint says. A key for it because the strip is
+         * meant to be read with your hands on the instrument, and reaching for
+         * a pointer is the thing folding exists to avoid.
+         */
+        key: 'y',
+        description: 'show the full panel during a drill',
+        handler: () => { if (open) actions.unfold(); },
+    },
+    {
         // Panel-open only: moving a selection you cannot see is not a feature.
         /*
          * `,` and `.` walk the blocks the strip draws — phrases when the chart
@@ -622,7 +659,7 @@ function boot() {
         label: 'Riff Repeater',
         title: 'Riff Repeater — drill a passage',
     });
-    content = createContent(panel.body, actions, panel.foot);
+    content = createContent(panel.body, actions, panel.foot, panel.folded, panel);
     panel.onToggle(onPanelToggle);
     panel.attach();
     wire();

@@ -256,6 +256,24 @@ export function snapToBar(bars, t) {
     const time = fin(t);
     if (!Number.isFinite(time)) return NaN;
     if (!list.length) return time;
+
+    /*
+     * THE SONG'S START IS A BOUNDARY TOO.
+     *
+     * A chart's first bar line is wherever the first measure begins — 0:03 on
+     * a song with a count-in — and this snapped to it unconditionally. So
+     * dragging the A handle all the way to the left gave 0, and then the bar
+     * snap moved it forward to 0:03, and the loop refused to start at the
+     * beginning of the song however far you pushed. Reported exactly that way.
+     *
+     * Zero is as real an edge as any measure: it is where the audio starts.
+     * Treated as an implicit line in front of the list, so a time before the
+     * first bar picks whichever of the two is nearer.
+     */
+    if (time < list[0].time) {
+        return (time - 0 <= list[0].time - time) ? 0 : list[0].time;
+    }
+
     const i = barIndexAt(list, time);
     const here = list[i].time;
     const next = (i + 1 < list.length) ? list[i + 1].time : null;

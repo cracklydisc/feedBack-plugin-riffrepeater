@@ -106,6 +106,29 @@ export function createPanel(o) {
     root.appendChild(foot);
 
     /*
+     * THE FOLDED STATE — the same object at reading size.
+     *
+     * A panel like this one is two things at two moments: while you are
+     * setting a passage up you want every control, and while you are PLAYING
+     * you want one number and a way back. Those used to be a full rack and
+     * nothing at all, so during a drill the only thing on screen was another
+     * plugin's HUD.
+     *
+     * A state and not a second widget: same z-index, same open and close, same
+     * shortcut registry. Two widgets would be two lifecycles and two places
+     * for a bug about which one is showing.
+     *
+     * `folded` is a child of the panel and the head/body/foot are hidden while
+     * it shows, so the chassis, the shadow and the corner are shared rather
+     * than reimplemented — which is the whole reason it lives here and not in
+     * a consumer.
+     */
+    const folded = document.createElement('div');
+    folded.className = 'fbk-folded-slot';
+    folded.hidden = true;
+    root.appendChild(folded);
+
+    /*
      * The one imperative surface, and the one exception to "the panel reads
      * only your snapshot": why something just FAILED. That is an event, not a
      * state, so a snapshot cannot hold it. Why something is BLOCKED is not
@@ -251,6 +274,29 @@ export function createPanel(o) {
          * it — DESIGN.md §2. Left empty it collapses to nothing.
          */
         foot,
+        /**
+         * The folded state's container. Put a `foldedStrip()` in it.
+         *
+         * Shown by `fold(true)`, which hides the head, body and footer — so
+         * the chassis is shared and there is only ever one panel.
+         */
+        folded,
+        /**
+         * Swap between the full rack and the reading-size strip.
+         *
+         * Not an open/close: the panel is open in both. This is which SIZE it
+         * is at, which is why it is a separate verb from `open()`.
+         */
+        fold(on) {
+            const small = !!on && folded.children.length > 0;
+            folded.hidden = !small;
+            head.hidden = small;
+            body.hidden = small;
+            foot.hidden = small;
+            root.dataset.folded = small ? 'true' : 'false';
+            return small;
+        },
+        isFolded() { return !folded.hidden; },
         root,
 
         attach,

@@ -2207,6 +2207,24 @@
 .fbk-strip-handle[data-edge="start"] { right: 100%; margin-right: 3px; }
 .fbk-strip-handle[data-edge="end"] { left: 100%; margin-left: 3px; }
 
+/*
+ * At the extremes they turn inward, because outside the strip is outside the
+ * scroll container that clips it — reported as the handles being cut at the
+ * ends. It is the one place inside cannot be ambiguous: at the very start
+ * there is nothing to the left of A to confuse it with.
+ */
+.fbk-strip-sel[data-at-start="true"] .fbk-strip-handle[data-edge="start"] {
+    right: auto;
+    left: -2px;
+    margin: 0;
+}
+
+.fbk-strip-sel[data-at-end="true"] .fbk-strip-handle[data-edge="end"] {
+    left: auto;
+    right: -2px;
+    margin: 0;
+}
+
 .fbk-strip-handle:hover:not(:disabled) { background: rgb(var(--fbk-accent-hi, 96 194 255)); }
 
 .fbk-strip-handle:focus-visible {
@@ -2215,6 +2233,31 @@
 }
 
 /* ═══ 21. The folded strip — the panel at reading size ═══════════════════ */
+
+/*
+ * The folded state's slot.
+ *
+ * The chassis is SHARED — same panel, same shadow, same corner — so a folded
+ * panel is the same object at a different size rather than a second widget
+ * with its own everything. The slot only has to undo the body's padding,
+ * because at this size the strip IS the panel.
+ */
+.fbk-folded-slot { padding: var(--fbk-s-3, 6px); }
+
+/* Folded, the chassis stops being a tall scrolling box. */
+.fbk-panel[data-folded="true"] {
+    max-height: none;
+    overflow: visible;
+}
+
+/* Inside the panel the strip drops the chrome the chassis already provides —
+   one signal per boundary (§18), one level down. */
+.fbk-folded-slot .fbk-folded {
+    border: 0;
+    box-shadow: none;
+    background: none;
+    padding: var(--fbk-s-4, 8px) var(--fbk-s-5, 10px);
+}
 
 .fbk-folded {
     display: flex;

@@ -807,6 +807,22 @@ export function rangeStrip(opts = {}) {
             if (has) {
                 sel.style.left = ((range.start / duration) * 100) + '%';
                 sel.style.width = (((range.end - range.start) / duration) * 100) + '%';
+                /*
+                 * AT THE EXTREMES THE HANDLES TURN INWARD.
+                 *
+                 * They hang outside the selection so a narrow loop still reads
+                 * as two edges — but a loop that starts at 0 puts A outside the
+                 * STRIP, and `.fbk-body` is a scroll container, so it clips
+                 * whatever leaves. Reported as the handles being slightly cut
+                 * at the ends.
+                 *
+                 * Flipped to the inside there. It is the one case where inside
+                 * cannot be ambiguous: at the very start there is nothing to
+                 * the left of A to confuse it with.
+                 */
+                const eps = duration * 0.01;
+                sel.dataset.atStart = range.start <= eps ? 'true' : 'false';
+                sel.dataset.atEnd = range.end >= duration - eps ? 'true' : 'false';
             }
         },
         /** Light the block under the playhead's key, or nothing. */

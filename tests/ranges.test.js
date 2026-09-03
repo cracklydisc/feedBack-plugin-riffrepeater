@@ -393,3 +393,22 @@ test('a note count that has not been taken yet is not a count of zero', () => {
     assert.equal(isUsable({ start: 10, end: 20, events: null }, 60), true);
     assert.equal(isUsable({ start: 10, end: 20 }, 60), true);
 });
+
+// ── the song's start ─────────────────────────────────────────────────────
+
+test('the start of the song is a boundary, not a place to snap away from', () => {
+    /*
+     * A chart's first bar line is where the first MEASURE begins — 0:03 on a
+     * song with a count-in — and snapping to it unconditionally meant dragging
+     * the A handle to the far left gave 0 and then got moved forward to 3. The
+     * loop could not start at the beginning of the song however far you pushed.
+     */
+    const bars = [{ measure: 1, time: 3 }, { measure: 2, time: 5 }, { measure: 3, time: 7 }];
+    assert.equal(snapToBar(bars, 0), 0, 'zero stays zero');
+    assert.equal(snapToBar(bars, 1), 0, 'nearer zero than the first bar');
+    assert.equal(snapToBar(bars, 2), 3, 'nearer the first bar than zero');
+    // And nothing about the rest of the grid changed.
+    assert.equal(snapToBar(bars, 4), 3);
+    assert.equal(snapToBar(bars, 4.6), 5);
+    assert.equal(snapToBar(bars, 99), 7);
+});
