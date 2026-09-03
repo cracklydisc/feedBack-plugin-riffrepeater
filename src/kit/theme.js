@@ -1,5 +1,5 @@
 /*
- * kit 0.14.0 — the token bridge.
+ * kit 0.15.0 — the token bridge.
  *
  * Reads the host's palette and writes it back as `--fbk-*` custom properties
  * that a stylesheet can use, then follows `theme:changed`. This existed three
@@ -331,7 +331,22 @@ const RECIPES = {
      */
     'radius-seg': '5px',
     'radius-sm': '8px',           // a control: stepper, segmented cell, button
-    radius: '10px',               // the chassis, and the footswitch
+    /*
+     * 14, not 10, and the well stays at 12.
+     *
+     * The spec's 10 was read off a footswitch, and a 360×580 chassis needs a
+     * softer corner than a 56px button to read as the same family — the arc
+     * has to be visible against the length of the edge it interrupts.
+     * Reported as the card's corner needing attention, and it is the one place
+     * a single number for two very different box sizes was wrong.
+     *
+     * The well keeping 12 means a well is now SHARPER than the chassis, which
+     * inverts the earlier note about routed slots. Both readings are coherent;
+     * this one is the design's, and a 12px radius inside a 14px one is a
+     * concentric pair rather than a nested contradiction.
+     */
+    radius: '14px',               // the chassis
+    'radius-switch': '10px',      // the footswitch
     'radius-well': '12px',
     'radius-pill': '999px',       // a toggle's track, and only that
 

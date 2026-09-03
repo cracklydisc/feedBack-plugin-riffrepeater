@@ -1,5 +1,5 @@
 /*
- * kit 0.14.0 — the four control families, as builders.
+ * kit 0.15.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -327,8 +327,15 @@ export function rail(opts = {}) {
          */
         set(rungs) {
             const list = Array.isArray(rungs) ? rungs : [];
-            /* A 21-rung ladder's dots would overlap at 10px. */
+            /* A 21-rung ladder's dots would overlap at 12px. */
             wrap.dataset.dense = list.length > 8 ? 'true' : 'false';
+            /*
+             * How many equal cells the two rows are divided into, so the line
+             * can start and end at the OUTER DOTS' centres rather than at the
+             * rail's edges. CSS cannot count children, and this is cheaper
+             * than a resize observer.
+             */
+            wrap.style.setProperty('--fbk-cells', String(Math.max(1, list.length)));
             const sig = list.map((r) => r.value + ':' + (r.label === undefined ? '' : r.label)).join(',');
             if (sig !== signature) {
                 signature = sig;
@@ -347,7 +354,18 @@ export function rail(opts = {}) {
                 const every = list.length <= 6 ? 1 : Math.ceil(list.length / 5);
                 for (let i = 0; i < list.length; i += 1) {
                     const r = list[i];
-                    dots.appendChild(el('span', 'fbk-rail-dot'));
+                    /*
+                     * A dot inside a CELL, not as the cell.
+                     *
+                     * The cells are what divide the rail into equal shares so
+                     * a number lands under its dot; a dot itself is a fixed
+                     * 12px circle. Making the dot the cell made it stretch to
+                     * fill its share — one wide blue pill where a round dot
+                     * belonged, which is what shipped for one version.
+                     */
+                    const cell = el('span', 'fbk-rail-cell');
+                    cell.appendChild(el('span', 'fbk-rail-dot'));
+                    dots.appendChild(cell);
                     const keep = i === 0 || i === list.length - 1 || i % every === 0;
                     marks.appendChild(el('span', 'fbk-rail-mark',
                         keep ? String(r.label === undefined ? r.value : r.label) : ''));
@@ -356,7 +374,9 @@ export function rail(opts = {}) {
             const dn = dots.children;
             const mn = marks.children;
             for (let i = 0; i < list.length; i += 1) {
-                if (dn[i]) dn[i].dataset.state = list[i].state || 'next';
+                /* `dn[i]` is the cell; the dot is its only child. */
+                const dot = dn[i] && dn[i].children[0];
+                if (dot) dot.dataset.state = list[i].state || 'next';
                 if (!mn[i]) continue;
                 mn[i].dataset.state = list[i].state || 'next';
                 /*
@@ -373,6 +393,11 @@ export function rail(opts = {}) {
              * Without it the only cue is how many dots are green, which is a
              * number you have to count — and counting is the thing a HUD is
              * supposed to save you.
+             */
+            /*
+             * The fill is a fraction of the line, and the line now spans the
+             * outer dots' centres — so the current rung's index over the gaps
+             * between them is exactly right, with no edge correction.
              */
             const onAt = list.findIndex((r) => r.state === 'on');
             const pct = list.length > 1 && onAt >= 0 ? (onAt / (list.length - 1)) * 100 : 0;
