@@ -84,22 +84,24 @@ export function createContent(outer, actions, foot) {
     body.appendChild(loopRack.el);
 
     /*
-     * The unit switch, in the rack's header because it is set once.
+     * WHAT USED TO BE HERE: a `BARS | TIME` switch.
      *
-     * BARS is the default and TIME is the escape hatch, not the other way
-     * round: a boundary off the bar grid turns the drill's count-in into a
-     * guess, so the unit that can produce one is the one you have to ask for.
+     * Asked whether it made sense, and it did not — for a reason that only
+     * showed up in the code. `nudgeByBar` has ALWAYS fallen back to seconds
+     * when a chart carries no bar lines, so the switch's one genuine job was
+     * already being done automatically; and on such a chart the label went on
+     * saying "±1 bar" while the button moved two seconds, which is worse than
+     * having no switch at all.
+     *
+     * The unit is a FACT ABOUT THE CHART, not a choice: bars where there are
+     * bars, seconds where there are not. The label says which, so nothing is
+     * hidden — and the rack's header is free.
+     *
+     * Sub-bar precision did not go with it. It moved to where it belongs: the
+     * A/B handles snap only when they are NEAR an edge, so a deliberate drag
+     * places freely. Ten presses of a ±0.1s stepper was never the tool for
+     * that.
      */
-    const unit = c.segmented(
-        [
-            { value: 'bars', label: 'BARS', title: 'Move an edge by one whole bar — the safe default' },
-            { value: 'time', label: 'TIME', title: 'Move an edge by a tenth of a second, for a pickup that starts mid-bar' },
-        ],
-        (v) => actions.setUnit(v),
-        'Nudge unit',
-        { size: 'header' },
-    );
-    loopRack.header.appendChild(unit.el);
 
     /*
      * The strip: the ONLY loop selector.
@@ -233,6 +235,10 @@ export function createContent(outer, actions, foot) {
         min: GOAL_MIN_PCT,
         max: GOAL_MAX_PCT,
         unit: '%',
+        /* Both of these drive the drill, so both read in the accent — the
+           design paints them that way and it is right: they are the two
+           numbers a drill is built from. */
+        emph: true,
         downTitle: 'Accept 5% fewer clean notes per pass',
         upTitle: 'Demand 5% more clean notes per pass',
         onChange: (v) => actions.setGoal(v),
@@ -329,13 +335,19 @@ export function createContent(outer, actions, foot) {
     const actionRow = c.el('div', 'fbk-row fbk-row-tight fbk-row-nowrap rr-actions');
     const startBtn = c.button('fbk-btn fbk-btn-primary rr-primary', null, null,
         () => actions.startDrill());
+    /*
+     * No key cap on the footswitch.
+     *
+     * `D` is still registered and still listed in the host's own help panel
+     * and keybinds tab, so nothing was lost by taking it off the button — and
+     * a footswitch is the one control in the panel you hit without reading it.
+     * A badge on it is a label competing with the only label that matters.
+     */
     startBtn.appendChild(c.el('span', 'fbk-btn-label', 'Start drill'));
-    startBtn.appendChild(c.kbd('D'));
 
     const endBtn = c.button('fbk-btn fbk-btn-stop rr-primary', null,
         'Stop the drill and restore your speed', () => actions.endDrill());
     endBtn.appendChild(c.el('span', 'fbk-btn-label', 'End drill'));
-    endBtn.appendChild(c.kbd('D'));
 
     const loopBtn = c.button('fbk-btn rr-alt', 'Free loop',
         'Loop the passage and leave it alone — no goal, no ladder, no grading',
@@ -387,14 +399,16 @@ export function createContent(outer, actions, foot) {
         strip.mark(blockAt(snap));
         strip.disable(snap.drill.active);
 
-        unit.set(snap.settings.unit || 'bars');
-        unit.disable(snap.drill.active);
-
-        const bars = snap.settings.unit !== 'time';
+        /*
+         * Bars where the chart has bars, seconds where it does not — and the
+         * label says which, which is the whole of what the old switch bought.
+         */
+        const bars = snap.barsAvailable;
         tenths = !bars;
         for (const [e, edge] of [['start', edgeA], ['end', edgeB]]) {
             const t = sel ? (e === 'start' ? sel.start : sel.end) : null;
-            edge.label.textContent = (e === 'start' ? 'A' : 'B') + ' · ±1 ' + (bars ? 'bar' : 's');
+            edge.label.textContent = (e === 'start' ? 'A' : 'B')
+                + (bars ? ' · ±1 bar' : ' · ±2 s');
             edge.set(t === null ? 0 : t);
             const dead = snap.drill.active || (!sel && e === 'end');
             edge.down.disabled = dead;

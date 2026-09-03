@@ -1,5 +1,5 @@
 /*
- * kit 0.16.0 — the four control families, as builders.
+ * kit 0.18.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -312,6 +312,15 @@ export function field(opts = {}) {
  * change with the number of rungs — see the note in `set()`.
  */
 const RAIL_INSET = 10;
+
+/**
+ * How close a dragged handle has to be to an edge before it snaps.
+ *
+ * In pixels, because "near" is a distance on screen: it scales with the song's
+ * length on its own, where a threshold in seconds would be generous on a short
+ * song and useless on a long one.
+ */
+const SNAP_PX = 14;
 
 export function rail(opts = {}) {
     const { ariaLabel = null } = opts;
@@ -651,7 +660,24 @@ export function rangeStrip(opts = {}) {
             const d = Math.abs(edge - seconds);
             if (d < dist) { dist = d; best = edge; }
         }
-        return best;
+
+        /*
+         * SNAP ONLY WHEN NEAR, so a deliberate drag can place freely.
+         *
+         * It snapped unconditionally, which meant an edge could sit *only* on
+         * a block boundary — and since the ± steppers move by a bar, there was
+         * no way at all to place one mid-phrase. That is a real thing to want:
+         * a lick with a pickup starts before the bar line.
+         *
+         * The threshold is in PIXELS converted to time, not in seconds,
+         * because what "near" means is a distance on screen: 14px is about
+         * half a fingertip and it scales with the song's length by itself,
+         * where a fixed 0.5s would be generous on a two-minute song and
+         * useless on a ten-minute one.
+         */
+        const w = rect().width || 1;
+        const tolerance = duration > 0 ? (SNAP_PX / w) * duration : 0;
+        return dist <= tolerance ? best : seconds;
     }
 
     function hitAt(clientX) {

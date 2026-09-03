@@ -1,5 +1,5 @@
 /*
- * kit 0.16.0 — the token bridge.
+ * kit 0.18.0 — the token bridge.
  *
  * Reads the host's palette and writes it back as `--fbk-*` custom properties
  * that a stylesheet can use, then follows `theme:changed`. This existed three
@@ -306,6 +306,24 @@ const RECIPES = {
     'emph-on': 'rgb(var(--fbk-on-accent))',
 
     /* How a small control says "active / armed / current". */
+    /*
+     * ── THE RAISED FACE ─────────────────────────────────────────────────
+     *
+     * A top light line and a shadow under it: light comes from above, and a
+     * thing you press catches it. This is the difference between a button and
+     * a printed rectangle, and it was missing — the controls were completely
+     * flat, which was reported.
+     *
+     * A slot rather than a literal, per the second law, and `none` is legal:
+     * a shop skin that wants everything flat sets these to `none` and gets a
+     * flat panel rather than one with a highlight it cannot remove.
+     */
+    'control-lift': 'inset 0 1px 0 rgb(var(--fbk-text) / 0.14), 0 1px 2px rgb(var(--fbk-bg) / 0.9)',
+    'control-lift-on': 'inset 0 1px 0 rgb(var(--fbk-text) / 0.22), 0 2px 6px rgb(var(--fbk-bg) / 0.9)',
+    /* Pressed: the light line moves to the BOTTOM, which is what a face going
+       in actually does. Cheaper and more convincing than moving the whole box. */
+    'control-lift-down': 'inset 0 -1px 0 rgb(var(--fbk-text) / 0.14), inset 0 2px 4px rgb(var(--fbk-bg) / 0.8)',
+
     'lit-fill': 'rgb(var(--fbk-accent))',
     'lit-halo': '0 0 10px rgb(var(--fbk-accent) / 0.45)',
     'lit-on': 'rgb(var(--fbk-on-accent))',

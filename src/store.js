@@ -55,12 +55,18 @@ export function defaults() {
          * migrated in `read()`.
          */
         /*
-         * `bars` by default, and TIME is the escape hatch rather than the
-         * other way round: a boundary off the bar grid turns the drill's
-         * count-in into a guess, so the unit that can produce one is the one
-         * you have to ask for.
+         * WITHDRAWN: `unit`.
+         *
+         * A `BARS | TIME` switch chose how far the edge steppers move. It went
+         * in 0.21.0 because the unit is a fact about the chart rather than a
+         * choice — `nudgeByBar` had always fallen back to seconds on a chart
+         * with no bar lines, so the switch's one real job was already
+         * automatic, and its label lied in exactly that case.
+         *
+         * A stored `unit` from before is simply ignored; nothing reads it, and
+         * migrating a preference that no longer has a meaning would be
+         * inventing one.
          */
-        unit: 'bars',
         startPct: DEFAULT_START_PCT,
         stepPct: DEFAULT_STEP_PCT,
         goalPct: DEFAULT_GOAL_PCT,

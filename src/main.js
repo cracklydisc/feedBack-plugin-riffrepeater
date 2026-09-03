@@ -19,7 +19,7 @@ import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.20.0';
+const VERSION = '0.22.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -145,18 +145,6 @@ const actions = {
     },
     setWiden(on) { model.setSettings({ widen: !!on }); },
 
-    /** Which unit the edge steppers move by — `bars` or `time`. */
-    /**
-     * Walk the blocks the strip draws — the keyboard's version of tapping one.
-     *
-     * This is what the section chevrons became. Removing them cost nothing
-     * because the gesture survived here; what went was a second
-     * stepper-shaped control under the strip, doing in two presses what one
-     * tap does.
-     */
-    stepBlock(delta) { model.stepBlock(delta); },
-
-    setUnit(u) { model.setSettings({ unit: u === 'time' ? 'time' : 'bars' }); },
 
     /**
      * Put an edge at a given TIME rather than at the playhead.

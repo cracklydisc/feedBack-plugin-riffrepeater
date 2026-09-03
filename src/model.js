@@ -465,20 +465,14 @@ export function setBarCount(n) {
 
 /** Move one edge of the current range by a bar. Snaps onto the bar grid. */
 /**
- * Move a loop edge by one unit.
+ * Move a loop edge by one bar — or by two seconds where the chart has no bar
+ * lines, which `nudgeByBar` decides for itself.
  *
- * `unit` is `bars` or `time`, and the switch that picks it is a header control
- * on the LOOP rack — set once, not per passage. The two exist for different
- * jobs and neither is a fallback for the other:
- *
- *   bars   the default, because a boundary off the bar grid turns the drill's
- *          count-in into a guess. This is the one you want almost always.
- *   time   a tenth of a second, for a pickup that starts mid-bar or a chart
- *          whose bar lines are wrong. It CAN put an edge off the grid, which
- *          is exactly why it is not the default.
+ * Bars, because a boundary off the grid turns the drill's count-in into a
+ * guess. Sub-bar placement is the A/B handle's job: it snaps only when it is
+ * near an edge, so a deliberate drag puts one wherever you like.
  */
-export function nudge(edge, direction, unit = 'bars') {
-    if (unit === 'time') return nudgeBySeconds(edge, direction);
+export function nudge(edge, direction) {
     const cur = selection();
     if (!cur) return;
     const bars = ranges.barLines(host.beats());
@@ -502,42 +496,19 @@ export function nudge(edge, direction, unit = 'bars') {
     announce();
 }
 
-/**
- * The same edge, moved by a tenth of a second.
+/*
+ * WITHDRAWN with the `BARS | TIME` switch: `nudgeBySeconds`.
  *
- * `MIN_RANGE_SEC` is enforced here rather than left to `isUsable`, because a
- * stepper you can hold down would otherwise walk the two edges through each
- * other and hand the conductor a backwards range.
+ * It moved an edge by a tenth of a second, which was never the right tool for
+ * sub-bar placement — ten presses per second — and it had no caller left once
+ * the switch went. `nudgeByBar` already falls back to seconds on a chart with
+ * no bar lines, which is the case the tenths were standing in for; fine
+ * placement is the handle's job now, and the handle snaps only when near an
+ * edge so a deliberate drag places freely.
+ *
+ * Deleted rather than kept in case: §19, and a function with no consumer is a
+ * function nobody has tested.
  */
-function nudgeBySeconds(edge, direction, secs = 0.1) {
-    const cur = selection();
-    if (!cur) return;
-    const d = (Number(direction) || 0) * secs;
-    if (!d) return;
-
-    const dur = host.duration();
-    let start = cur.start;
-    let end = cur.end;
-    if (edge === 'start') start = Math.max(0, Math.min(end - ranges.MIN_RANGE_SEC, start + d));
-    else end = Math.max(start + ranges.MIN_RANGE_SEC, Math.min(dur || end + d, end + d));
-    if (start === cur.start && end === cur.end) return;
-
-    /*
-     * A nudged section stops being that section, exactly as with bars — it is
-     * a custom range now, and showing "Verse 1" for a passage a tenth longer
-     * than Verse 1 would be a label that lies.
-     */
-    state.barsRange = {
-        kind: 'bars',
-        start,
-        end,
-        label: 'Custom range',
-        key: ranges.rangeKey('bars', start, end),
-    };
-    state.mode = 'bars';
-    invalidateEvents();
-    announce();
-}
 
 /** The range that a drill or a loop would use right now. */
 export function selection() {
@@ -717,6 +688,17 @@ export function snapshot() {
          * is what `Clear` did: it was disabled only during a drill, so outside
          * one it was a live button whose click did nothing visible.
          */
+        /**
+         * Whether this chart has bar lines at all.
+         *
+         * The edge steppers move by a bar when it does and by seconds when it
+         * does not — `nudgeByBar` has always fallen back on its own — and this
+         * is what lets their LABEL say which, instead of claiming "±1 bar" on
+         * a chart with no bars. It replaced a `BARS | TIME` switch: the unit is
+         * a fact about the chart, not a choice worth a control.
+         */
+        barsAvailable: ranges.barLines(host.beats()).length > 0,
+
         loopArmed: (() => {
             const l = host.loop();
             // `Number(null)` is 0 and 0 passes `Number.isFinite`, so the
