@@ -480,7 +480,18 @@ export function createContent(outer, actions, foot) {
             }
         }
 
-        weakestBtn.disabled = !snap.weakest.length || snap.drill.active;
+        /*
+         * NOTHING MEASURED YET: the message, and no buttons at all.
+         *
+         * A disabled `Loop weakest ›` under "nothing measured yet" is a
+         * control that exists to say it cannot work — and the sentence above
+         * it already said so, better. So the whole row goes until there is
+         * something to loop, which also stops the empty state being taller
+         * than the thing it is explaining.
+         */
+        const has = snap.weakest.length > 0;
+        weakActs.hidden = !has;
+        weakestBtn.disabled = snap.drill.active;
         moreBtn.hidden = snap.weakest.length <= 3;
         moreBtn.textContent = showAll ? 'Top 3 ⌃' : `All ${snap.weakest.length} ⌄`;
     }

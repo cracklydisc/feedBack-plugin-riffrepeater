@@ -1,5 +1,5 @@
 /*
- * kit 0.15.0 — the token bridge.
+ * kit 0.16.0 — the token bridge.
  *
  * Reads the host's palette and writes it back as `--fbk-*` custom properties
  * that a stylesheet can use, then follows `theme:changed`. This existed three

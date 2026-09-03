@@ -1,5 +1,5 @@
 /*
- * kit 0.15.0 — the four control families, as builders.
+ * kit 0.16.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -305,6 +305,14 @@ export function field(opts = {}) {
  * tool, and a permanent warning about a choice somebody made on purpose is
  * what §4 exists to prevent.
  */
+/**
+ * Half the widest dot, and therefore how far in the track starts.
+ *
+ * A constant, because the whole point is that the rail's length does not
+ * change with the number of rungs — see the note in `set()`.
+ */
+const RAIL_INSET = 10;
+
 export function rail(opts = {}) {
     const { ariaLabel = null } = opts;
     const wrap = el('div', 'fbk-rail');
@@ -329,13 +337,7 @@ export function rail(opts = {}) {
             const list = Array.isArray(rungs) ? rungs : [];
             /* A 21-rung ladder's dots would overlap at 12px. */
             wrap.dataset.dense = list.length > 8 ? 'true' : 'false';
-            /*
-             * How many equal cells the two rows are divided into, so the line
-             * can start and end at the OUTER DOTS' centres rather than at the
-             * rail's edges. CSS cannot count children, and this is cheaper
-             * than a resize observer.
-             */
-            wrap.style.setProperty('--fbk-cells', String(Math.max(1, list.length)));
+
             const sig = list.map((r) => r.value + ':' + (r.label === undefined ? '' : r.label)).join(',');
             if (sig !== signature) {
                 signature = sig;
@@ -355,6 +357,25 @@ export function rail(opts = {}) {
                 for (let i = 0; i < list.length; i += 1) {
                     const r = list[i];
                     /*
+                     * WHERE this rung sits, as a fraction of a FIXED track.
+                     *
+                     * Equal flex cells aligned the dots to their numbers but
+                     * made the track's usable length depend on how many rungs
+                     * there were — the line's inset was half a cell, so
+                     * switching from +5 to +2 visibly grew and shrank the
+                     * rail. Reported: keep the line the same length and just
+                     * add the extra steps inside it.
+                     *
+                     * So the track is constant and each rung is PLACED on it.
+                     * The first is always at the inset and the last always at
+                     * `100% - inset`, whatever comes between — and a dot and
+                     * its number share the same fraction, so they cannot
+                     * drift apart by construction rather than by arithmetic
+                     * that has to be kept in step.
+                     */
+                    const at = list.length > 1 ? i / (list.length - 1) : 0;
+                    const pos = `calc(${RAIL_INSET}px + ${at} * (100% - ${RAIL_INSET * 2}px))`;
+                    /*
                      * A dot inside a CELL, not as the cell.
                      *
                      * The cells are what divide the rail into equal shares so
@@ -364,11 +385,23 @@ export function rail(opts = {}) {
                      * belonged, which is what shipped for one version.
                      */
                     const cell = el('span', 'fbk-rail-cell');
+                    cell.style.left = pos;
                     cell.appendChild(el('span', 'fbk-rail-dot'));
                     dots.appendChild(cell);
+
+                    /*
+                     * Every dot, but not every number — 11 rungs is a smear.
+                     * An unlabelled mark is still PLACED, so it holds no width
+                     * and steals none: the ones that survive stay on their own
+                     * dots. An earlier version collapsed them to `width: 0` in
+                     * a flex row instead, which let the survivors redistribute
+                     * and put every label back off its dot.
+                     */
                     const keep = i === 0 || i === list.length - 1 || i % every === 0;
-                    marks.appendChild(el('span', 'fbk-rail-mark',
-                        keep ? String(r.label === undefined ? r.value : r.label) : ''));
+                    const mark = el('span', 'fbk-rail-mark',
+                        keep ? String(r.label === undefined ? r.value : r.label) : '');
+                    mark.style.left = pos;
+                    marks.appendChild(mark);
                 }
             }
             const dn = dots.children;
@@ -1086,8 +1119,28 @@ export function slider(opts = {}) {
     if (ariaLabel) input.setAttribute('aria-label', ariaLabel);
 
     const out = readout(unit);
+
+    /*
+     * THE LIT PART OF THE TRACK, painted by us.
+     *
+     * Firefox has `::-moz-range-progress` and Chromium has nothing — no
+     * pseudo-element for the filled side of a range at all. So the fill is a
+     * gradient on the input itself, with the stop driven by `--fbk-fill`, and
+     * it is the only way to have a gauge that reads the same in both engines.
+     * Without it the track was uniformly grey and only the thumb said where
+     * the value was, which is the "no coloured bar" report.
+     */
+    function paint() {
+        const lo = Number(min);
+        const hi = Number(max);
+        const v = Number(input.value);
+        const frac = hi > lo ? (v - lo) / (hi - lo) : 0;
+        input.style.setProperty('--fbk-fill', (Math.max(0, Math.min(1, frac)) * 100) + '%');
+    }
+
     input.addEventListener('input', () => {
         out.set(input.value);
+        paint();
         onInput(Number(input.value));
     });
 
@@ -1111,6 +1164,8 @@ export function slider(opts = {}) {
         wrap.appendChild(out.el);
     }
 
+    paint();
+
     return {
         el: wrap,
         input,
@@ -1121,6 +1176,7 @@ export function slider(opts = {}) {
             const n = num(v);
             if (n !== null && document.activeElement !== input) input.value = String(n);
             out.set(input.value);
+            paint();
         },
         disable(off) { input.disabled = !!off; },
     };

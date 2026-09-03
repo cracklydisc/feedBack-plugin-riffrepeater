@@ -1,5 +1,5 @@
 /*
- * kit 0.15.0 — the shared look.
+ * kit 0.16.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -1102,22 +1102,35 @@
        the steppers' did — inside a well it bounded a shape the fill bounds. */
     height: 8px;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: rgb(var(--fbk-surface-2, 30 34 44));
+    /*
+     * The lit part is a GRADIENT on the track, stopped at `--fbk-fill`.
+     *
+     * Chromium has no pseudo-element for the filled side of a range — none —
+     * so a two-stop gradient is the only way both engines show the same
+     * gauge. `slider()` sets the stop on the input; the track inherits it.
+     */
+    background: linear-gradient(to right,
+        var(--fbk-lit-fill, rgb(var(--fbk-accent, 41 168 255))) 0 var(--fbk-fill, 0%),
+        rgb(var(--fbk-surface-2, 30 34 44)) var(--fbk-fill, 0%) 100%);
     border: 0;
 }
 
 .fbk-slider::-moz-range-track {
-    /* 8px and unstroked: a 6px hairlined rail is a form control, and this is a
-       gauge you glance at while playing. The stroke went for the same reason
-       the steppers' did — inside a well it bounded a shape the fill bounds. */
     height: 8px;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: rgb(var(--fbk-surface-2, 30 34 44));
+    /* The same two-stop gradient as WebKit's, so one `--fbk-fill` drives both
+       engines and neither has a special case. */
+    background: linear-gradient(to right,
+        var(--fbk-lit-fill, rgb(var(--fbk-accent, 41 168 255))) 0 var(--fbk-fill, 0%),
+        rgb(var(--fbk-surface-2, 30 34 44)) var(--fbk-fill, 0%) 100%);
     border: 0;
 }
 
 /* Firefox can paint the filled part; WebKit cannot, so it is the thumb's halo
    that carries the "this is live" signal there. */
+/* Firefox: the gradient already paints the fill, so its progress element
+   would double it — kept at the track's own tone and height so the shape
+   stays right if a future engine ignores the gradient. */
 .fbk-slider::-moz-range-progress {
     height: 8px;
     border-radius: var(--fbk-radius-pill, 999px);
@@ -1691,10 +1704,18 @@
  * end — `100% / cells / 2`. Running it to the edges left it sticking out past
  * the outer dots by exactly that much.
  */
+/*
+ * A track of CONSTANT length: 10px in from each end, always.
+ *
+ * It used to inset by half a cell, which made the line grow and shrink as the
+ * rung count changed — switching +5 to +2 visibly resized the rail. 10 is half
+ * the widest dot, so the line runs exactly between the outer dots' centres
+ * whatever sits between them.
+ */
 .fbk-rail-line {
     position: absolute;
-    left: calc(50% / var(--fbk-cells, 5));
-    right: calc(50% / var(--fbk-cells, 5));
+    left: 10px;
+    right: 10px;
     top: calc(var(--fbk-s-3, 6px) + 5px);
     height: 2px;
     border-radius: var(--fbk-radius-pill, 999px);
@@ -1725,27 +1746,39 @@
  * run from the FIRST cell's centre to the LAST — half a cell in from each end,
  * not to the edges — hence `--fbk-cells`, set by `rail.set()`.
  */
+/*
+ * Both rows are positioning contexts with a height of their own, because their
+ * children are out of flow now and would otherwise collapse them to nothing.
+ */
 .fbk-rail-dots,
 .fbk-rail-marks {
     position: relative;
-    display: flex;
-    align-items: center;
+    height: 18px;
 }
 
+.fbk-rail-marks { height: 14px; }
+
+/*
+ * PLACED, not distributed.
+ *
+ * Each dot and each number is absolutely positioned at the same fraction of
+ * the fixed track and pulled back by half its own width, so the two rows agree
+ * by construction. Equal flex cells got them agreeing too, but only while
+ * every cell had content — and thinning the numbers on a dense ladder let the
+ * survivors redistribute and drift off their dots again.
+ */
 .fbk-rail-cell,
 .fbk-rail-marks > * {
-    flex: 1 1 0;
-    min-width: 0;
+    position: absolute;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
+    white-space: nowrap;
 }
 
-/* A dot is a FIXED shape inside its cell. Without this it inherits the cell's
-   `flex: 1 1 0` and stretches into a wide pill — which is what happened when
-   the dot WAS the cell. */
+/* A dot is a fixed shape, not something that stretches to a share. */
 .fbk-rail-cell > .fbk-rail-dot { flex: 0 0 auto; }
-.fbk-rail-marks > * { text-align: center; }
 
 .fbk-rail-marks { margin-top: var(--fbk-s-2, 4px); }
 
@@ -1798,7 +1831,14 @@
  */
 .fbk-rail[data-dense="true"] .fbk-rail-dot { width: 7px; height: 7px; border-width: 1px; }
 .fbk-rail[data-dense="true"] .fbk-rail-dot[data-state="on"] { width: 11px; height: 11px; border-width: 2px; }
-.fbk-rail[data-dense="true"] .fbk-rail-mark:empty { flex: 0 0 auto; width: 0; }
+/*
+ * WITHDRAWN: `.fbk-rail-mark:empty { width: 0 }`.
+ *
+ * It collapsed the unlabelled marks so the survivors could spread out — which
+ * is exactly what put every remaining number off its dot on a +2 ladder. With
+ * marks placed rather than distributed there is nothing to collapse: an empty
+ * one occupies no space anyway and steals none from its neighbours.
+ */
 
 .fbk-rail-mark {
     font: var(--fbk-t-num, 700 11px/1.2 monospace);
@@ -2205,6 +2245,25 @@
    gives up its padding so the control's own 40px is the row's height. */
 .fbk-field-tight { padding: var(--fbk-s-1, 2px); }
 
+/*
+ * A RULE AFTER THE LABEL, so it reads as one.
+ *
+ * `STEP  +2 +5 +10` put a word at the same height and weight as the cells
+ * beside it, and at a glance the word looked like a fourth option. A hairline
+ * between them says "this side names, that side chooses" — cheaper than
+ * shrinking the label until it stops competing, which is the other way to fix
+ * it and costs legibility.
+ */
+.fbk-field-label::after {
+    content: '';
+    display: inline-block;
+    width: var(--fbk-hairline, 1px);
+    height: 14px;
+    margin-left: var(--fbk-s-5, 10px);
+    vertical-align: -3px;
+    background: rgb(var(--fbk-border, 42 46 58));
+}
+
 .fbk-field-label {
     flex: 0 0 auto;
     font: var(--fbk-t-field, 600 9px/1.2 sans-serif);
@@ -2221,6 +2280,21 @@
     display: flex;
     align-items: center;
     gap: var(--fbk-s-4, 8px);
+}
+
+/*
+ * A ROW INSIDE A FIELD FILLS IT.
+ *
+ * `.fbk-row` has no `flex`, so it defaults to `0 1 auto` and sizes to its
+ * content — and a slider row's own `min-width: 0` then let the track collapse
+ * to whatever was left over rather than claiming the space. Measured: the
+ * CHART track stopped 119px short of its field's edge, which is the "not
+ * 100% long" report, and it was the row's fault rather than the track's.
+ */
+.fbk-field-body > .fbk-row {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
 }
 
 /*
