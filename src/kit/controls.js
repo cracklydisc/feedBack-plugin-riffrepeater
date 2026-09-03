@@ -332,12 +332,14 @@ const SNAP_PX = 14;
 const BLOCK_GAP_PX = 3;
 
 /**
- * How wide a selection has to be before both bracket letters fit in it.
+ * How far apart the two brackets have to be before both letters fit.
  *
- * Two 12px tags anchored inward plus air between them. Below this they would
- * draw over each other, so they go — see the note in kit.css §20.
+ * They are centred on their own rails, so the pair overlaps only when the
+ * selection is narrower than one 10px letter — plus two pixels so they never
+ * touch. Anchored INSIDE the selection instead, the same letters needed 22px
+ * and were therefore hidden on every section of a five-minute song.
  */
-const TAG_ROOM_PX = 34;
+const TAG_ROOM_PX = 12;
 
 export function rail(opts = {}) {
     const { ariaLabel = null } = opts;

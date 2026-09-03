@@ -2111,8 +2111,21 @@
      * sections, both setting `height`. That is the drift trap this file has
      * already been bitten by twice; there is one rule now.
      */
-    height: calc(var(--fbk-h-md, 40px) + var(--fbk-s-2, 4px));
-    margin-block: var(--fbk-s-4, 8px);
+    /*
+     * THE CASE IS TALLER THAN THE ZONES, and that is the whole point.
+     *
+     * `h-lg` around an `h-md` row of zones leaves `s-4` of the dark ground
+     * above and below them — which is where the bracket corners and the two
+     * letters sit. It used to be `h-md` plus a hair, with the frame standing
+     * proud of the box and into the row's MARGIN: so the letters left the case
+     * and read as escaping the card, worst of all at the two ends.
+     *
+     * Nothing overhangs now, so the margin that used to reserve the overhang
+     * is gone with it — the rack's own gap spaces this row from its
+     * neighbours, and a margin left behind for a mechanism that no longer
+     * exists is how two of the last three layout bugs here happened.
+     */
+    height: var(--fbk-h-lg, 56px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     border-radius: var(--fbk-radius-well, 12px);
     background: rgb(var(--fbk-bg, 5 7 12));
@@ -2131,7 +2144,13 @@
  */
 .fbk-strip-track {
     position: absolute;
-    inset: 0 var(--fbk-s-4, 8px);
+    /*
+     * Inset on all four sides: the zones are a band floating in the case, with
+     * the dark ground showing above, below and at both ends. The horizontal
+     * air is where a bracket at bar one stands; the vertical air is where its
+     * corners and its letter go.
+     */
+    inset: var(--fbk-s-4, 8px);
     border-radius: var(--fbk-radius-seg, 5px);
 }
 
@@ -2200,11 +2219,19 @@
  */
 .fbk-strip-sel {
     position: absolute;
+    /*
+     * It fills the case's interior exactly — `s-4` proud of the zone row at
+     * top and bottom, which is the air the case now carries.
+     *
+     * AND IT HAS NO OUTLINE. Two blue lines running the selection's whole
+     * length said the same thing the brackets already say, twice, and drew a
+     * box around blocks that are themselves boxes. The start and the end are
+     * enough: two rails and a tick turning inward at each corner. Reported
+     * exactly that way, and it is §18 — one signal per boundary.
+     */
     top: calc(-1 * var(--fbk-s-4, 8px));
     bottom: calc(-1 * var(--fbk-s-4, 8px));
     box-sizing: border-box;
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent, 41 168 255) / 0.55);
-    border-radius: var(--fbk-radius-sm, 8px);
     pointer-events: none;
 }
 
@@ -2275,19 +2302,34 @@
 .fbk-strip-handle[data-edge="end"] .fbk-strip-bracket::after { right: 0; }
 
 /*
- * The letter, small and always INSIDE.
+ * The letter, small and CENTRED ON ITS OWN RAIL.
  *
  * Small because the steppers underneath carry the big A and B — up here it
- * only says which bracket your finger is on. Anchored inward, which is also
- * what retired the rule that used to flip the handles at the ends of the song
- * to keep them out of the scroll container's clip: there is nothing to flip
- * when the mark is on the edge and the letter is already inside it.
+ * only says which bracket your finger is on.
+ *
+ * Anchored inward first, which sounds safer and is not: two 10px letters
+ * inside the selection need 22px of selection, and a section on a five-minute
+ * song is eight to twenty-two, so they were hidden essentially always. On the
+ * rail they collide only when the selection is thinner than one letter, and
+ * they cannot leave the case either — the rail is already `s-4` inside it, and
+ * a letter centred there overhangs by half its width into air that is wider
+ * than that.
+ *
+ * Which is also what retired the rule that used to flip the handles at the
+ * ends of the song to keep them out of the scroll container's clip.
  */
 .fbk-strip-tag {
     position: absolute;
     top: 0;
-    min-width: 12px;
-    padding: 0 2px;
+    /*
+     * As small as a letter can be and still be a letter — 10px of box for a
+     * 9px glyph. It is not decoration to shrink: at 12px plus 2px of padding
+     * the PAIR needed 34px of selection, and a section on a five-minute song
+     * is twenty, so on this song the letters were hidden almost always. Small
+     * is what keeps them.
+     */
+    min-width: 10px;
+    padding: 0 1px;
     border-radius: 3px;
     background: rgb(var(--fbk-accent, 41 168 255));
     color: rgb(var(--fbk-on-accent, 5 7 12));
@@ -2296,8 +2338,11 @@
     text-align: center;
 }
 
-.fbk-strip-handle[data-edge="start"] .fbk-strip-tag { left: 50%; }
-.fbk-strip-handle[data-edge="end"] .fbk-strip-tag { right: 50%; }
+/* Centred on the rail — the handle is already centred on the edge. */
+.fbk-strip-tag {
+    left: 50%;
+    transform: translateX(-50%);
+}
 
 /*
  * NO LETTERS ON A NARROW SELECTION.
