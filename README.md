@@ -90,6 +90,13 @@ sections come out under 10px, and the thinnest is under two. It replaced a grid 
 "Solo 1"; position answers that at a glance, and a drag is something no
 arrangement of chips can offer.
 
+Clicking a block is the only way to pick a section: the two chevrons that used
+to flank the readout went in 0.11.0, because they were a second
+stepper-shaped control directly under the phrase stepper, doing a job the
+strip already does in one gesture. The `,` and `.` shortcuts stay registered,
+so a keyboard or a controller still steps sections and the host's own help
+panel still lists it.
+
 There is no waveform. Drawing one means fetching and decoding a stem, which is
 expensive, duplicates work the player already did, and adds nothing — the
 useful signal here is not amplitude, it is where the sections are and how well
@@ -157,17 +164,21 @@ says whose it is. The kit's [DESIGN.md §15](https://github.com/cracklydisc/feed
 generalises it — *follow the write* — and 0.7.0's changelog has the four other
 places the same question found something.
 
-**Widen when clean** is the third setting in there, and it earns its
-sentence: once you clear the goal at full speed the loop grows by one bar each
-side (up to two), so you play the passage back into the music around it before
-the drill lets go. It was labelled just "Widen" until 0.10.0 — a verb with no
-object, wedged onto the end of the goal row with only a tooltip — and the
-question "what is that button for?" was the report that fixed it. Room for the
-explanation is what the fold bought: policy is shut by default, and inside a
-shut fold verbosity costs nothing.
+**Widen when clean** is the third setting in there: once you clear the goal at
+full speed the loop grows by one bar each side (up to two), so you play the
+passage back into the music around it before the drill lets go. It was
+labelled just "Widen" until 0.10.0 — a verb with no object, explained only by
+a tooltip — and "what is that button for?" was the report that fixed it. The
+object stayed; the paragraph that came with it did not. That sentence is on a
+`?` badge now, because a fold makes prose *cheap* and that is not the same as
+making it *wanted*.
 
-Pick the ladder as rungs — **50 · 65 · 80 · 90 · 100** — and a goal. The
-engine's default ladder is `[80, 90, 100]` and its floor of 80% is a judgement
+Pick the ladder as rungs — **50 · 65 · 80 · 90 · 100** — and a goal, which
+defaults to **100%**: every judged note clean before the ladder steps up. That
+is stricter than the engine's own 0.85 and deliberately so — a goal that
+graduates you at 85% teaches a passage you can *nearly* play — and the cost is
+a slower climb, so the stepper reaches down to 50 for a passage where clean is
+too much to ask. The engine's default ladder is `[80, 90, 100]` and its floor of 80% is a judgement
 about time-stretch artefacts, which is reasonable about the sound and not
 reasonable for somebody learning a passage they cannot play at 80%. So the
 slower rungs exist and the panel says what they cost.
