@@ -60,20 +60,39 @@
 
 /* ── the footer ────────────────────────────────────────────────────────── */
 
-.rr-actions { gap: var(--fbk-s-3, 6px); }
-
 /*
- * `width: auto` overrides the kit's full-width footswitch, because here it is
- * one of two children of a flex row rather than a block on its own line.
- * `min-width: 0` so the label ellipsizes instead of pushing `Free loop` off.
+ * TWO EQUAL COLUMNS, and a grid rather than flex.
+ *
+ * `flex: 1 1 0` on both split the row but landed 160 / 164 — flex distributes
+ * free space and each child's own content and padding still nudge the result.
+ * `1fr 1fr` is equal by construction, which is the whole claim being made
+ * here, so it is the right tool: exactly two tracks of exactly one share each.
  */
-.rr-primary {
-    width: auto;
-    flex: 1 1 auto;
-    min-width: 0;
+.rr-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--fbk-s-3, 6px);
 }
 
-.rr-alt { flex: 0 0 auto; }
+/*
+ * HALF EACH, and the colour is what separates them.
+ *
+ * The primary took the room and `Free loop` took what it needed, which is the
+ * standard "one action, one escape" bar — and it was the wrong shape here,
+ * because these are not an action and an escape. They are **two ways to
+ * start**: a graded climb and a plain loop, and you pick between them rather
+ * than defaulting to one. Equal halves say that; a wide button beside a narrow
+ * one says the narrow one is an afterthought.
+ *
+ * The glow already carries the hierarchy, so the width does not have to say it
+ * twice — which is the same argument as §3, one signal per meaning, applied to
+ * geometry instead of colour.
+ */
+.rr-primary,
+.rr-alt {
+    width: auto;
+    min-width: 0;
+}
 
 /* The status line sits above the footswitch it explains, and collapses to
    nothing when there is nothing to explain. */
