@@ -218,6 +218,161 @@ test('tapping a block that is not there changes nothing', () => {
     assert.equal(JSON.stringify(model.snapshot().selection), before);
 });
 
+/*
+ * A passage with a KNOWN note count, because the gauge is a percentage of one.
+ *
+ * The shared fixture carries a single note, which is enough for the walk tests
+ * and gives the gauge no usable denominator. This lends the host four notes
+ * inside Verse 1 for the length of one test.
+ */
+function withNotes(times, fn) {
+    const before = globalThis.window.highway.getNotes;
+    globalThis.window.highway.getNotes = () => times.map((t) => ({ time: t }));
+    try {
+        model.refreshSong();
+        return fn();
+    } finally {
+        globalThis.window.highway.getNotes = before;
+        model.refreshSong();
+    }
+}
+
+test('the live gauge counts DOWN from a hundred', () => {
+    /*
+     * Reported: the percentage only appeared when the pass ENDED, and it
+     * counted UP from zero, so it meant nothing until most of the passage had
+     * gone by — which is the opposite of a gauge you can act on.
+     *
+     * A hundred minus what the misses cost is true from the first bar, because
+     * the denominator is the passage's own note count and that is known before
+     * a note is played.
+     */
+    withNotes([11, 12, 13, 14], () => {
+        const verse = model.snapshot().sections.find((x) => x.label === 'Verse 1');
+        model.selectSection(verse.key);
+        const sel = model.snapshot().selection;
+        model.resetPass(sel.start, sel.end);
+
+        const total = model.snapshot().live.total;
+        assert.equal(total, 4, 'four notes in the passage');
+        assert.equal(model.snapshot().live.pct, 100, 'a fresh pass reads a hundred');
+
+        /* A hit costs nothing. */
+        model.addVerdict(11, true);
+        assert.equal(model.snapshot().live.pct, 100);
+
+        /* A miss costs exactly one note's worth. */
+        model.addVerdict(12, false);
+        assert.equal(model.snapshot().live.pct, 75);
+        assert.equal(model.snapshot().live.misses, 1);
+    });
+});
+
+test('the gauge counts drill verdicts, which the map does not', () => {
+    /*
+     * The other half of this lived in main.js and was the actual bug: the
+     * verdict handler RETURNED while a drill ran, so the model saw nothing
+     * during the one activity the panel exists for. `paused` is the right
+     * gate and it is inside `addVerdict`, one level down.
+    /*
+     * `paused` exists to keep a drill's verdicts out of the per-passage
+     * record — the conductor owns that measurement. It was also stopping the
+     * player from seeing the pass at all, which is a different thing.
+     */
+    model.refreshSong();
+    /* The log outlives a `refreshSong` on the same song — this is about what
+       THIS verdict does, so start from an empty one. */
+    model.resetRun();
+    const sel = model.snapshot().selection;
+    model.resetPass(sel.start, sel.end);
+    model.setPaused(true);
+    model.addVerdict(sel.start + 0.2, false);
+
+    assert.equal(model.snapshot().live.misses, 1, 'the gauge sees it');
+    assert.equal(model.snapshot().run.misses, 0, 'the map does not');
+    model.setPaused(false);
+});
+
+test('nothing played in the run-up counts against the pass', () => {
+    /*
+     * A free loop now starts a couple of seconds before A so you can arrive in
+     * time. Those seconds are audible, not judged — otherwise every pass would
+     * be scored on notes you were never asked to play.
+     */
+    withNotes([11, 12, 13, 14], () => {
+        const verse = model.snapshot().sections.find((x) => x.label === 'Verse 1');
+        model.selectSection(verse.key);
+        const sel = model.snapshot().selection;
+        model.resetPass(sel.start, sel.end);
+        model.addVerdict(sel.start - 1.5, false);   // in the run-up
+        model.addVerdict(sel.end + 1.5, false);     // past B
+        assert.equal(model.snapshot().live.misses, 0);
+        assert.equal(model.snapshot().live.pct, 100);
+    });
+});
+
+test('one bar is selectable, and says which bar it is', () => {
+    /*
+     * Reported: "I cannot test a single bar — even with + and - I cannot say I
+     * want bar 41." The strip's zones are phrases and the edge steppers move a
+     * bar at a time, so a single bar meant walking B down to A by hand.
+     */
+    model.refreshSong();
+    const sec = model.snapshot().sections.find((x) => x.label === 'Verse 1');
+    model.selectSection(sec.key);
+
+    const one = model.selectBars(1);
+    assert.ok(one, 'a bar range came back');
+    const snap = model.snapshot();
+    assert.equal(snap.selection.kind, 'bars');
+    assert.equal(snap.selection.barCount, 1);
+    assert.match(snap.selection.label, /^Bar \d+$/, 'and it names the bar');
+
+    /* It starts where the selection already started, not at the playhead. */
+    assert.equal(snap.selection.start, sec.start);
+
+    /* Two bars from the same place is the same first bar, a later last one. */
+    const two = model.selectBars(2);
+    assert.equal(two.start, one.start);
+    assert.ok(two.end > one.end);
+});
+
+test('A slides a bar window instead of doing nothing', () => {
+    /*
+     * A one-bar loop is a dead end for an edge nudge — A cannot advance past B,
+     * so the stepper correctly refused and the button did nothing. Six presses,
+     * no movement, which is how "I cannot say I want to test bar 41" felt.
+     *
+     * With the grain already chosen, moving the start means moving the window.
+     */
+    model.refreshSong();
+    const verse = model.snapshot().sections.find((x) => x.label === 'Verse 1');
+    model.selectSection(verse.key);
+    const one = model.selectBars(1);
+    const startedAt = one.firstMeasure;
+
+    model.nudge('start', 1);
+    const next = model.snapshot().selection;
+    assert.equal(next.barCount, 1, 'still one bar wide');
+    assert.equal(next.firstMeasure, startedAt + 1, 'and one bar further on');
+    assert.ok(next.start > one.start);
+
+    model.nudge('start', -1);
+    assert.equal(model.snapshot().selection.firstMeasure, startedAt, 'and back');
+});
+
+test('B still resizes a bar window', () => {
+    /* Widening a chosen window is a different intent from moving it. */
+    model.refreshSong();
+    const verse = model.snapshot().sections.find((x) => x.label === 'Verse 1');
+    model.selectSection(verse.key);
+    const one = model.selectBars(1);
+    model.nudge('end', 1);
+    const wider = model.snapshot().selection;
+    assert.equal(wider.start, one.start, 'A stayed put');
+    assert.ok(wider.end > one.end, 'B moved out');
+});
+
 test('a zero step is a no-op', () => {
     // `Number(null) === 0` and `0` passes `Number.isFinite`, which is the bug
     // class this codebase keeps meeting — here it has to mean "do nothing",

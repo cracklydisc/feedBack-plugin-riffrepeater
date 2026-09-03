@@ -135,6 +135,32 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
      * unit rather than a separate legend saying so — `A · ±1 bar` is the whole
      * explanation.
      */
+    /*
+     * THE GRAIN, and it is the answer to "I want to drill bar 41".
+     *
+     * The strip's zones are phrases — several bars each — and the edge
+     * steppers move a bar at a time, so a single bar meant walking B down to A
+     * by hand once per bar. Reported as not being possible at all.
+     *
+     * One press collapses the loop to that many bars from where it already
+     * starts; the A stepper then walks it with the bar number under your eye.
+     * It is a grain, not a mode: nothing to switch back out of, because
+     * tapping the strip picks a phrase again.
+     */
+    const grain = c.segmented(
+        [
+            { value: 1, label: '1', title: 'Loop one bar from A' },
+            { value: 2, label: '2', title: 'Loop two bars from A' },
+            { value: 4, label: '4', title: 'Loop four bars from A' },
+            { value: 8, label: '8', title: 'Loop eight bars from A' },
+        ],
+        (n) => actions.selectBars(n),
+        'How many bars to loop',
+    );
+    const grainRow = c.field({ label: 'Bars', tight: true });
+    grainRow.body.appendChild(grain.el);
+    loopRack.body.appendChild(grainRow.el);
+
     const edges = c.el('div', 'fbk-row fbk-row-nowrap rr-edges');
     const edgeA = edgeStepper('A', 'start', 'I');
     const edgeB = edgeStepper('B', 'end', 'O');
@@ -475,11 +501,19 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
         const running = d.active;
 
         /*
-         * The one number, and it is the LIVE one — this pass, not the stored
-         * best. While you are playing, "how is this going" is the only
-         * question; the best is what the rack is for.
+         * The one number, and it counts DOWN from a hundred.
+         *
+         * It used to be the conductor's best-so-far while a drill ran and
+         * hits-over-judged otherwise — a number that starts at zero, means
+         * nothing until most of the passage has gone by, and during a drill
+         * only appeared when the pass ENDED, which is the one moment it is no
+         * longer useful. Reported exactly that way.
+         *
+         * A hundred minus what the misses cost is true from the first bar,
+         * because the denominator is the passage's own note count and we know
+         * it before a note is played.
          */
-        const live = c.num(running ? d.bestPct : (snap.run.accuracy === null ? null : snap.run.accuracy * 100));
+        const live = c.num(snap.live ? snap.live.pct : null);
         liveNum.textContent = live === null ? '–' : Math.round(live);
         liveValue.dataset.band = live === null ? 'none' : (c.band(live / 100) || 'none');
 
@@ -500,10 +534,18 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
         const sel = snap.selection;
         liveWhere.textContent = sel ? sel.label : '—';
         liveMeter.set(live, live === null ? null : c.band(live / 100));
-        const judged = snap.run.hits + snap.run.misses;
+        /*
+         * What the number is out of, and what it has cost so far — the two
+         * things that make a percentage readable rather than a mood.
+         */
+        const total = snap.live ? snap.live.total : null;
+        const missed = snap.live ? snap.live.misses : 0;
+        const tally = total === null
+            ? '– notes'
+            : `${missed}/${total} missed`;
         liveCount.textContent = running && d.iteration
-            ? `${d.iteration}/${d.reps || 3} · ${judged} notes`
-            : `${judged} notes`;
+            ? `${d.iteration}/${d.reps || 3} · ${tally}`
+            : tally;
     }
 
     /*
@@ -596,6 +638,17 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
         const bars = snap.barsAvailable;
         tenths = !bars;
         edgeBars = snap.edgeBars;
+
+        /*
+         * The grain shows a value only when the loop IS a bar range — after a
+         * tap on the strip it is a phrase, and lighting a number would claim
+         * the loop is something it is not.
+         */
+        grain.set(snap.selection && snap.selection.kind === 'bars'
+            ? snap.selection.barCount
+            : null);
+        grain.disable(!bars || snap.drill.active);
+        grainRow.el.hidden = !bars;
         for (const [e, edge] of [['start', edgeA], ['end', edgeB]]) {
             const t = sel ? (e === 'start' ? sel.start : sel.end) : null;
             edge.label.textContent = (e === 'start' ? 'A' : 'B')

@@ -19,7 +19,7 @@ import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.32.0';
+const VERSION = '0.33.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -170,6 +170,14 @@ const actions = {
      * The lesson is about the DELETION, not the action: removing a block by
      * pattern is safe for the pattern and blind to what sits beside it.
      */
+    /**
+     * Collapse the loop to `count` bars from where it already starts.
+     *
+     * The answer to "I want to drill bar 41": one press for the grain, then the
+     * A stepper walks a bar at a time with the bar number under your eye.
+     */
+    selectBars(count) { model.selectBars(count); newPass(); },
+
     stepBlock(delta) { model.stepBlock(delta); },
 
     /**
@@ -211,6 +219,8 @@ const actions = {
         const snap = model.snapshot();
         const range = snap.selection;
         if (!range) return;
+        /* A fresh run reads a hundred, not whatever the last one ended on. */
+        model.resetPass(range.start, range.end);
         const s = snap.settings;
         const res = await drill.start(range, {
             goalPct: s.goalPct,
@@ -233,6 +243,8 @@ const actions = {
     },
 
     async loopOnly() {
+        /* Same as a drill: the gauge starts this loop from a hundred. */
+        (() => { const r = model.snapshot().selection; if (r) model.resetPass(r.start, r.end); })();
         const range = model.snapshot().selection;
         if (!range) return;
         const res = await drill.loopOnly(range);
@@ -351,6 +363,22 @@ function attribute(start, end, label, mine) {
     };
 }
 
+/**
+ * Point the live gauge at whatever window is being judged right now.
+ *
+ * The drill's own range wins while one runs, because that is what the pass
+ * score at the end will be measured over; otherwise it is the selection.
+ */
+function newPass() {
+    const st = drill.state();
+    if (st.active && st.range && Number.isFinite(st.range.judgeStart)) {
+        model.resetPass(st.range.judgeStart, st.range.judgeEnd);
+        return;
+    }
+    const sel = model.snapshot().selection;
+    model.resetPass(sel ? sel.start : null, sel ? sel.end : null);
+}
+
 function retick() {
     const want = open ? TICK_OPEN_MS : TICK_IDLE_MS;
     if (tickTimer && tickRate === want) return;
@@ -454,7 +482,19 @@ function wire() {
     }));
 
     // A wrap means the conductor has just scored an iteration.
-    unsubs.push(host.on('loop:restart', () => { if (open) render(); }));
+    unsubs.push(host.on('loop:restart', () => {
+        /*
+         * A wrap is a new pass, so the gauge goes back to a hundred.
+         *
+         * The window comes from the DRILL when one is running — the conductor
+         * judges its own, widened by `expandContext` and pulled back by its
+         * first-note runway — and from the selection otherwise. A gauge scoring
+         * a different window from the one being judged is two numbers about the
+         * same pass.
+         */
+        newPass();
+        if (open) render();
+    }));
 
     // Per-note verdicts. Checked against the live drill state rather than a
     // polled flag: a drill can start between two notes, and a second's worth
@@ -463,7 +503,16 @@ function wire() {
         const d = (e && e.detail) || {};
         const t = Number(d.noteTime);
         if (!Number.isFinite(t)) return;
-        if (drill.isDrilling()) { model.setPaused(true); return; }
+        /*
+         * SAY who owns the measurement, then hand the verdict over anyway.
+         *
+         * This used to RETURN while a drill ran, so during the one activity the
+         * panel exists for, the model saw nothing at all — which is why the
+         * percentage only appeared when the pass ended. `paused` inside
+         * `addVerdict` already keeps a drill's verdicts out of the per-passage
+         * map; the live gauge is a different consumer and wants them.
+         */
+        model.setPaused(drill.isDrilling());
         model.addVerdict(t, !!d.hit);
     };
     unsubs.push(host.onWindow('notedetect:hit', verdict));

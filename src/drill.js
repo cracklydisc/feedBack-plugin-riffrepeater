@@ -26,6 +26,15 @@
  */
 
 import { host } from './host.js';
+
+/**
+ * How much audible run-up a free loop gets before its A point.
+ *
+ * `note_detect`'s drill uses five, plus a runway to the first note. A free loop
+ * is the tighter, more repetitive tool, so it gets the two seconds that were
+ * asked for: enough to arrive in time, not enough to be most of the loop.
+ */
+export const PREROLL_SEC = 2;
 import { toRates, normalizeGoal, FULLSPEED_REPS } from './ladder.js';
 
 function nd() {
@@ -201,7 +210,22 @@ export function end() {
  */
 export async function loopOnly(range) {
     if (!range) return { ok: false, reason: 'no-range' };
-    const ok = await host.setLoop(Number(range.start), Number(range.end));
+    /*
+     * A RUN-UP, and the loop is the only place to put it.
+     *
+     * Landing on the first note of the passage the instant the audio starts
+     * means playing it cold every single pass — worse when the phrase begins
+     * on an upbeat, because there is nothing to feel the beat against.
+     * `note_detect`'s drill has had five seconds of this since it was written;
+     * a free loop had none, so the two felt like different tools.
+     *
+     * Two seconds, because a free loop is the tight repetitive one — long
+     * enough to arrive in time, short enough not to be most of the loop.
+     * Nothing played in it counts: the gauge's window still starts at A.
+     */
+    const start = Number(range.start);
+    const from = Math.max(0, start - PREROLL_SEC);
+    const ok = await host.setLoop(from, Number(range.end));
     return ok ? { ok: true, reason: null } : { ok: false, reason: 'refused' };
 }
 

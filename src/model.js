@@ -56,6 +56,26 @@ const state = {
     /** Verdicts scored while a drill runs are the conductor's business, not the map's. */
     paused: false,
 
+    /*
+     * THE LIVE GAUGE, counted per pass and separately from the log.
+     *
+     * The log is the MAP — what you have ever played, and a drill's verdicts
+     * belong to the conductor, so `paused` drops them. That was right for the
+     * map and left the panel with nothing to show while you were playing: the
+     * percentage appeared only when the pass ended, which is the one moment it
+     * is no longer useful.
+     *
+     * And it counted UP from zero — hits over judged — so a passage read 0%
+     * until the first note landed and stayed meaningless until most of them
+     * had. Down from a hundred is the number you can act on: you know the
+     * passage's note count, every miss costs a known slice, and the reading is
+     * true from the first bar.
+     *
+     * `from`/`to` bound what counts, which is what keeps a run-up out of the
+     * score.
+     */
+    pass: { misses: 0, from: null, to: null },
+
     // caches
     _events: null,          // Map<rangeKey, count>
     _eventsAt: null,        // the difficulty the counts were taken at
@@ -490,6 +510,48 @@ export function selectWeakest() {
     return selection();
 }
 
+/**
+ * Take `count` bars starting where the selection already starts.
+ *
+ * WHY: "I want to drill bar 41" had no gesture. The strip's zones are phrases,
+ * several bars each, and the edge steppers move A and B a bar at a time — so
+ * getting to one bar meant walking B down to A by hand, once per bar. Reported
+ * as not being able to test a single bar at all, which was fair.
+ *
+ * Anchored on the selection's own start rather than the playhead, so the
+ * sequence is: tap the strip near the passage, press 1, then walk A with its
+ * stepper until the readout says the bar you want. Every step of that shows
+ * you a bar number.
+ */
+/**
+ * The time of the bar `delta` bars along from the one containing `t`.
+ *
+ * Clamped to the ends of the chart rather than wrapping or refusing: at bar one
+ * a step back should leave you at bar one, not somewhere else and not with a
+ * button that quietly did nothing.
+ */
+function shiftBars(bars, t, delta) {
+    const i = ranges.barIndexAt(bars, t);
+    if (i < 0) return t;
+    const j = Math.max(0, Math.min(bars.length - 1, i + delta));
+    return bars[j].time;
+}
+
+export function selectBars(count) {
+    const bars = ranges.barLines(host.beats());
+    if (!bars.length) return null;
+    const n = Math.max(1, Math.min(64, Math.round(Number(count) || 1)));
+    const sel = selection();
+    const from = sel ? sel.start : host.time();
+    const r = ranges.barsFrom(bars, from, n, host.duration());
+    if (!r) return null;
+    state.settings = store.setSettings({ barCount: n });
+    state.barsRange = r;
+    state.mode = 'bars';
+    announce();
+    return r;
+}
+
 export function setBarCount(n) {
     const count = Math.max(1, Math.min(64, Math.round(Number(n) || 1)));
     state.settings = store.setSettings({ barCount: count });
@@ -514,6 +576,34 @@ export function nudge(edge, direction) {
     const cur = selection();
     if (!cur) return;
     const bars = ranges.barLines(host.beats());
+
+    /*
+     * ON A BAR WINDOW, A SLIDES THE WHOLE THING.
+     *
+     * A one-bar loop is a dead end for an edge nudge: A cannot advance without
+     * passing B, so `nudgeByBar` correctly refuses and the button does nothing
+     * — six presses, no movement, which is how "I cannot say I want to test
+     * bar 41" actually felt.
+     *
+     * With a grain already chosen, moving the START of the window means moving
+     * the window: the size was the decision, and the thing you are changing now
+     * is which bar. B still resizes, because widening a chosen window is a
+     * different intent and still wants its own control.
+     */
+    if (cur.kind === 'bars' && edge === 'start' && Number.isFinite(Number(cur.barCount))) {
+        const slid = ranges.barsFrom(
+            bars,
+            shiftBars(bars, cur.start, Number(direction) >= 0 ? 1 : -1),
+            cur.barCount,
+            host.duration(),
+        );
+        if (slid) {
+            state.barsRange = slid;
+            state.mode = 'bars';
+            announce();
+        }
+        return;
+    }
     const moved = ranges.nudgeByBar(cur, bars, edge, direction, host.duration());
     if (!moved || moved === cur) return;
     // A nudged section stops being that section — it becomes a bar range, and
@@ -583,8 +673,42 @@ export function resetSettings() {
 
 /** One judged note. `paused` is set while a drill owns the measurement. */
 export function addVerdict(noteTime, hit) {
+    /*
+     * The live gauge counts whoever owns the measurement, because it is a
+     * GAUGE and not the map: `paused` exists to keep a drill's verdicts out of
+     * the per-passage record, not to stop the player seeing how the pass is
+     * going.
+     */
+    countPass(noteTime, hit);
     if (state.paused) return;
     state.log.add(noteTime, hit);
+}
+
+/** A miss inside the judged window costs a slice of the gauge. */
+function countPass(noteTime, hit) {
+    const t = Number(noteTime);
+    if (!Number.isFinite(t)) return;
+    const p = state.pass;
+    /* Outside the judged window — a run-up, or a note after B — costs nothing. */
+    if (p.from !== null && t < p.from - 1e-6) return;
+    if (p.to !== null && t > p.to + 1e-6) return;
+    if (!hit) p.misses += 1;
+}
+
+/**
+ * A new pass over the same passage: the gauge goes back to a hundred.
+ *
+ * Called on every loop wrap and whenever the passage changes. The window is
+ * explicit rather than read from the selection here, because during a drill
+ * the conductor is judging its own window and that is the one the number has
+ * to agree with.
+ */
+export function resetPass(from, to) {
+    state.pass = {
+        misses: 0,
+        from: finite(from) ? Number(from) : null,
+        to: finite(to) ? Number(to) : null,
+    };
 }
 
 export function setPaused(paused) {
@@ -795,6 +919,21 @@ export function snapshot() {
             available: ranges.barLines(host.beats()).length > 0,
         },
         selection: sel ? decorate(sel) : null,
+
+        /*
+         * THE LIVE GAUGE: a hundred minus what the misses have cost.
+         *
+         * Derived here rather than in the panel so the number and the passage
+         * it is a percentage OF cannot drift apart. `null` when the note count
+         * is unknown — a passage nobody has counted yet has no denominator,
+         * and inventing one would be a number that reads as measured.
+         */
+        live: (() => {
+            const total = sel ? (events.get(sel.key) ?? null) : null;
+            const misses = state.pass.misses;
+            if (!Number.isFinite(total) || total <= 0) return { pct: null, misses, total: null };
+            return { pct: Math.max(0, 1 - misses / total) * 100, misses, total };
+        })(),
         /*
          * The DECORATED selection, so `isUsable` can see the note count.
          *
