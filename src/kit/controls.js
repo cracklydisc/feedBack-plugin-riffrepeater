@@ -350,6 +350,18 @@ const BLOCK_GAP_MIN_PX = 0.5;
 const BLOCK_GAP_FLOOR_PX = 2;
 
 /**
+ * How much of a zone's own painted width its corner may take.
+ *
+ * A radius is only a corner while it is small against the side it is rounding.
+ * At `radius-seg` on a three-pixel bar it saturates and the zone becomes a
+ * lozenge — reported as the radius being too high when the blocks are small,
+ * which is the same arithmetic as a border radius on a thin button. A third of
+ * the paint keeps a corner a corner; wide zones hit the cap and keep the
+ * design's own radius.
+ */
+const BLOCK_RADIUS_SHARE = 3;
+
+/**
  * How far apart the two brackets have to be before both letters fit.
  *
  * They are centred on their own rails, so the pair overlaps only when the
@@ -889,6 +901,13 @@ export function rangeStrip(opts = {}) {
                     ? 0
                     : Math.min(BLOCK_GAP_PX, Math.max(BLOCK_GAP_MIN_PX, px / 6));
                 node.style.setProperty('--fbk-block-gap', gap.toFixed(2) + 'px');
+                /*
+                 * The corner follows the paint, not the box: the gap has
+                 * already come out of the width by the time you see it.
+                 */
+                const paint = Math.max(0, px - gap * 2);
+                node.style.setProperty('--fbk-block-radius',
+                    (paint / BLOCK_RADIUS_SHARE).toFixed(2) + 'px');
                 node.dataset.band = it.band || 'none';
                 /* What KIND of zone — a phrase, a section, or time no zone
                    covers. The last of those is drawn differently. */

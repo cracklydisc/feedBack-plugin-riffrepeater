@@ -2189,7 +2189,13 @@
      * because how much air a zone can spare depends on how wide it is.
      */
     border-inline: var(--fbk-block-gap, 0px) solid transparent;
-    border-radius: var(--fbk-radius-seg, 5px);
+    /*
+     * The corner is capped by the zone's own painted width — `min` of the
+     * design's radius and a third of the paint. A radius is only a corner
+     * while it is small against the side it rounds; at 5px on a three-pixel
+     * bar it saturates and the zone reads as a lozenge.
+     */
+    border-radius: min(var(--fbk-radius-seg, 5px), var(--fbk-block-radius, 5px));
     /*
      * LONGHANDS, and that is not a style preference.
      *
