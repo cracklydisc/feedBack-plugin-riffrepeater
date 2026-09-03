@@ -1716,7 +1716,16 @@
     position: absolute;
     left: 10px;
     right: 10px;
-    top: calc(var(--fbk-s-3, 6px) + 5px);
+    /*
+     * The dots' own centre line, worked out rather than guessed.
+     *
+     * The dots row is 18px tall and its cells centre their content, so a dot's
+     * centre is at `padding-top + 9`; the line is 2px, so its top is one less
+     * than that. It said `+ 5`, which put every dot three pixels ABOVE the
+     * line it is meant to sit on — reported exactly that way, and invisible to
+     * every test I had, because all of them measure horizontal alignment.
+     */
+    top: calc(var(--fbk-s-3, 6px) + 8px);
     height: 2px;
     border-radius: var(--fbk-radius-pill, 999px);
     background: rgb(var(--fbk-border, 42 46 58));
@@ -1770,6 +1779,8 @@
 .fbk-rail-cell,
 .fbk-rail-marks > * {
     position: absolute;
+    top: 0;
+    bottom: 0;
     transform: translateX(-50%);
     display: flex;
     align-items: center;

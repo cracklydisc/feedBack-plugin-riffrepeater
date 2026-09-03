@@ -397,7 +397,22 @@ export function rail(opts = {}) {
                      * a flex row instead, which let the survivors redistribute
                      * and put every label back off its dot.
                      */
-                    const keep = i === 0 || i === list.length - 1 || i % every === 0;
+                    /*
+                     * Keep the ends and every nth — but NOT one that lands
+                     * next to the end.
+                     *
+                     * With 11 rungs `every` is 3, so the kept indices were 0,
+                     * 3, 6, 9 and 10: `98` printed a couple of pixels from
+                     * `100`, which is a label that costs space and tells you
+                     * nothing you were not about to read anyway. Reported as
+                     * exactly that. A kept index has to be at least half a
+                     * stride clear of the last one, which drops 98 and keeps
+                     * 94 on a 16-rung ladder where the stride is wider.
+                     */
+                    const last = list.length - 1;
+                    const clear = Math.max(1, Math.ceil(every / 2));
+                    const keep = i === 0 || i === last
+                        || (i % every === 0 && last - i >= clear);
                     const mark = el('span', 'fbk-rail-mark',
                         keep ? String(r.label === undefined ? r.value : r.label) : '');
                     mark.style.left = pos;

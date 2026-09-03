@@ -176,16 +176,27 @@ export function createContent(outer, actions, foot) {
     body.appendChild(drillRack.el);
 
     /*
-     * `Widen when clean` in the header, because it is set once and never mid
-     * passage: once you clear the goal at full tempo the loop grows a bar each
-     * side so you play the phrase back into the music around it.
+     * WHAT USED TO BE HERE: the `Widen when clean` toggle.
+     *
+     * It maps to the conductor's `expandContext`: once you graduate a passage
+     * at full tempo the loop grows a bar each side (up to two) and you clear
+     * the wider version too, so you finish playing the phrase JOINED to its
+     * neighbours rather than in isolation. That is a real thing and it is not
+     * what `Start drill` versus `Free loop` decides — those are "graded climb"
+     * against "just loop it", and this is about how a successful drill ENDS.
+     *
+     * It went anyway, and the reason is the question that was asked about it:
+     * "what is Widen for?" — twice, three versions apart. 0.10.0 answered with
+     * a paragraph under the toggle; 0.11.0 deleted the paragraph as dead space
+     * and kept the toggle. That left a control whose meaning needed thirty
+     * words, with the thirty words removed, in the most prominent slot of the
+     * SPEED rack.
+     *
+     * By §15 it was never a panel control: it is policy, it writes a global,
+     * and its value does not change from passage to passage — you decide once
+     * whether you want drills to widen. The settings page keeps it, where a
+     * sentence of explanation is affordable and expected.
      */
-    const widen = c.toggle('Widen when clean',
-        'Once you clear the goal at full speed, the loop grows by one bar each '
-        + 'side (up to two) so you play the passage back into the music around '
-        + 'it before the drill lets go.',
-        (on) => actions.setWiden(on));
-    drillRack.header.appendChild(widen.el);
 
     /*
      * START and GOAL: a speed and an ACCURACY, and the two hundreds are not
@@ -409,8 +420,6 @@ export function createContent(outer, actions, foot) {
         goal.disable(running);
         stepSeg.set(s.stepPct);
         stepSeg.disable(running);
-        widen.set(s.widen);
-        widen.disable(running);
 
         /*
          * The rungs: the ENGINE's ladder while a drill runs, the stored one
