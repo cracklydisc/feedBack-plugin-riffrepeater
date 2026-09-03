@@ -1,5 +1,119 @@
 # Changelog
 
+## 0.7.0 — follow the write
+
+Asked: are there other parts that can be improved with the same logic?
+
+Yes, five — and the question that found all of them is not a visual one, so no
+amount of looking at the panel would have turned them up. It is **follow the
+write**: for each control, who else writes that field, and how far does the
+write reach? The mode tabs that 0.6.0 removed failed the first half (seven
+gestures wrote them, so they reported rather than commanded). These fail the
+second.
+
+### 1. "How to drill" was the settings page, drawn twice
+
+`Climb`, `Goal` and `Widen` sat two rows under the passage you had just
+picked, so they read as *for this passage*. Every one of them went
+`model.setSettings` → `store.setSettings` → `localStorage`. Lowering the
+ladder for one solo lowered it for **every passage of every song**, signalled
+by nothing but a chip that stayed lit.
+
+| key | in the panel | in `settings.html` | per-passage? |
+| --- | --- | --- | --- |
+| `ladder` | 10 refs | 12 refs | no |
+| `goalPct` | 4 | 2 | no |
+| `widen` | 6 | 1 | no |
+
+They are now inside a **fold** — new in kit 0.4.0, and built for exactly this:
+a heading whose body is shut and whose *value* stays in its head.
+
+```
+HOW YOU DRILL   80→90→100 · goal 85%                    ›
+```
+
+Nothing is hidden — you can read the ladder without opening it — and the
+heading changed tense with the move: *how **you** drill*, not *how **to***. On
+open, the summary is replaced by `applies to every passage, every song`, which
+is the one moment you need telling.
+
+**And the goal has one legal range now.** It had three: 5% in `normalizeGoal`,
+`min="10"` on the settings page's field, 50% in the panel's stepper. One
+number, three domains, decided by which widget you touched — so the store
+could hold a value the panel could neither reach nor display honestly. The
+clamp lives in `store.setSettings`, the one place every writer passes through.
+
+### 2. The timeline was invisible where you had not played
+
+Measured, not estimated — block against the strip's own track:
+
+| | before | after |
+| --- | --- | --- |
+| never played | **1.33 : 1** | **3.02 : 1** |
+| blocks in that state, on *Waterloo* | 7 of 10 | 7 of 10 |
+
+The panel's primary picker rendered as two coloured smears with eight
+invisible gaps between them: a map that only appears once you have already
+practised everything, which is exactly backwards. The alpha was swept against
+the measured track colour rather than picked — 0.55 of `--fbk-dim` reaches the
+3:1 WCAG 1.4.11 asks of a UI component's boundary, and a block here is a click
+target, not decoration. Accuracy is the block's **hue** now, not the reason it
+exists.
+
+### 3. A passage with no notes gave you three dead controls and a wrong tooltip
+
+`Noguitar 1` has 0 notes and 16px of the strip. Clicking it armed a selection
+where `Start drill`, `Loop only` and the trim were all dead, and the only
+explanation was the primary's tooltip — reading **"Pick a passage first"**,
+about a passage you had picked.
+
+Three changes: the block is left out of the hit table, so its pixels fall to
+the nearest real section (still drawn, because the strip has to stay
+proportional or it is not a map — §12 says a thin section must be *reachable*,
+and this is the other end of the same rule); `isUsable` rejects a range with
+`events === 0`, so the primary is honestly dead rather than accidentally live;
+and a `.fbk-note` says why, **beside the controls it is about** rather than
+under the difficulty slider four rows down.
+
+### 4. `Clear` was live with nothing to clear
+
+Disabled only during a drill. Outside one — nearly always — it was a live
+button whose click did nothing visible. It now reads the host's own loop
+state.
+
+### 5. The `•` in the weak list was the `, .` key cap again
+
+A 6px bullet meaning "this number is from the current run, not storage", on a
+row that already carries a name, a bar and a percentage, and whose whole
+meaning lived in a tooltip that says it **in words** ("on this run" against
+"over 2 attempts"). Gone. Provenance is not what the list is read for.
+
+### Two that look like the same defect and are not
+
+`Play at` and `Chart` both duplicate a host control. Both stay, and the reason
+is measured in the DOM: `#speed-slider` lives in `#player-controls.v3-transport`
+at `opacity: 0` — the transport auto-hides — and `#mastery-slider` lives in
+`#v3-rail-pop-advanced.v3-rail-pop.hidden`, behind a rail popover. **A
+duplicate of something you cannot reach is not a duplicate.**
+
+### Fixed, and it was mine, and it was the same bug as ever
+
+The first version of `loopArmed` read:
+
+```js
+return Number.isFinite(Number(l.loopA)) && Number.isFinite(Number(l.loopB));
+```
+
+`host.loop()` returns `{ loopA: null, loopB: null }` when nothing is armed,
+`Number(null)` is `0`, and `0` passes `Number.isFinite` — so it reported a
+loop armed at 0→0 on every song, which is precisely the state `Clear` was
+being fixed for. **Written once more while fixing four other things, and
+caught by measuring the panel rather than by reading the line.** Fifth
+instance of this in two repositories; there is now a `finite()` in `model.js`
+next to the `num()` in the kit.
+
+111 tests (+2 for `isUsable`, +2 for the goal's single domain).
+
 ## 0.6.0 — the mode tabs are gone
 
 Asked: does the "What to loop" section still make sense?

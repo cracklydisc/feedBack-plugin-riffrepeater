@@ -25,12 +25,8 @@
  */
 
 import * as c from '../kit/controls.js';
-import { PRESETS, STRETCH_WARN_PCT, statusLine, nextStepLine } from '../ladder.js';
+import { PRESETS, STRETCH_WARN_PCT, GOAL_MIN_PCT, GOAL_MAX_PCT, statusLine, nextStepLine } from '../ladder.js';
 import { clock } from '../ranges.js';
-
-/** The panel steps the goal in 5s and stops at 50; the settings page has the rest. */
-const GOAL_MIN = 50;
-const GOAL_MAX = 100;
 
 /** A drag has to travel this far before it stops being a click. */
 const DRAG_SLOP_PX = 4;
@@ -42,6 +38,17 @@ const DRAG_SLOP_PX = 4;
  * would start stealing clicks from the big sections either side of a thin one.
  */
 const MIN_HIT_PX = 11;
+
+/**
+ * A selection that exists but has nothing in it.
+ *
+ * Separate from `selectionUsable`, which is also false when nothing is
+ * selected at all — the two states need different sentences, and conflating
+ * them is why a chosen passage was reported as "pick a passage first".
+ */
+function emptySelection(snap) {
+    return !!snap.selection && c.num(snap.selection.events) === 0;
+}
 
 function pct(v) {
     const n = c.num(v);
@@ -117,7 +124,6 @@ export function createContent(outer, actions) {
      */
     let hits = [];      // [{ key, centre, from, to }] in px, left to right
 
-
     /*
      * How much of the section — the whole thing, or one phrase inside it.
      *
@@ -139,7 +145,6 @@ export function createContent(outer, actions) {
     partRow.appendChild(partLabel);
     partRow.appendChild(partNext);
     body.appendChild(partRow);
-
 
     /*
      * The plate, flanked by the section stepper.
@@ -195,8 +200,39 @@ export function createContent(outer, actions) {
     trim.appendChild(markB);
     body.appendChild(trim);
 
-    // ── how to drill ─────────────────────────────────────────────────────
-    body.appendChild(c.section('How to drill'));
+    /* ── how you drill ────────────────────────────────────────────────────
+     *
+     * A FOLD, not a section, and the tense of the heading changed with it:
+     * "how TO drill" reads as an instruction for the passage you just picked,
+     * "how YOU drill" as a preference. It is the second one, and that was a
+     * real defect rather than a wording quibble — every control in here goes
+     * `model.setSettings` → `store.setSettings` → localStorage, so lowering
+     * the ladder for one solo lowered it for every passage of every song,
+     * signalled by nothing but a chip that stayed lit. Kit DESIGN.md §15.
+     *
+     * Folded, because the panel exists to pick a passage and press start;
+     * these are set once and lived with. The summary keeps the value on screen
+     * so nothing is hidden — you can read the ladder without opening it — and
+     * the scope note replaces the summary the moment you open it, which is the
+     * only moment you need telling.
+     */
+    const how = c.fold({
+        title: 'How you drill',
+        ariaLabel: 'How you drill — settings for every passage',
+    });
+    how.head.title = 'The ladder and the goal. These are preferences: they apply to '
+        + 'every passage of every song, not just the one selected.';
+    /*
+     * Repaint the head the instant it is toggled, rather than waiting for the
+     * next tick — the summary and the scope note swap on open, and half a
+     * second of the wrong one is half a second of the panel lying about what
+     * you are looking at. This listener is added AFTER the kit's own, so
+     * `isOpen()` already reports the new state by the time it runs.
+     */
+    how.head.addEventListener('click', () => {
+        if (lastSnap) renderHow(lastSnap);
+    });
+    body.appendChild(how.el);
 
     /*
      * "Climb" — a chip group on a rail, and the kit's best control.
@@ -223,16 +259,23 @@ export function createContent(outer, actions) {
         `Below ${STRETCH_WARN_PCT}% the backing track is audibly time-stretched. `
         + 'Worth it for a passage you cannot play yet; not worth leaving on.');
     climbRow.appendChild(stretchBadge);
-    body.appendChild(climbRow);
+    how.body.appendChild(climbRow);
 
-    // Goal and the widen switch share a row: two settings, no prose, one line.
+    /*
+     * The goal, and — since 0.7.0 — the widen switch beside it again, but
+     * inside the fold rather than in the panel's default view.
+     *
+     * `Widen` is the clearest case of the §15 defect: a boolean you set once
+     * about how a drill finishes, which sat two rows under the passage you had
+     * just picked and looked like part of it.
+     */
     const goalRow = c.el('div', 'fbk-row rr-goal');
     goalRow.appendChild(c.el('span', 'fbk-label fbk-label-inline', 'Goal'));
     const goal = c.stepper({
         value: 85,
         step: 5,
-        min: GOAL_MIN,
-        max: GOAL_MAX,
+        min: GOAL_MIN_PCT,
+        max: GOAL_MAX_PCT,
         unit: '%',
         downTitle: 'Lower the goal by 5%',
         upTitle: 'Raise the goal by 5%',
@@ -245,7 +288,7 @@ export function createContent(outer, actions) {
         (on) => actions.setWiden(on));
     widen.el.classList.add('fbk-push');
     goalRow.appendChild(widen.el);
-    body.appendChild(goalRow);
+    how.body.appendChild(goalRow);
 
     // ── the primary, alone on its line ───────────────────────────────────
     const startBtn = c.button('fbk-btn fbk-btn-primary', null, null, () => actions.startDrill());
@@ -269,6 +312,17 @@ export function createContent(outer, actions) {
     acts.appendChild(loopBtn);
     acts.appendChild(clearBtn);
     body.appendChild(acts);
+
+    /*
+     * Why the three controls above are dead, next to the controls above.
+     *
+     * A note under the difficulty slider four rows down would be a sentence
+     * about the passage filed under the chart, and `diffNote` already had a
+     * job. The rule is that a `.fbk-note` explains a control that is not
+     * working (DESIGN.md, Structure) — so it goes where the control is.
+     */
+    const deadNote = c.el('p', 'fbk-note');
+    body.appendChild(deadNote);
 
     // ── live drill ───────────────────────────────────────────────────────
     const live = c.el('div', 'rr-live');
@@ -489,22 +543,49 @@ export function createContent(outer, actions) {
             node.dataset.band = b || 'none';
             node.classList.toggle('rr-tl-block-on', snap.mode !== 'bars' && s.key === snap.sectionKey);
             node.classList.toggle('rr-tl-block-done', !!s.graduated);
+            /*
+             * A passage with no notes in it.
+             *
+             * `=== 0` and not a falsy check, because `s.events` is null until
+             * the count has been taken — and `Number(null)` is 0, which is the
+             * bug class this repository keeps meeting. Treating "not counted
+             * yet" as "empty" would grey out the whole strip for one frame
+             * after every arrangement change.
+             */
+            const empty = c.num(s.events) === 0;
+            node.dataset.empty = empty ? 'true' : 'false';
+
             const bits = [s.label, `${clock(s.start)} → ${clock(s.end)}`];
             if (acc !== null) bits.push(`best ${pct(acc)}`);
             if (c.num(s.events) !== null) bits.push(`${s.events} notes`);
+            if (empty) bits.push('nothing to drill here');
             node.title = bits.join(' · ');
         }
 
-        // Rebuild the hit table on every render: the strip's width changes
-        // with the window and the section set changes with the arrangement.
+        /*
+         * Rebuild the hit table on every render: the strip's width changes
+         * with the window and the section set changes with the arrangement.
+         *
+         * A passage with NO NOTES is left out of it. It is still drawn — the
+         * strip has to stay proportional to the song or it is not a map — but
+         * it cannot be clicked, so its pixels fall to whichever real section
+         * is nearest. Otherwise the strip's biggest affordance let you land on
+         * a range where `Start drill`, `Loop only` and the trim are all dead
+         * and the only explanation was the primary's tooltip saying you had
+         * not picked a passage. A target that can only disappoint is worse
+         * than no target: §12 says a thin section must be reachable, and this
+         * is the other end of the same rule.
+         */
         const stripW = timeline.getBoundingClientRect().width || 0;
-        hits = snap.sections.map((sc) => {
-            const l = (sc.start / duration) * stripW;
-            const r = (sc.end / duration) * stripW;
-            const centre = (l + r) / 2;
-            const half = Math.max((r - l) / 2, MIN_HIT_PX / 2);
-            return { key: sc.key, centre, from: centre - half, to: centre + half };
-        });
+        hits = snap.sections
+            .filter((sc) => c.num(sc.events) !== 0)
+            .map((sc) => {
+                const l = (sc.start / duration) * stripW;
+                const r = (sc.end / duration) * stripW;
+                const centre = (l + r) / 2;
+                const half = Math.max((r - l) / 2, MIN_HIT_PX / 2);
+                return { key: sc.key, centre, from: centre - half, to: centre + half };
+            });
 
         const sel = snap.selection;
         if (sel) {
@@ -531,6 +612,46 @@ export function createContent(outer, actions) {
      * setting — they can differ, because a drill keeps the ladder it was armed
      * with while the user is free to re-tick the setting for the next one.
      */
+    /*
+     * The fold's head: the value while shut, the SCOPE while open.
+     *
+     * Shut, it has to answer exactly what the controls inside answer — a
+     * summary that does not is a fold that hides rather than folds. So it
+     * prints the ladder and the goal, and during a drill it prints the
+     * engine's ladder instead of the stored one, because that is what is
+     * actually happening.
+     *
+     * Open, it says who the settings belong to. That is the §15 defect stated
+     * out loud, and this is the one moment it matters: you are about to change
+     * something you will be living with on every passage of every song.
+     */
+    function renderHow(snap) {
+        if (how.isOpen()) {
+            how.setSummary(snap.drill.active
+                ? 'the drill owns these while it runs'
+                : 'applies to every passage, every song');
+            return;
+        }
+        const running = snap.drill.active;
+        const rungs = running
+            ? (snap.drill.ladderPct || [])
+            : (snap.settings.ladder || []);
+        const goalPct = running && Number.isFinite(snap.drill.goalPct)
+            ? snap.drill.goalPct
+            : snap.settings.goalPct;
+        /*
+         * Tight, because it has to FIT.
+         *
+         * "65 → 80 → 90 → 100 · clean at 85%" is 33 characters and ellipsized
+         * at 336px, and a summary that gets cut off is not a summary — it is
+         * the worst of both worlds, since the value it exists to keep visible
+         * is the half that disappears. No spaces around the arrows and "goal"
+         * instead of "clean at" brings a five-rung ladder inside the width.
+         */
+        const ladderText = rungs.length ? rungs.join('→') : '100';
+        how.setSummary(`${ladderText} · goal ${goalPct}%`);
+    }
+
     function renderClimb(snap) {
         const running = snap.drill.active;
         const chosen = snap.settings.ladder || [];
@@ -597,12 +718,22 @@ export function createContent(outer, actions) {
             return;
         }
         for (const row of snap.weakest) {
-            const live = row.live ? c.el('span', 'rr-live-dot', '•') : null;
+            /*
+             * No `•` suffix any more.
+             *
+             * It marked "this number is from the current run, not storage" — a
+             * 6px bullet on a row that already carries a name, a bar and a
+             * percentage, and whose whole meaning lived in a per-row tooltip
+             * that says it in words anyway ("on this run" against "over 2
+             * attempts"). It was the `, .` key cap again: a glyph nobody can
+             * decode, duplicating what is written next to it. And provenance
+             * is not what this list is read for — you are here to find out
+             * what to practise, and for that the number is the answer.
+             */
             weak.appendChild(c.meterRow({
                 label: row.label,
                 value: row.accuracy * 100,
                 band: c.band(row.accuracy),
-                suffix: live,
                 onClick: () => actions.selectSection(row.key),
                 title: row.live
                     ? `${row.label} — ${pct(row.accuracy)} on this run. Click to select it.`
@@ -674,6 +805,7 @@ export function createContent(outer, actions) {
         widen.disable(snap.drill.active);
         stretchBadge.hidden = snap.drill.active
             || !(snap.settings.ladder || []).some((p) => p < STRETCH_WARN_PCT);
+        renderHow(snap);
 
         // actions
         const canDrill = snap.selectionUsable && !snap.engine.blocked;
@@ -682,11 +814,29 @@ export function createContent(outer, actions) {
         startBtn.disabled = !canDrill;
         // The blocked reason lives ON the blocked control — no box for it.
         startBtn.title = snap.engine.blocked
-            || (snap.selectionUsable ? 'Arm the drill on the chosen passage' : 'Pick a passage first');
+            || (snap.selectionUsable
+                ? 'Arm the drill on the chosen passage'
+                : (emptySelection(snap)
+                    ? 'This passage has no notes in it'
+                    : 'Pick a passage first'));
         startDot.dataset.state = snap.engine.blocked ? (snap.engine.available ? 'warn' : 'off') : 'ready';
+        // The one case where three controls go dead at once with nothing on
+        // screen saying why — and the tooltip said "pick a passage first",
+        // about a passage you had picked.
+        const dead = emptySelection(snap);
+        deadNote.hidden = !dead;
+        deadNote.textContent = dead
+            ? 'This passage has no notes in it, so there is nothing to drill.'
+            : '';
         startDot.title = snap.engine.blocked || 'Note detection is live';
         loopBtn.disabled = !snap.selectionUsable || snap.drill.active;
-        clearBtn.disabled = snap.drill.active;
+        // Nothing to clear is not the same as nothing to do: a live button
+        // whose click has no visible effect is the mode tabs' defect in
+        // miniature (kit DESIGN.md §15).
+        clearBtn.disabled = snap.drill.active || !snap.loopArmed;
+        clearBtn.title = snap.loopArmed
+            ? 'Drop the loop and play on'
+            : 'No loop is armed';
 
         // live
         live.hidden = !snap.drill.active;

@@ -1,5 +1,5 @@
 /*
- * kit 0.3.0 — the four control families, as builders.
+ * kit 0.4.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -71,6 +71,92 @@ export function section(title) {
     wrap.appendChild(el('h4', 'fbk-section-title', title));
     wrap.appendChild(el('span', 'fbk-section-rule'));
     return wrap;
+}
+
+/**
+ * A section heading that folds what is under it, and reads its own state.
+ *
+ *     HOW YOU DRILL   80 → 90 → 100 · 85%              ›
+ *
+ * This exists for exactly one thing: a block of POLICY inside a panel whose
+ * job is something else. Policy is what you set once and then live with — how
+ * aggressive the ladder is, what counts as clean — and it does not belong in
+ * the default view of a panel you opened to do a task. But it must not move to
+ * another screen either, because then changing it costs a context switch.
+ *
+ * A fold is the only honest answer to that: the summary keeps the value
+ * visible, so nothing is hidden, and the controls are one click away.
+ *
+ * DO NOT use it for the thing the panel is FOR. A fold over the primary
+ * workflow is a second click charged for the reason the user opened the panel,
+ * and the summary then competes with the controls it replaced instead of
+ * standing in for them. If the value changes every time you use the panel, it
+ * is not policy — leave it open.
+ *
+ * The head is a real `<button>` with `aria-expanded`, so the whole heading row
+ * is the hit target rather than a chevron somebody has to aim at.
+ */
+export function fold(opts = {}) {
+    const { title = '', summary = '', open = false, ariaLabel = null } = opts;
+
+    const wrap = el('section', 'fbk-fold');
+    const head = el('button', 'fbk-fold-head');
+    head.type = 'button';
+    if (ariaLabel) head.setAttribute('aria-label', ariaLabel);
+
+    const heading = el('span', 'fbk-fold-title', title);
+    const sum = el('span', 'fbk-fold-summary', summary);
+    /*
+     * A chevron, not a triangle or a plus. It rotates, so the same glyph says
+     * both states and there is nothing to keep in sync — and rotation is the
+     * one transform the "Still" recipe can neutralise without the control
+     * becoming ambiguous, because the open state also shows its body.
+     */
+    const chev = el('span', 'fbk-fold-chev', '›');
+
+    head.appendChild(heading);
+    head.appendChild(sum);
+    head.appendChild(chev);
+
+    const body = el('div', 'fbk-fold-body');
+
+    wrap.appendChild(head);
+    wrap.appendChild(body);
+
+    let isOpen = false;
+
+    function setOpen(on) {
+        isOpen = !!on;
+        head.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        /*
+         * `hidden` rather than a class, so the fourth law holds: a consumer
+         * that styles `.fbk-fold-body` with a `display` cannot leave a closed
+         * body on screen (kit.css scopes the `!important` that guarantees it).
+         */
+        body.hidden = !isOpen;
+        wrap.dataset.open = isOpen ? 'true' : 'false';
+    }
+
+    head.addEventListener('click', () => setOpen(!isOpen));
+    setOpen(open);
+
+    return {
+        el: wrap,
+        /** Append the folded controls here. */
+        body,
+        head,
+        /**
+         * The value, kept visible while the body is shut.
+         *
+         * Whatever the controls inside say, said in one line. A fold whose
+         * summary does not answer the question the controls answer is a fold
+         * that hides rather than folds.
+         */
+        setSummary(text) { sum.textContent = text === null || text === undefined ? '' : String(text); },
+        setOpen,
+        toggle() { setOpen(!isOpen); },
+        isOpen() { return isOpen; },
+    };
 }
 
 /** A big tabular number with a small unit — DESIGN.md §7. */

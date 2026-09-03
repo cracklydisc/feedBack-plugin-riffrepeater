@@ -27,6 +27,31 @@ export const DEFAULT_LADDER = [80, 90, 100];
 export const DEFAULT_GOAL_PCT = 85;
 
 /**
+ * The goal's ONE legal range.
+ *
+ * It used to have three, which is the corollary in the kit's DESIGN.md §15:
+ * `normalizeGoal` clamped at 5%, the settings page's number field said
+ * `min="10"`, and the panel's stepper refused to go below 50. Three legal
+ * domains for one number, decided by which control you happened to touch it
+ * with — so the same store could hold a value the panel could not reach and
+ * would not display honestly.
+ *
+ * 50 is the floor because the panel's argument was the right one: a drill
+ * whose goal is "land one note in two" is already generous, and one that
+ * accepts one in ten is not a drill. `store.setSettings` clamps to this, so
+ * every writer lands inside it whatever its own widget allows.
+ */
+export const GOAL_MIN_PCT = 50;
+export const GOAL_MAX_PCT = 100;
+
+/** Put a goal percentage inside the one legal range. Nullish gets the default. */
+export function clampGoalPct(pct) {
+    const n = Number(pct);
+    if (pct === null || pct === undefined || pct === '' || !Number.isFinite(n)) return DEFAULT_GOAL_PCT;
+    return Math.max(GOAL_MIN_PCT, Math.min(GOAL_MAX_PCT, Math.round(n)));
+}
+
+/**
  * Below this, a slowed backing track is audibly time-stretched.
  *
  * Not a limit — a warning. The detector's source calls 0.8 a floor because
@@ -83,9 +108,7 @@ export function toRates(pcts) {
 
 /** A goal percentage -> the 0..1 the conductor compares against. */
 export function normalizeGoal(pct) {
-    const n = Number(pct);
-    if (!Number.isFinite(n)) return DEFAULT_GOAL_PCT / 100;
-    return Math.max(0.05, Math.min(1, Math.round(n) / 100));
+    return clampGoalPct(pct) / 100;
 }
 
 /** Whether any rung is slow enough to be audibly stretched. */

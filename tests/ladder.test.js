@@ -18,6 +18,8 @@ import {
     PRESETS,
     DEFAULT_LADDER,
     DEFAULT_GOAL_PCT,
+    GOAL_MIN_PCT,
+    clampGoalPct,
     STRETCH_WARN_PCT,
     FULLSPEED_REPS,
     normalizeLadder,
@@ -75,9 +77,31 @@ test('toRates hands the engine multipliers, not percentages', () => {
 test('the goal becomes the 0..1 the conductor compares against', () => {
     assert.equal(normalizeGoal(85), 0.85);
     assert.equal(normalizeGoal(100), 1);
-    assert.equal(normalizeGoal(0), 0.05);          // a goal of nothing is not a goal
     assert.equal(normalizeGoal(1000), 1);
     assert.equal(normalizeGoal('x'), DEFAULT_GOAL_PCT / 100);
+});
+
+test('the goal has ONE legal range, whichever control wrote it', () => {
+    // It used to have three: 5% here, 10% in the settings page's field, 50% in
+    // the panel's stepper. Same number, three domains, decided by which widget
+    // you touched — so a stored 10% was a value the panel could neither reach
+    // nor honestly display.
+    assert.equal(GOAL_MIN_PCT, 50);
+    assert.equal(clampGoalPct(0), 50);
+    assert.equal(clampGoalPct(10), 50);            // the settings page's old floor
+    assert.equal(clampGoalPct(49), 50);
+    assert.equal(clampGoalPct(85), 85);
+    assert.equal(clampGoalPct(1000), 100);
+    assert.equal(normalizeGoal(0), 0.5);           // a goal of nothing is not a goal
+    assert.equal(normalizeGoal(10), 0.5);
+});
+
+test('an absent goal is the default, not zero', () => {
+    // `Number(null) === 0` and 0 clamps to the FLOOR, which would silently
+    // hand every drill a 50% goal the moment a settings read came back empty.
+    for (const v of [null, undefined, '', NaN, 'x']) {
+        assert.equal(clampGoalPct(v), DEFAULT_GOAL_PCT, `for ${String(v)}`);
+    }
 });
 
 test('the time-stretch warning fires below the engine own floor', () => {

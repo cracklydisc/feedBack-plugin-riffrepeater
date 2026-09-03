@@ -1,5 +1,5 @@
 /*
- * kit 0.3.0 — the shared look.
+ * kit 0.4.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -28,7 +28,7 @@
  * Sections, in order:
  *   0  hidden
  *   1  the panel shell
- *   2  structure: sections, fields, rows
+ *   2  structure: sections, folds, fields, rows
  *   3  type helpers
  *   4  readouts and plates
  *   5  family 1 — segmented
@@ -59,6 +59,7 @@
 
 .fbk-panel[hidden],
 .fbk-panel [hidden],
+.fbk-fold [hidden],
 .fbk-open-btn[hidden] { display: none !important; }
 
 /* ═══ 1. The panel shell ═════════════════════════════════════════════════
@@ -139,10 +140,10 @@
 
 /* ═══ 2. Structure ═══════════════════════════════════════════════════════
  *
- * A section heading with a hairline that finishes its row, and a `field`
- * whose label sits either above the control or in a fixed-width column to its
- * left — never in a ragged column, which is what made the rows start at four
- * different x positions.
+ * A section heading with a hairline that finishes its row, its FOLD variant
+ * for a block of policy (DESIGN.md §15), and a `field` whose label sits either
+ * above the control or in a fixed-width column to its left — never in a ragged
+ * column, which is what made the rows start at four different x positions.
  * ═══════════════════════════════════════════════════════════════════════ */
 
 .fbk-section {
@@ -172,6 +173,90 @@
         rgb(var(--fbk-border, 51 65 85)),
         rgb(var(--fbk-border, 51 65 85) / 0));
 }
+
+/*
+ * A FOLD — the section heading, with its body shut and its value still shown.
+ *
+ *     HOW YOU DRILL   80 → 90 → 100 · 85%              ›
+ *
+ * It borrows the heading's type and colour on purpose: it IS a heading, and a
+ * reader should not have to learn a second thing. What it does not borrow is
+ * the rule, because the summary occupies that space — the summary is the
+ * divider here.
+ *
+ * The whole head is the target. A chevron alone is a 14px hit area for a job
+ * that has a 296px row available (DESIGN.md §12), and it is the row people
+ * aim at anyway.
+ */
+.fbk-fold { margin: var(--fbk-s-6, 20px) 0 var(--fbk-s-3, 6px); }
+
+.fbk-fold:first-child { margin-top: 0; }
+
+.fbk-fold-head {
+    display: flex;
+    align-items: center;
+    gap: var(--fbk-s-3, 6px);
+    width: 100%;
+    min-height: var(--fbk-h-sm, 26px);
+    padding: 0;
+    background: none;
+    border: 0;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+}
+
+.fbk-fold-title {
+    flex: 0 0 auto;
+    font: var(--fbk-t-micro, 800 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-micro-track, 0.1em);
+    text-transform: uppercase;
+    color: rgb(var(--fbk-dim, 148 163 184));
+}
+
+/*
+ * The value, in the body type rather than the heading's.
+ *
+ * It has to read as CONTENT, not as more heading — it is standing in for the
+ * controls, so it carries their weight, not the label's. `min-width: 0` plus
+ * the ellipsis because a summary is the one string here whose length the kit
+ * cannot bound.
+ */
+.fbk-fold-summary {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    color: rgb(var(--fbk-text, 226 232 240));
+}
+
+.fbk-fold-chev {
+    flex: 0 0 auto;
+    font-size: 15px;
+    line-height: 1;
+    color: rgb(var(--fbk-dim, 148 163 184));
+    transition: transform var(--fbk-motion, 120ms) ease;
+}
+
+.fbk-fold[data-open="true"] .fbk-fold-chev { transform: rotate(90deg); }
+
+.fbk-fold-head:hover .fbk-fold-title,
+.fbk-fold-head:hover .fbk-fold-chev { color: rgb(var(--fbk-text, 226 232 240)); }
+
+.fbk-fold-head:focus-visible {
+    outline: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent, 14 165 233));
+    outline-offset: var(--fbk-s-2, 4px);
+}
+
+/* An open fold shows the heading's rule under it instead of a summary — the
+   divider comes back once the summary is no longer doing that job. */
+.fbk-fold[data-open="true"] .fbk-fold-summary { color: rgb(var(--fbk-dim, 148 163 184) / 0.55); }
+
+.fbk-fold-body { padding-top: var(--fbk-s-2, 4px); }
 
 /*
  * A row.
@@ -1009,5 +1094,5 @@
  * the fallback for a host that predates that API.
  */
 @media (prefers-reduced-motion: reduce) {
-    .fbk-panel *, .fbk-open-btn { transition: none !important; }
+    .fbk-panel *, .fbk-open-btn, .fbk-fold-chev { transition: none !important; }
 }

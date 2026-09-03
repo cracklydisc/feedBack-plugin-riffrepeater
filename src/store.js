@@ -33,7 +33,7 @@ const MAX_RANGES_PER_SONG = 400;
 /** Cap the number of songs kept. Oldest-touched go first. */
 const MAX_SONGS = 200;
 
-import { DEFAULT_LADDER, DEFAULT_GOAL_PCT } from './ladder.js';
+import { DEFAULT_LADDER, DEFAULT_GOAL_PCT, clampGoalPct } from './ladder.js';
 
 export function defaults() {
     return {
@@ -99,9 +99,21 @@ export function getSettings() {
     return read().settings;
 }
 
+/**
+ * The one place a setting is written, and therefore the one place it is
+ * clamped.
+ *
+ * `goalPct` had three different floors depending on which widget you used
+ * (DESIGN.md §15's corollary). Clamping here rather than in each control means
+ * a widget cannot be the reason a stored value is out of range — including the
+ * settings page, which cannot import this module and so cannot be trusted to
+ * agree with it.
+ */
 export function setSettings(patch) {
     const state = read();
-    state.settings = { ...state.settings, ...(patch || {}) };
+    const next = { ...state.settings, ...(patch || {}) };
+    if (patch && 'goalPct' in patch) next.goalPct = clampGoalPct(next.goalPct);
+    state.settings = next;
     write(state);
     return state.settings;
 }

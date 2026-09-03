@@ -130,6 +130,9 @@ body {
 }
 .g-card p.g-why { margin: 0 0 14px; font-size: 12px; color: rgb(var(--fbk-dim)); }
 .g-grid { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+/* A fold is a full-width block, so its two states stack rather than sit side
+   by side — a 300px column next to another one reads as one wide fold. */
+.g-grid-1 { flex-direction: column; align-items: stretch; gap: 20px; }
 .g-stack { display: grid; gap: 10px; }
 .g-tag {
     font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
@@ -376,6 +379,56 @@ body {
     <p class="fbk-empty">Nothing measured yet. Play with note detection on and the sections you struggle with will collect a number here.</p>
 </section>
 
+<section class="g-card g-wide">
+    <h2>Fold — policy, kept visible but out of the way</h2>
+    <p class="g-why">The one answer to "this belongs in the panel but not in
+    its default view". A heading whose body is shut and whose <em>value</em>
+    stays in the head, so nothing is hidden and the controls are one click
+    away. <strong>Only for policy</strong> — a fold over the job the panel is
+    for charges a click for the reason the user opened it. DESIGN.md §15.</p>
+    <div class="g-grid g-grid-1">
+        <section class="fbk-fold" data-open="false" style="max-width:300px">
+            <button class="fbk-fold-head" type="button" aria-expanded="false">
+                <span class="fbk-fold-title">How you drill</span>
+                <span class="fbk-fold-summary">80 → 90 → 100 · goal 85%</span>
+                <span class="fbk-fold-chev">›</span>
+            </button>
+            <div class="fbk-fold-body" hidden></div>
+        </section>
+        <section class="fbk-fold" data-open="true" style="max-width:300px">
+            <button class="fbk-fold-head" type="button" aria-expanded="true">
+                <span class="fbk-fold-title">How you drill</span>
+                <span class="fbk-fold-summary">applies to every passage</span>
+                <span class="fbk-fold-chev">›</span>
+            </button>
+            <div class="fbk-fold-body">
+                <div class="fbk-row">
+                    <span class="fbk-label fbk-label-inline">Climb</span>
+                    <div class="fbk-chips fbk-chips-rail">
+                        <button class="fbk-chip">50</button>
+                        <button class="fbk-chip">65</button>
+                        <button class="fbk-chip fbk-on">80</button>
+                        <button class="fbk-chip fbk-on">90</button>
+                        <button class="fbk-chip fbk-on" disabled>100</button>
+                    </div>
+                </div>
+                <div class="fbk-row">
+                    <span class="fbk-label fbk-label-inline">Goal</span>
+                    <div class="fbk-stepper">
+                        <button class="fbk-step">−</button>
+                        <span class="fbk-readout"><span class="fbk-readout-value">85</span><span class="fbk-readout-unit">%</span></span>
+                        <button class="fbk-step">+</button>
+                    </div>
+                    <label class="fbk-toggle fbk-push"><input type="checkbox" checked><span class="fbk-toggle-track"></span><span class="fbk-toggle-text">Widen</span></label>
+                </div>
+            </div>
+        </section>
+    </div>
+    <p class="g-why">Closed, the summary answers the question the controls
+    answer. A summary that does not is a fold that hides. Open, it steps back
+    to dim — the controls are the content now.</p>
+</section>
+
 <!-- ── the whole shell ────────────────────────────────────────────────── -->
 <section class="g-card g-wide">
     <h2>The panel, assembled</h2>
@@ -393,62 +446,41 @@ body {
             <div class="fbk-body">
                 <div class="fbk-section"><h4 class="fbk-section-title">What to loop</h4><span class="fbk-section-rule"></span></div>
                 <div class="fbk-row">
-                    <div class="fbk-seg">
-                        <button class="fbk-seg-btn fbk-on">Section</button>
-                        <button class="fbk-seg-btn">Phrase</button>
-                        <button class="fbk-seg-btn">Bars</button>
-                    </div>
-                </div>
-                <div class="fbk-row">
-                    <button class="fbk-step">◀</button>
-                    <span style="flex:1 1 auto;text-align:center;font-weight:700">Verse 1</span>
+                    <button class="fbk-step" disabled>◀</button>
+                    <span style="flex:1 1 auto;text-align:center;font-weight:700">Whole section · 2 phrases</span>
                     <button class="fbk-step">▶</button>
-                    <span class="fbk-kbd">, .</span>
+                </div>
+                <div class="fbk-row fbk-row-tight fbk-row-nowrap" style="gap:var(--fbk-s-1)">
+                    <button class="fbk-btn fbk-btn-quiet" style="flex:0 0 auto;width:var(--fbk-h-sm);height:var(--fbk-h-lg);padding:0;font-size:16px">‹</button>
+                    <div class="fbk-plate" style="flex:1 1 auto;min-width:0">
+                        <span class="fbk-plate-title">Verse 1</span>
+                        <span class="fbk-plate-meta">1:24 → 1:39 · 15.3s · 95 notes · best 33%</span>
+                    </div>
+                    <button class="fbk-btn fbk-btn-quiet" style="flex:0 0 auto;width:var(--fbk-h-sm);height:var(--fbk-h-lg);padding:0;font-size:16px">›</button>
                 </div>
                 <div class="fbk-row">
-                    <span class="fbk-label fbk-label-inline">Mark</span>
-                    <button class="fbk-btn fbk-btn-small"><span>Set A</span><span class="fbk-kbd">I</span></button>
-                    <button class="fbk-btn fbk-btn-small"><span>Set B</span><span class="fbk-kbd">O</span></button>
-                </div>
-                <div class="fbk-plate">
-                    <span class="fbk-plate-title">Verse 1</span>
-                    <span class="fbk-plate-meta">1:24 → 1:39 · 15.3s · 95 notes · best 33%</span>
-                </div>
-                <div class="fbk-row">
-                    <span class="fbk-label fbk-label-inline">Trim</span>
+                    <button class="fbk-step" style="font-weight:800">A</button>
                     <button class="fbk-step">−</button>
                     <span class="fbk-t-value">1:24</span>
                     <button class="fbk-step">+</button>
-                    <span style="color:rgb(var(--fbk-dim))">→</span>
+                    <span class="fbk-push"></span>
                     <button class="fbk-step">−</button>
                     <span class="fbk-t-value">1:39</span>
                     <button class="fbk-step">+</button>
+                    <button class="fbk-step" style="font-weight:800">B</button>
                 </div>
-                <div class="fbk-section"><h4 class="fbk-section-title">How to drill</h4><span class="fbk-section-rule"></span></div>
-                <div class="fbk-row">
-                    <span class="fbk-label fbk-label-inline">Climb</span>
-                    <div class="fbk-chips fbk-chips-rail">
-                        <button class="fbk-chip">50</button>
-                        <button class="fbk-chip fbk-on">65</button>
-                        <button class="fbk-chip fbk-on">80</button>
-                        <button class="fbk-chip fbk-on">90</button>
-                        <button class="fbk-chip fbk-on" disabled>100</button>
-                    </div>
-                    <span class="fbk-badge" title="Below 80% the backing track is audibly time-stretched.">⚠</span>
-                </div>
-                <div class="fbk-row">
-                    <span class="fbk-label fbk-label-inline">Goal</span>
-                    <div class="fbk-stepper">
-                        <button class="fbk-step">−</button>
-                        <span class="fbk-readout"><span class="fbk-readout-value">85</span><span class="fbk-readout-unit">%</span></span>
-                        <button class="fbk-step">+</button>
-                    </div>
-                    <label class="fbk-toggle fbk-push"><input type="checkbox" checked><span class="fbk-toggle-track"></span><span class="fbk-toggle-text">Widen</span></label>
-                </div>
+                <section class="fbk-fold" data-open="false">
+                    <button class="fbk-fold-head" type="button" aria-expanded="false">
+                        <span class="fbk-fold-title">How you drill</span>
+                        <span class="fbk-fold-summary">80 → 90 → 100 · goal 85%</span>
+                        <span class="fbk-fold-chev">›</span>
+                    </button>
+                    <div class="fbk-fold-body" hidden></div>
+                </section>
                 <button class="fbk-btn fbk-btn-primary"><span class="fbk-dot" data-state="ready"></span><span class="fbk-btn-label">⏱ Start drill</span><span class="fbk-kbd">D</span></button>
                 <div class="fbk-row fbk-row-tight">
                     <button class="fbk-btn fbk-btn-small">Loop only</button>
-                    <button class="fbk-btn fbk-btn-small fbk-btn-quiet">Clear</button>
+                    <button class="fbk-btn fbk-btn-small fbk-btn-quiet" disabled>Clear</button>
                 </div>
                 <div class="fbk-section"><h4 class="fbk-section-title">Play at</h4><span class="fbk-section-rule"></span></div>
                 <div class="fbk-row">
@@ -459,7 +491,6 @@ body {
                         <button class="fbk-seg-btn">90</button>
                         <button class="fbk-seg-btn fbk-on">100</button>
                     </div>
-                    <span class="fbk-kbd">↑ ↓</span>
                 </div>
                 <div class="fbk-row">
                     <span class="fbk-label fbk-label-inline">Chart</span>
@@ -481,5 +512,23 @@ body {
 </section>
 
 </div>
+<script>
+/*
+ * Every other card in here is static, because every other component's states
+ * are what there is to show. A fold's state is a BEHAVIOUR, so this wires the
+ * heads — the same six lines `fold()` in src/controls.js runs, so the card
+ * proves the CSS and the contract together (`aria-expanded`, `data-open`, and
+ * `hidden` on the body, which section 0's law has to keep shut).
+ */
+for (const head of document.querySelectorAll('.fbk-fold-head')) {
+    head.addEventListener('click', () => {
+        const fold = head.closest('.fbk-fold');
+        const open = fold.dataset.open !== 'true';
+        fold.dataset.open = open ? 'true' : 'false';
+        head.setAttribute('aria-expanded', open ? 'true' : 'false');
+        fold.querySelector('.fbk-fold-body').hidden = !open;
+    });
+}
+</script>
 </body>
 </html>

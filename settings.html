@@ -81,7 +81,14 @@
         const goalRow = el('div', 'flex items-center gap-2 pt-1');
         const goal = document.createElement('input');
         goal.type = 'number';
-        goal.min = '10';
+        /*
+         * 50, matching `GOAL_MIN_PCT` in src/ladder.js — which is the source of
+         * truth and clamps in the store regardless of what this field allows.
+         * This page is a classic script and cannot import it, so the number is
+         * repeated here rather than shared; a field that offers 10 while the
+         * store keeps 50 is worse than a duplicated constant.
+         */
+        goal.min = '50';
         goal.max = '100';
         goal.step = '5';
         goal.className = 'w-20 bg-fb-cardMuted border border-fb-border rounded px-3 py-1.5 text-sm text-fb-text';

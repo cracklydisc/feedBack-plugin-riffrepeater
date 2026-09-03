@@ -406,6 +406,18 @@ export function isUsable(range, duration) {
     if (b - a < MIN_RANGE_SEC) return false;
     const dur = fin(duration);
     if (Number.isFinite(dur) && dur > 0 && a >= dur) return false;
+    /*
+     * A passage with NO NOTES in it — a Noguitar marker, usually.
+     *
+     * `=== 0` and not a falsy test: `events` is null until the count has been
+     * taken, and `Number(null)` is 0, so the obvious version of this line
+     * would disable the primary for one frame after every arrangement change.
+     * Absent is not empty.
+     *
+     * An undecorated range has no `events` at all and stays usable, which is
+     * what the drag path wants: a custom range is judged on its geometry.
+     */
+    if (range.events === 0) return false;
     return true;
 }
 

@@ -375,3 +375,21 @@ test('two marks on the same bar still give a usable loop', () => {
     assert.ok(r.end > r.start);
     assert.ok(r.end - r.start >= MIN_RANGE_SEC);
 });
+
+// ── usable ───────────────────────────────────────────────────────────────
+
+test('a passage with no notes in it is not usable', () => {
+    // A drill on a Noguitar marker cannot do anything, and the panel was
+    // offering one: "this passage has no notes in it, so there is nothing to
+    // drill" printed directly above a live Start drill.
+    assert.equal(isUsable({ start: 10, end: 20, events: 12 }, 60), true);
+    assert.equal(isUsable({ start: 10, end: 20, events: 0 }, 60), false);
+});
+
+test('a note count that has not been taken yet is not a count of zero', () => {
+    // `Number(null) === 0`. Reading "absent" as "empty" here would kill the
+    // primary for a frame after every arrangement change, when the counts are
+    // invalidated and the panel renders before they are recomputed.
+    assert.equal(isUsable({ start: 10, end: 20, events: null }, 60), true);
+    assert.equal(isUsable({ start: 10, end: 20 }, 60), true);
+});

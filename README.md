@@ -74,7 +74,14 @@ says why.
 ### Picks the passage
 
 You pick it on a **timeline** — a strip proportional to the song, one block per
-section, coloured by how well you play it. Click a block for its section, or
+section, coloured by how well you play it. Accuracy is the block's *hue*, not
+the reason it is visible: until 0.7.0 a never-played section sat at 1.33:1
+against the strip's own track, so on a ten-section song the picker rendered as
+two coloured smears with eight invisible gaps, and only became a map once you
+had already practised everything. A passage with **no notes** in it — a
+Noguitar marker — is drawn (the strip has to stay proportional or it is not a
+map) but hatched and left out of the hit table, so its pixels fall to the
+nearest real section and you cannot land on a range nothing can be done with. Click a block for its section, or
 drag across it for a custom range snapped to bar lines. Sweeping it names
 whatever is under the cursor, and every section has a click target at least
 11px wide however thin its block is: on a real chart nine of twenty-one
@@ -125,6 +132,15 @@ follows the difficulty slider — at 60% a passage genuinely has fewer notes in
 it.
 
 ### Drives the drill
+
+The ladder and the goal live in a **fold** — `HOW YOU DRILL  80→90→100 · goal
+85%` — because they are policy rather than part of the passage. That was a bug,
+not a tidying: they write straight to `localStorage`, so from two rows under
+the passage you had just picked they looked per-passage while changing every
+passage of every song. The summary keeps the value on screen and the heading
+says whose it is. The kit's [DESIGN.md §15](https://github.com/cracklydisc/feedBack-plugin-kit)
+generalises it — *follow the write* — and 0.7.0's changelog has the four other
+places the same question found something.
 
 Pick the ladder as rungs — **50 · 65 · 80 · 90 · 100** — and a goal. The
 engine's default ladder is `[80, 90, 100]` and its floor of 80% is a judgement
@@ -350,7 +366,7 @@ Two things learned from the DOM, in case that PR is written by somebody else:
 node --test tests/*.test.js
 ```
 
-107 tests, no dependencies, no build step.
+111 tests, no dependencies, no build step.
 
 `src/kit/` and `assets/kit.css` are **vendored** — edit them in
 [feedBack-plugin-kit](https://github.com/cracklydisc/feedBack-plugin-kit) and

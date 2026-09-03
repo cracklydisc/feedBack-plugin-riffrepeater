@@ -24,6 +24,18 @@ import * as store from './store.js';
 import * as stats from './stats.js';
 import * as drill from './drill.js';
 
+/**
+ * A real number, where null is not one.
+ *
+ * `Number(null) === 0` and 0 passes `Number.isFinite`, which has now cost this
+ * plugin five bugs. Anything entering a boolean about "is there a value" goes
+ * through here.
+ */
+function finite(v) {
+    if (v === null || v === undefined || v === '') return false;
+    return Number.isFinite(Number(v));
+}
+
 const listeners = new Set();
 
 const state = {
@@ -544,6 +556,25 @@ export function snapshot() {
             blocked: drill.blockedReason(),
         },
 
+        /*
+         * Whether the host actually has a loop armed right now.
+         *
+         * Read from the host rather than tracked, because the host's own A/B
+         * controls and the drill both set and drop it — a second copy here is
+         * how a HUD ends up offering to clear a loop that is not there. Which
+         * is what `Clear` did: it was disabled only during a drill, so outside
+         * one it was a live button whose click did nothing visible.
+         */
+        loopArmed: (() => {
+            const l = host.loop();
+            // `Number(null)` is 0 and 0 passes `Number.isFinite`, so the
+            // obvious version of this line reported a loop armed at 0→0 on
+            // every song with no loop — which is the whole reason `Clear` was
+            // being fixed. Written once more, caught by measuring the thing
+            // rather than by reading it.
+            return finite(l.loopA) && finite(l.loopB);
+        })(),
+
         mode: state.mode,
         sections,
         /** Which chip is lit. Explicit, so the panel never has to infer it. */
@@ -559,7 +590,15 @@ export function snapshot() {
             available: ranges.barLines(host.beats()).length > 0,
         },
         selection: sel ? decorate(sel) : null,
-        selectionUsable: ranges.isUsable(sel, duration),
+        /*
+         * The DECORATED selection, so `isUsable` can see the note count.
+         *
+         * The undecorated range has no `events` field, and the whole point is
+         * that a passage with nothing in it is not drillable — the panel was
+         * printing "this passage has no notes in it, so there is nothing to
+         * drill" directly above a live `Start drill`.
+         */
+        selectionUsable: ranges.isUsable(sel ? decorate(sel) : null, duration),
 
         settings: { ...state.settings },
         speedPct: host.speedPct(),

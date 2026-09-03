@@ -61,20 +61,55 @@
 
 .rr-tl-blocks { position: absolute; inset: 0; }
 
+/*
+ * A block, and the state that matters most: NOT YET PLAYED.
+ *
+ * This was `--fbk-border / 0.55`, which measured **1.33 : 1** against the
+ * strip's own track. Seven of the ten sections of a typical song have no
+ * number yet, so the panel's primary picker rendered as two coloured smears
+ * with eight invisible gaps between them — a map that only appears once you
+ * have already practised everything, which is exactly backwards.
+ *
+ * The fix is not more colour, it is the right ROLE: `--fbk-dim` is the token
+ * for "present, secondary". The alpha was then swept against the measured
+ * track colour rather than chosen: 0.34 came out at 1.89:1 and 0.55 at
+ * **3.02:1**, which is the 3:1 that WCAG 1.4.11 asks of a UI component's
+ * boundary — and a block here is a click target, not decoration. It stays
+ * plainly unmeasured next to the three accuracy bands below, so accuracy is
+ * the block's HUE rather than the reason it exists.
+ */
 .rr-tl-block {
     position: absolute;
     top: 0;
     bottom: 0;
     box-sizing: border-box;
-    border-right: 1px solid rgb(var(--fbk-bg, 15 23 42));
-    background: rgb(var(--fbk-border, 51 65 85) / 0.55);
+    border-right: var(--fbk-hairline, 1px) solid rgb(var(--fbk-bg, 15 23 42));
+    background: rgb(var(--fbk-dim, 148 163 184) / 0.55);
 }
 
 .rr-tl-block[data-band="good"] { background: rgb(var(--fbk-good, 34 197 94) / 0.6); }
 .rr-tl-block[data-band="mid"]  { background: rgb(var(--fbk-mid, 234 179 8) / 0.6); }
 .rr-tl-block[data-band="bad"]  { background: rgb(var(--fbk-bad, 239 68 68) / 0.6); }
 
+/*
+ * A passage with no notes in it — a Noguitar marker, usually.
+ *
+ * Drawn, because the strip has to stay proportional to the song or it stops
+ * being a map. Not in the hit table, because a drill on it cannot do anything
+ * — so it also must not invite the click. Hatched rather than merely faint:
+ * "unmeasured" is already what faint means one rule above, and these are two
+ * different nothings.
+ */
+.rr-tl-block[data-empty="true"] {
+    background: repeating-linear-gradient(135deg,
+        rgb(var(--fbk-dim, 148 163 184) / 0.16) 0 3px,
+        rgb(var(--fbk-bg, 15 23 42) / 0) 3px 6px);
+    cursor: default;
+}
+
 .rr-tl-block:hover { filter: brightness(1.35); }
+
+.rr-tl-block[data-empty="true"]:hover { filter: none; }
 
 /* Graduated a drill. A tick would not fit in 14px, so it is a top edge. */
 .rr-tl-block-done { box-shadow: inset 0 2px 0 0 rgb(var(--fbk-good, 34 197 94)); }
@@ -167,14 +202,6 @@
 /* ── the map ────────────────────────────────────────────────────────────── */
 
 .rr-weak { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
-
-/* Marks a row whose number came from THIS run rather than the store. */
-.rr-live-dot {
-    flex: 0 0 auto;
-    color: rgb(var(--fbk-accent, 14 165 233));
-    font-size: 14px;
-    line-height: 1;
-}
 
 /*
  * The plate, previewing rather than reporting.
