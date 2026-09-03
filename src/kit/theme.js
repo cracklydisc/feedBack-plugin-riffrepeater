@@ -1,5 +1,5 @@
 /*
- * kit 0.12.0 — the token bridge.
+ * kit 0.13.0 — the token bridge.
  *
  * Reads the host's palette and writes it back as `--fbk-*` custom properties
  * that a stylesheet can use, then follows `theme:changed`. This existed three
@@ -105,6 +105,14 @@ const ROLES = {
 };
 
 /** Which host token each role reads from. */
+/*
+ * Role -> the host's own token name, used ONLY when a consumer opts into
+ * bridging with `follow(null, { bridge: true })`.
+ *
+ * Kept complete even though it is off by default, because the mapping is the
+ * hard part: it is the one place that knows the app calls its interactive blue
+ * `primary` and its recessed surface `cardMuted`.
+ */
 const FROM_HOST = {
     bg: 'bg',
     sidebar: 'sidebar',
@@ -350,6 +358,15 @@ function propFor(role) {
 let unsubscribe = null;
 let recipeOverride = null;
 
+/**
+ * Whether to take colours from the host's equipped theme.
+ *
+ * OFF by default since 0.13.0. See the note in `write()`: a plugin with an
+ * identity of its own cannot have its palette silently replaced by the app's,
+ * and the app publishes tokens whether or not a theme is equipped.
+ */
+let bridgeHost = false;
+
 function hostTokens() {
     const fb = window.feedBack;
     const theme = fb && fb.theme;
@@ -370,10 +387,38 @@ function write() {
     const root = document.documentElement;
     const tokens = hostTokens();
 
+    /*
+     * ── THE PALETTE IS OURS, AND THE HOST BRIDGE IS OPT-IN ──────────────
+     *
+     * This line used to read
+     *
+     *     const value = (tokens && hostKey && tokens[hostKey]) || ROLES[role];
+     *
+     * — the host's token first, the kit's default only as a fallback. It was
+     * the kit's founding decision and it was wrong for what these plugins are
+     * for. Consequences, measured in the running app:
+     *
+     *     role        design    what was on screen
+     *     accent      41 168 255    14 165 233
+     *     bg           5  7 12      15 23 42
+     *     surface     12 15 22      30 41 59
+     *
+     * Every colour was the app's. Not because a theme was equipped — the host
+     * reported `isThemed: false` — but because it publishes its DEFAULT tokens
+     * too, and `||` only falls back when a token is missing. So a design system
+     * built to have an identity was quietly wearing the host's, and the gallery
+     * looked correct while the app did not: outside the app there are no host
+     * tokens, so the gallery had been showing the kit's palette all along.
+     *
+     * A plugin with a visual identity of its own has to be the authority on its
+     * own colours. Bridging is still available for a plugin that wants to
+     * disappear into the app's furniture — `follow({ bridge: true })` — but it
+     * is now the exception it always should have been.
+     */
     for (const role of Object.keys(ROLES)) {
         const hostKey = FROM_HOST[role];
-        const value = (tokens && hostKey && tokens[hostKey]) || ROLES[role];
-        root.style.setProperty(propFor(role), value);
+        const bridged = bridgeHost && tokens && hostKey && tokens[hostKey];
+        root.style.setProperty(propFor(role), bridged || ROLES[role]);
     }
 
     const recipes = { ...RECIPES, ...(recipeOverride || {}) };
@@ -443,8 +488,15 @@ function coarsePointer() {
     try { return window.matchMedia('(pointer: coarse)').matches; } catch (_) { return false; }
 }
 
-export function follow(recipes = null) {
+export function follow(recipes = null, opts = {}) {
     recipeOverride = recipes;
+    /*
+     * `bridge: true` hands the palette back to the host — for a plugin that
+     * should look like part of the app rather than like itself. Everything
+     * else still follows `theme:changed`, because a bridged consumer needs to
+     * re-read and an unbridged one costs nothing to re-write.
+     */
+    bridgeHost = !!opts.bridge;
     write();
     if (unsubscribe) return;
 
@@ -480,6 +532,7 @@ export function follow(recipes = null) {
 export function unfollow() {
     if (unsubscribe) { unsubscribe(); unsubscribe = null; }
     recipeOverride = null;
+    bridgeHost = false;
     const root = document.documentElement;
     for (const role of Object.keys(ROLES)) root.style.removeProperty(propFor(role));
     for (const slot of Object.keys(RECIPES)) root.style.removeProperty(PROP_PREFIX + slot);
@@ -508,7 +561,9 @@ export function ink(role, alpha) {
  * white by luminance for any role — the same fix Live Tab wrote inline.
  */
 export function inkOn(role) {
-    const raw = (hostTokens()?.[FROM_HOST[role]]) || ROLES[role] || '';
+    /* The same authority as `write()`: ours unless bridging is on. */
+    const bridged = bridgeHost ? hostTokens()?.[FROM_HOST[role]] : null;
+    const raw = bridged || ROLES[role] || '';
     const [r, g, b] = String(raw).split(/\s+/).map(Number);
     if (![r, g, b].every(Number.isFinite)) return `rgb(${ROLES.text})`;
     // Rec. 601 luma is close enough for a two-way choice and needs no gamma.

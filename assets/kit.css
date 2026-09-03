@@ -1,5 +1,5 @@
 /*
- * kit 0.12.0 — the shared look.
+ * kit 0.13.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -238,17 +238,24 @@
 .fbk-foot .fbk-btn-stop { padding: 0 var(--fbk-s-4, 8px); }
 
 /*
- * The alternative beside the footswitch matches its case.
+ * The alternative beside the footswitch matches its SIZE and its case.
  *
- * Two buttons on one bar in two different cases reads as two different KINDS
+ * Two buttons on one bar at two different heights read as two different KINDS
  * of thing, which is the opposite of what the pair is for: they are two ways
- * to start. Same case, different tier — the glow still says which is which.
+ * to start. The primary got `h-lg` from its own rule and the secondary kept
+ * `h-md` from the base button, so the bar had a 56px button next to a 40px one
+ * — reported, and visible from across the room.
+ *
+ * Same height, same case, different tier. The glow still says which is which,
+ * and it is the only thing that needs to.
  */
 .fbk-foot .fbk-btn {
     height: var(--fbk-h-lg, 56px);
+    min-height: var(--fbk-h-lg, 56px);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-weight: 800;
+    font-size: 14px;
 }
 
 /*
@@ -989,11 +996,22 @@
  */
 .fbk-slider-label { flex: 0 0 auto; width: auto; }
 
-.fbk-slider-row .fbk-readout { flex: 0 0 auto; margin-right: var(--fbk-s-3, 6px); }
+.fbk-slider-row .fbk-readout { flex: 0 0 auto; }
+/* With a label the value pairs leftward; without one it trails the track. */
+.fbk-slider-row .fbk-slider-label ~ .fbk-readout { margin-right: var(--fbk-s-3, 6px); }
 
+/*
+ * `min-width: 0`, not 80.
+ *
+ * An 80px floor is a promise the flex row cannot always keep, and inside a
+ * field it stopped the track short of the right edge — reported as "the
+ * difficulty bar does not go all the way". A track that is the flexible child
+ * of a row it is meant to fill has no business having a minimum: the row's
+ * other children are all fixed, so whatever is left IS the track.
+ */
 .fbk-slider {
     flex: 1 1 auto;
-    min-width: 80px;
+    min-width: 0;
     height: var(--fbk-h-md, 40px);
     appearance: none;
     -webkit-appearance: none;
@@ -1328,8 +1346,22 @@
  */
 .fbk-btn-primary .fbk-kbd,
 .fbk-btn-stop .fbk-kbd {
+    /*
+     * `text` as the plate and `bg` as the ink — NOT `on-accent`.
+     *
+     * This read `background: on-accent; color: bg`, which was correct while
+     * `on-accent` was near-white. The rack palette makes `on-accent` the WELL,
+     * because the accent is light enough that only dark ink survives on it
+     * (2.22:1 for white against 7.43:1 for the well) — and that turned this cap
+     * into the well on the well: **black on black**, a solid dark square with
+     * an invisible letter, which is what shipped.
+     *
+     * The lesson generalises past this rule: a role that means "ink for X"
+     * cannot be reused as "a plate on X". They are opposite ends of the same
+     * pairing, and one of them changed sides when the palette did.
+     */
     border-color: rgb(var(--fbk-bg, 5 7 12) / 0.5);
-    background: rgb(var(--fbk-on-accent, 5 7 12));
+    background: rgb(var(--fbk-text, 232 238 252));
     color: rgb(var(--fbk-bg, 5 7 12));
 }
 
@@ -1602,6 +1634,17 @@
 
 .fbk-rail-dot[data-state="next"] { border-color: rgb(var(--fbk-accent, 41 168 255) / 0.55); }
 
+/*
+ * A dense ladder shrinks its dots rather than dropping any.
+ *
+ * A step of +2 is 21 rungs, and 21 dots at 10px in 330px touch. Every rung is
+ * real — the shape of the climb is the information — so the marks thin out
+ * (see `rail.set`) and the dots get smaller instead.
+ */
+.fbk-rail[data-dense="true"] .fbk-rail-dot { width: 7px; height: 7px; border-width: 1px; }
+.fbk-rail[data-dense="true"] .fbk-rail-dot[data-state="on"] { width: 11px; height: 11px; border-width: 2px; }
+.fbk-rail[data-dense="true"] .fbk-rail-mark:empty { flex: 0 0 auto; width: 0; }
+
 .fbk-rail-mark {
     font: var(--fbk-t-num, 700 11px/1.2 monospace);
     letter-spacing: var(--fbk-t-num-track, 0.02em);
@@ -1827,11 +1870,20 @@
  * dragged mid-song. `::before` grows the touch area without growing the paint
  * — the same split as the strip's own hit table, one level down.
  */
+/*
+ * 20 wide, not 28.
+ *
+ * 28px of grip on each side of a selection that can be four pixels wide is
+ * 56px of furniture pointing at nothing — reported as the handles being far
+ * too thick and getting in the way. 20 still carries the letter, and the 44px
+ * hit area comes from `::before` rather than from the paint, which is the same
+ * split the strip's own hit table uses one level up.
+ */
 .fbk-strip-handle {
     position: absolute;
     top: -2px;
     bottom: -2px;
-    width: 28px;
+    width: 20px;
     padding: 0;
     border: 0;
     border-radius: var(--fbk-radius-seg, 5px);

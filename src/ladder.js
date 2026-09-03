@@ -147,12 +147,39 @@ export function buildLadder(startPct, stepPct, bounds) {
 
     const top = 100;
     const start = Math.max(START_MIN_PCT, Math.min(top, snap(num(startPct, DEFAULT_START_PCT))));
-    const step = Math.max(grid, snap(num(stepPct, DEFAULT_STEP_PCT)));
+    /*
+     * THE STEP IS NOT SNAPPED TO THE SPEED GRID.
+     *
+     * It used to be `Math.max(grid, snap(step))`, and with the host's 5% grid
+     * that turned `+2` into `Math.max(5, round(2/5)*5)` = **5**. Picking +2
+     * lit the +2 cell and built the +5 ladder, which is the report: "selecting
+     * step 2 does not create the scale".
+     *
+     * The mistake is a category one. A RUNG is a speed and has to land on a
+     * rate the host can play, so it is snapped. A STEP is a *difference*
+     * between rungs, and nothing requires a difference to be a legal speed —
+     * 60, 62, 64 are all on the grid even though 2 is not. The rungs
+     * themselves are snapped below, which is where the constraint belongs.
+     */
+    const step = Math.max(1, Math.round(num(stepPct, DEFAULT_STEP_PCT)));
 
+    /*
+     * THE RUNGS ARE NOT SNAPPED EITHER, and only the START is.
+     *
+     * Snapping them made `+2` indistinguishable from `+5`: on a 5% grid,
+     * 60/62/64/66 all round to 60/60/65/65 and dedupe back to the +5 ladder.
+     * Two rounds of the same mistake, one level apart.
+     *
+     * The grid is the SLIDER's constraint, not the drill's. `applySpeedPreset`
+     * wants a preset stop, but the conductor applies each rung with
+     * `window.setSpeed(rate)`, which takes any rate at all — so 62% is a
+     * perfectly playable rung and only the START has to land on a stop,
+     * because the START is also what drives the live slider.
+     */
     const rungs = [];
-    for (let v = start; v < top; v += step) rungs.push(v);
+    for (let v = start; v < top; v += step) rungs.push(Math.round(v));
     rungs.push(top);
-    return rungs;
+    return [...new Set(rungs)].filter((v) => v <= top).sort((a, b) => a - b);
 }
 
 /** A number, with a fallback that is used for nullish and for junk alike. */

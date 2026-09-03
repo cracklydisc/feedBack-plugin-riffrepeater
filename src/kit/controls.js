@@ -1,5 +1,5 @@
 /*
- * kit 0.12.0 — the four control families, as builders.
+ * kit 0.13.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -327,21 +327,46 @@ export function rail(opts = {}) {
          */
         set(rungs) {
             const list = Array.isArray(rungs) ? rungs : [];
+            /* A 21-rung ladder's dots would overlap at 10px. */
+            wrap.dataset.dense = list.length > 8 ? 'true' : 'false';
             const sig = list.map((r) => r.value + ':' + (r.label === undefined ? '' : r.label)).join(',');
             if (sig !== signature) {
                 signature = sig;
                 dots.textContent = '';
                 marks.textContent = '';
-                for (const r of list) {
+                /*
+                 * EVERY DOT, BUT NOT EVERY LABEL.
+                 *
+                 * A step of +2 from 60 is 21 rungs, and 21 numbers in 330px is
+                 * a smear. The dots are the ladder and they all belong — the
+                 * shape of the climb is the information — while the labels are
+                 * a convenience, so above a handful only the ends and every
+                 * nth survive. The current rung is labelled by `set()` below
+                 * whatever this leaves, because that one is never optional.
+                 */
+                const every = list.length <= 6 ? 1 : Math.ceil(list.length / 5);
+                for (let i = 0; i < list.length; i += 1) {
+                    const r = list[i];
                     dots.appendChild(el('span', 'fbk-rail-dot'));
-                    marks.appendChild(el('span', 'fbk-rail-mark', String(r.label === undefined ? r.value : r.label)));
+                    const keep = i === 0 || i === list.length - 1 || i % every === 0;
+                    marks.appendChild(el('span', 'fbk-rail-mark',
+                        keep ? String(r.label === undefined ? r.value : r.label) : ''));
                 }
             }
             const dn = dots.children;
             const mn = marks.children;
             for (let i = 0; i < list.length; i += 1) {
                 if (dn[i]) dn[i].dataset.state = list[i].state || 'next';
-                if (mn[i]) mn[i].dataset.state = list[i].state || 'next';
+                if (!mn[i]) continue;
+                mn[i].dataset.state = list[i].state || 'next';
+                /*
+                 * The rung you are ON always carries its number, even on a
+                 * ladder too dense to label. "Which speed am I playing at" is
+                 * the one question the rail exists to answer.
+                 */
+                if (list[i].state === 'on' && !mn[i].textContent) {
+                    mn[i].textContent = String(list[i].label === undefined ? list[i].value : list[i].label);
+                }
             }
             /*
              * The line fills to the current rung, so progress is a LENGTH.
@@ -533,15 +558,25 @@ export function rangeStrip(opts = {}) {
         return (x / r.width) * duration;
     };
 
-    /** The block boundary nearest a time — what a handle snaps to. */
+    /**
+     * The block boundary nearest a time — what a handle snaps to.
+     *
+     * ZERO AND THE DURATION COUNT AS BOUNDARIES. Without them, dragging A to
+     * the very start snapped to the first block's start instead, which on a
+     * chart whose first phrase begins at 0:03 meant the loop could not be
+     * moved before 0:03 however far you dragged — reported exactly that way.
+     * The song's own ends are edges; leaving them out made the strip narrower
+     * than the song it draws.
+     */
     function snap(seconds) {
         let best = seconds;
         let dist = Infinity;
-        for (const it of items) {
-            for (const edge of [it.start, it.end]) {
-                const d = Math.abs(edge - seconds);
-                if (d < dist) { dist = d; best = edge; }
-            }
+        const edges = [0, duration];
+        for (const it of items) edges.push(it.start, it.end);
+        for (const edge of edges) {
+            if (!Number.isFinite(edge)) continue;
+            const d = Math.abs(edge - seconds);
+            if (d < dist) { dist = d; best = edge; }
         }
         return best;
     }
@@ -1032,9 +1067,24 @@ export function slider(opts = {}) {
     });
 
     const heading = label ? el('span', 'fbk-label fbk-label-inline fbk-slider-label', label) : null;
-    if (heading) wrap.appendChild(heading);
-    wrap.appendChild(out.el);
-    wrap.appendChild(input);
+    /*
+     * WITH a label: label, value, track — the value beside the word that names
+     * it, so they read as one unit and the track takes the rest.
+     *
+     * WITHOUT one: track, then value. A label-less slider is inside a `field`
+     * whose legend already names it, so there is nothing for the value to pair
+     * with on the left — and putting it there instead left the track ending
+     * 62px short of the field's edge, which is the "the difficulty bar does
+     * not go all the way" report.
+     */
+    if (heading) {
+        wrap.appendChild(heading);
+        wrap.appendChild(out.el);
+        wrap.appendChild(input);
+    } else {
+        wrap.appendChild(input);
+        wrap.appendChild(out.el);
+    }
 
     return {
         el: wrap,
