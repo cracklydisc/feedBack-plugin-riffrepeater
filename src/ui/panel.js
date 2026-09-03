@@ -468,9 +468,24 @@ export function createContent(outer, actions, foot) {
 
         difficulty.set(snap.difficultyPct);
         difficulty.disable(!snap.hasPhraseData || running);
+        /*
+         * NO NOTE WHILE A DRILL RUNS.
+         *
+         * It said "the drill owns the speed and the difficulty while it runs"
+         * — and START, GOAL, STEP and CHART are all disabled at that moment,
+         * which says the same thing without a sentence. Reported as useless
+         * and, worse, as growing the panel the instant you press start: two
+         * lines appearing under the controls you just committed to, pushing
+         * everything below them down.
+         *
+         * It is the green dot and the "note detection on" line again — a
+         * message that reports the expected state. `.fbk-note` is for a
+         * control that is not working for a reason you cannot see, and a
+         * greyed-out stepper is not that.
+         */
         if (running) {
-            diffNote.hidden = false;
-            diffNote.textContent = 'The drill owns the speed and the difficulty while it runs.';
+            diffNote.hidden = true;
+            diffNote.textContent = '';
         } else if (!snap.hasPhraseData) {
             diffNote.hidden = false;
             diffNote.textContent = 'This chart has a single difficulty tier, so the slider does nothing here.';
