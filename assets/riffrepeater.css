@@ -25,9 +25,19 @@
     text-overflow: ellipsis;
 }
 
+/*
+ * The clock inside an edge row's stepper.
+ *
+ * Fixed width, NOT flexible — a flexible one absorbs the row's slack and puts
+ * the − and + 182px apart, and three parts that far apart are not one control
+ * any more. The kit's `.fbk-stepper .fbk-readout` uses the same 56px for the
+ * same reason: pressing − must not shuffle the row as the number's width
+ * changes.
+ */
 .rr-time {
+    flex: 0 0 auto;
+    min-width: 56px;
     font-variant-numeric: tabular-nums;
-    min-width: 34px;
     text-align: center;
 }
 
@@ -266,12 +276,18 @@
 }
 
 /*
- * A and B, as circles with a letter in them.
+ * A and B — the same shape as the steppers beside them, accented.
  *
- * The same shape as the steppers they sit between, on purpose: setting an
- * edge at the playhead and nudging an edge by a bar are the same job from two
- * directions, and one shape language for one job is the whole point of the
- * four families.
+ * The shape is deliberate and unchanged in intent: putting an edge at the
+ * playhead and nudging it by a bar are the same job from two directions, so
+ * they are one family. What changed in 0.8.0 is that the family is a rounded
+ * rect at `h-md` rather than a circle at `h-sm` — kit DESIGN.md §17, because
+ * 26px is not a touch target and a circle was sharing `radius-pill` with the
+ * chips.
+ *
+ * The accent is what separates A and B from the nudges inside the row: it
+ * marks the button that *sets* rather than *adjusts*, which is now also the
+ * button that opens its row.
  */
 .rr-mark {
     font-weight: 800;

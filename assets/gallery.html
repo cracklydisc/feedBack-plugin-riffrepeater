@@ -319,6 +319,19 @@ body {
         <input class="fbk-slider" type="range" min="0" max="100" value="70" disabled>
         <span class="fbk-readout"><span class="fbk-readout-value">70</span><span class="fbk-readout-unit">%</span></span>
     </div>
+    <p class="g-why">The <strong>wide</strong> shape, for when the value is a
+    quantity being set rather than one field among several. A one-row slider
+    spends the row on label, track and value and the track gets what is left —
+    129px of a 306px body, 42% of the width for the only part you touch.</p>
+    <div class="g-grid g-grid-1" style="max-width:306px">
+        <div class="fbk-field">
+            <div class="fbk-field-head">
+                <span class="fbk-label">Chart</span>
+                <span class="fbk-readout"><span class="fbk-readout-value">100</span><span class="fbk-readout-unit">%</span></span>
+            </div>
+            <input class="fbk-slider fbk-slider-full" type="range" min="0" max="100" step="5" value="100">
+        </div>
+    </div>
 </section>
 
 <!-- ── buttons ────────────────────────────────────────────────────────── -->
@@ -429,6 +442,56 @@ body {
     to dim — the controls are the content now.</p>
 </section>
 
+<section class="g-card g-wide">
+    <h2>Signals on a filled control, and the touch scale</h2>
+    <p class="g-why">A hue is only a signal against a ground it contrasts
+    with, and the ground most often forgotten is the panel's own primary.
+    Left, the mistake: a key cap washed with <code>--fbk-bg / 0.35</code>
+    under the button's own ink measures <strong>1.05 : 1</strong> against the
+    fill. Right, inverted — near-white plate, panel-ground ink — which reads
+    on any hue a button might be filled with. DESIGN.md §16.</p>
+    <div class="g-grid g-grid-1" style="max-width:306px">
+        <button class="fbk-btn fbk-btn-primary" style="margin:0">
+            <span class="fbk-btn-label">⏱ Start drill</span>
+            <span class="fbk-kbd" style="border-color:rgb(var(--fbk-on-accent)/0.3);background:rgb(var(--fbk-bg)/0.35);color:inherit">D</span>
+        </button>
+        <button class="fbk-btn fbk-btn-primary" style="margin:0">
+            <span class="fbk-btn-label">⏱ Start drill</span>
+            <span class="fbk-kbd">D</span>
+        </button>
+    </div>
+    <p class="g-why">The status dot that used to sit on the left of that
+    button is gone rather than restyled: on an <em>enabled</em> primary it was
+    always "ready", because being blocked is what disables the button — so it
+    was visible exactly when it said nothing. The ring below is what a
+    consumer who does it anyway gets, not permission.</p>
+    <div class="g-grid">
+        <button class="fbk-btn fbk-btn-primary" style="margin:0;width:auto">
+            <span class="fbk-dot" data-state="ready"></span>
+            <span class="fbk-btn-label">With a dot</span>
+        </button>
+    </div>
+    <p class="g-why"><strong>Touch.</strong> Every control here references the
+    height scale, so <code>src/theme.js</code> swapping that scale under a
+    coarse pointer — 26·32·44 becomes 32·44·52 — grows all four families
+    together. Below, the same markup with the touch scale forced: this is what
+    a finger gets, and the reason a stepper is <code>min-width</code> rather
+    than <code>width</code>. DESIGN.md §17.</p>
+    <div class="g-grid" style="--fbk-h-sm:32px;--fbk-h-md:44px;--fbk-h-lg:52px">
+        <div class="fbk-stepper">
+            <button class="fbk-step">−</button>
+            <span class="fbk-readout"><span class="fbk-readout-value">85</span><span class="fbk-readout-unit">%</span></span>
+            <button class="fbk-step">+</button>
+        </div>
+        <button class="fbk-step">A</button>
+        <button class="fbk-step">◀</button>
+        <div class="fbk-chips">
+            <button class="fbk-chip">80</button>
+            <button class="fbk-chip fbk-on">90</button>
+        </div>
+    </div>
+</section>
+
 <!-- ── the whole shell ────────────────────────────────────────────────── -->
 <section class="g-card g-wide">
     <h2>The panel, assembled</h2>
@@ -458,16 +521,17 @@ body {
                     </div>
                     <button class="fbk-btn fbk-btn-quiet" style="flex:0 0 auto;width:var(--fbk-h-sm);height:var(--fbk-h-lg);padding:0;font-size:16px">›</button>
                 </div>
-                <div class="fbk-row">
+                <div class="fbk-row fbk-row-tight">
                     <button class="fbk-step" style="font-weight:800">A</button>
                     <button class="fbk-step">−</button>
-                    <span class="fbk-t-value">1:24</span>
+                    <span class="fbk-t-value" style="flex:1 1 auto;text-align:center">1:24</span>
                     <button class="fbk-step">+</button>
-                    <span class="fbk-push"></span>
-                    <button class="fbk-step">−</button>
-                    <span class="fbk-t-value">1:39</span>
-                    <button class="fbk-step">+</button>
+                </div>
+                <div class="fbk-row fbk-row-tight">
                     <button class="fbk-step" style="font-weight:800">B</button>
+                    <button class="fbk-step">−</button>
+                    <span class="fbk-t-value" style="flex:1 1 auto;text-align:center">1:39</span>
+                    <button class="fbk-step">+</button>
                 </div>
                 <section class="fbk-fold" data-open="false">
                     <button class="fbk-fold-head" type="button" aria-expanded="false">
@@ -477,7 +541,7 @@ body {
                     </button>
                     <div class="fbk-fold-body" hidden></div>
                 </section>
-                <button class="fbk-btn fbk-btn-primary"><span class="fbk-dot" data-state="ready"></span><span class="fbk-btn-label">⏱ Start drill</span><span class="fbk-kbd">D</span></button>
+                <button class="fbk-btn fbk-btn-primary"><span class="fbk-btn-label">⏱ Start drill</span><span class="fbk-kbd">D</span></button>
                 <div class="fbk-row fbk-row-tight">
                     <button class="fbk-btn fbk-btn-small">Loop only</button>
                     <button class="fbk-btn fbk-btn-small fbk-btn-quiet" disabled>Clear</button>
@@ -492,10 +556,12 @@ body {
                         <button class="fbk-seg-btn fbk-on">100</button>
                     </div>
                 </div>
-                <div class="fbk-row">
-                    <span class="fbk-label fbk-label-inline">Chart</span>
-                    <input class="fbk-slider" type="range" min="0" max="100" step="5" value="100">
-                    <span class="fbk-readout"><span class="fbk-readout-value">100</span><span class="fbk-readout-unit">%</span></span>
+                <div class="fbk-field">
+                    <div class="fbk-field-head">
+                        <span class="fbk-label">Chart</span>
+                        <span class="fbk-readout"><span class="fbk-readout-value">100</span><span class="fbk-readout-unit">%</span></span>
+                    </div>
+                    <input class="fbk-slider fbk-slider-full" type="range" min="0" max="100" step="5" value="100">
                 </div>
                 <div class="fbk-section">
                     <h4 class="fbk-section-title">Where you struggle</h4>

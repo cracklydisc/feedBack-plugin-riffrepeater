@@ -178,27 +178,75 @@ export function createContent(outer, actions) {
      * and no arrow glyph between the halves for the same reason. A and B are
      * the app's own names for these two points, so the letters carry it.
      */
-    const trim = c.el('div', 'fbk-row rr-trim');
-    trim.title = 'A and B put an edge at the playhead; the steppers move one by a whole bar. '
-        + 'Bars, not seconds: a boundary off the grid turns the count-in into a guess.';
-    const markA = c.button('fbk-step rr-mark', 'A',
-        'Set the loop start (A) at the playhead — the I key',
-        () => actions.markEdge('start'));
-    const trimStart = c.el('span', 'rr-time');
-    const markB = c.button('fbk-step rr-mark', 'B',
-        'Set the loop end (B) at the playhead — the O key',
-        () => actions.markEdge('end'));
-    const trimEnd = c.el('span', 'rr-time');
-    trim.appendChild(markA);
-    trim.appendChild(c.button('fbk-step', '−', 'Start one bar earlier', () => actions.nudge('start', -1)));
-    trim.appendChild(trimStart);
-    trim.appendChild(c.button('fbk-step', '+', 'Start one bar later', () => actions.nudge('start', 1)));
-    trim.appendChild(c.el('span', 'fbk-push'));
-    trim.appendChild(c.button('fbk-step', '−', 'End one bar earlier', () => actions.nudge('end', -1)));
-    trim.appendChild(trimEnd);
-    trim.appendChild(c.button('fbk-step', '+', 'End one bar later', () => actions.nudge('end', 1)));
-    trim.appendChild(markB);
-    body.appendChild(trim);
+    /*
+     * ONE ROW PER EDGE, since 0.8.0.
+     *
+     *     A   −   0:08   +
+     *     B   −   0:22   +
+     *
+     * It was one row of nine children, and it fitted: 7 steppers at 26px plus
+     * two clocks came to 298px in a 306px body, with 8px to spare. Then the
+     * report was that the round buttons should be comfortable on touch too —
+     * and 26px is under WCAG 2.5.8's floor once the border counts, let alone
+     * 2.5.5's 44px, on the controls a player nudges *while playing*. At the
+     * touch scale the same nine children need 354px, so no amount of
+     * tightening saves the single row.
+     *
+     * Splitting it costs one row and buys 18px on every one of eight targets,
+     * which for a control you operate with a guitar in your hands is not a
+     * close call. It also reads better than the version it replaces: the old
+     * row put A and B at the far ends with the two clocks in the middle, so
+     * which stepper moved which edge was something you worked out from
+     * position. Now the edge's own letter starts its row.
+     */
+    const edgeRows = [];
+
+    function edgeRow(letter, edge, key, title) {
+        const row = c.el('div', 'fbk-row fbk-row-tight fbk-row-nowrap rr-trim');
+        row.title = title;
+        const mark = c.button('fbk-step rr-mark', letter,
+            `Set the loop ${edge === 'start' ? 'start' : 'end'} (${letter}) at the playhead — the ${key} key`,
+            () => actions.markEdge(edge));
+        /*
+         * `− 0:08 +` in a real `.fbk-stepper`, and the whole cluster pushed
+         * right.
+         *
+         * The first version let the clock take the row's slack, which put the
+         * two buttons 182px apart — at which point they are not a stepper any
+         * more, they are two unrelated buttons with a number between them.
+         * A stepper's − and + have to flank the value tightly or the three
+         * parts stop reading as one control, which is the kit's own reason for
+         * `.fbk-stepper` having a smaller gap than the row it sits in.
+         *
+         * So the slack goes BETWEEN the two jobs instead: `A` sets the edge,
+         * the cluster adjusts it, and the gap between them is what says they
+         * are different things. Both rows' clusters are the same width, so the
+         * `+` lands at the same x in each without a measurement to keep in
+         * sync.
+         */
+        const nudger = c.el('div', 'fbk-stepper');
+        const time = c.el('span', 'rr-time');
+        nudger.appendChild(c.button('fbk-step', '−', 'One bar earlier', () => actions.nudge(edge, -1)));
+        nudger.appendChild(time);
+        nudger.appendChild(c.button('fbk-step', '+', 'One bar later', () => actions.nudge(edge, 1)));
+        row.appendChild(mark);
+        row.appendChild(c.el('span', 'fbk-push'));
+        row.appendChild(nudger);
+        body.appendChild(row);
+        edgeRows.push(row);
+        return { mark, time };
+    }
+
+
+
+    const TRIM_TITLE = 'The letter puts this edge at the playhead; the steppers move it by a '
+        + 'whole bar. Bars, not seconds: a boundary off the grid turns the count-in into a guess.';
+    const edgeA = edgeRow('A', 'start', 'I', TRIM_TITLE);
+    const edgeB = edgeRow('B', 'end', 'O', TRIM_TITLE);
+    const markA = edgeA.mark;
+    const markB = edgeB.mark;
+    const trimStart = edgeA.time;
+    const trimEnd = edgeB.time;
 
     /* ── how you drill ────────────────────────────────────────────────────
      *
@@ -291,9 +339,21 @@ export function createContent(outer, actions) {
     how.body.appendChild(goalRow);
 
     // ── the primary, alone on its line ───────────────────────────────────
+    /*
+     * No status dot on it any more.
+     *
+     * It was 8px of `--fbk-good` green on a saturated sky fill — two hues at
+     * similar luminance, so it read as a smudge, reported as "the green
+     * disappears". But recolouring it was the wrong fix, because of what it
+     * said: on an ENABLED primary the dot was ALWAYS `ready`, since a blocked
+     * engine is exactly what disables the button. It was visible precisely
+     * when it carried nothing, and when it carried something the button was
+     * dimmed and the reason was in a tooltip.
+     *
+     * So the reason moved into the note below instead — words, where a colour
+     * was doing the work. Kit DESIGN.md §16.
+     */
     const startBtn = c.button('fbk-btn fbk-btn-primary', null, null, () => actions.startDrill());
-    const startDot = c.dot('off');
-    startBtn.appendChild(startDot);
     startBtn.appendChild(c.el('span', 'fbk-btn-label', '⏱ Start drill'));
     startBtn.appendChild(c.kbd('D'));
     body.appendChild(startBtn);
@@ -348,11 +408,20 @@ export function createContent(outer, actions) {
     speedRow.appendChild(speed.el);
     body.appendChild(speedRow);
 
-    const diffRow = c.el('div', 'fbk-row rr-diff');
-    diffRow.title = 'Master difficulty. Lower thins the chart to the easier tiers the '
-        + 'pack was authored with; 100% is the full arrangement.';
-    diffRow.appendChild(c.el('span', 'fbk-label fbk-label-inline', 'Chart'));
+    /*
+     * The difficulty, as a FIELD rather than a row.
+     *
+     * In a row it was `CHART` + track + `100 %`, and the track got 129px of a
+     * 306px body — 42% of the width for the only part of the control you
+     * touch, with the label column and the readout taking the rest. The value
+     * now sits at the end of the label's line, which is where the track's
+     * maximum is anyway, and the track spans the panel. Kit 0.5.0's
+     * `slider({ wide: true })`; DESIGN.md's component table says when to keep
+     * the row shape instead.
+     */
     const difficulty = c.slider({
+        wide: true,
+        label: 'Chart',
         min: 0,
         max: 100,
         step: 5,
@@ -360,8 +429,9 @@ export function createContent(outer, actions) {
         ariaLabel: 'Master difficulty',
         onInput: (v) => actions.setDifficulty(v),
     });
-    diffRow.appendChild(difficulty.el);
-    body.appendChild(diffRow);
+    difficulty.el.title = 'Master difficulty. Lower thins the chart to the easier tiers the '
+        + 'pack was authored with; 100% is the full arrangement.';
+    body.appendChild(difficulty.el);
 
     // Only ever drawn when it explains a control that is not working.
     const diffNote = c.el('p', 'fbk-note');
@@ -788,7 +858,12 @@ export function createContent(outer, actions) {
             trimStart.textContent = '–';
             trimEnd.textContent = '–';
         }
-        for (const b of trim.querySelectorAll('button')) b.disabled = !sel || snap.drill.active;
+        // Both edge rows at once, and the two `mark` buttons get overridden
+        // just below — A is the one control here that works with nothing
+        // selected, because pressing it is how a range starts.
+        for (const row of edgeRows) {
+            for (const b of row.querySelectorAll('button')) b.disabled = !sel || snap.drill.active;
+        }
         // A works with nothing selected — that is how you start a range. B
         // needs a start to close, and the drill owns the loop while it runs.
         markA.disabled = snap.drill.active;
@@ -819,16 +894,22 @@ export function createContent(outer, actions) {
                 : (emptySelection(snap)
                     ? 'This passage has no notes in it'
                     : 'Pick a passage first'));
-        startDot.dataset.state = snap.engine.blocked ? (snap.engine.available ? 'warn' : 'off') : 'ready';
-        // The one case where three controls go dead at once with nothing on
-        // screen saying why — and the tooltip said "pick a passage first",
-        // about a passage you had picked.
-        const dead = emptySelection(snap);
-        deadNote.hidden = !dead;
-        deadNote.textContent = dead
-            ? 'This passage has no notes in it, so there is nothing to drill.'
-            : '';
-        startDot.title = snap.engine.blocked || 'Note detection is live';
+        /*
+         * Why the primary is dead, in words and on screen.
+         *
+         * Two causes, and they used to be reported two different wrong ways:
+         * a blocked engine by an 8px hue on a saturated fill plus a tooltip,
+         * and an empty passage by a tooltip that said "pick a passage first"
+         * about a passage you had picked. Both are now the same sentence in
+         * the same place — a `.fbk-note`, which exists for exactly this and
+         * is drawn only when something is not working.
+         */
+        const why = snap.engine.blocked
+            || (emptySelection(snap)
+                ? 'This passage has no notes in it, so there is nothing to drill.'
+                : '');
+        deadNote.hidden = !why;
+        deadNote.textContent = why || '';
         loopBtn.disabled = !snap.selectionUsable || snap.drill.active;
         // Nothing to clear is not the same as nothing to do: a live button
         // whose click has no visible effect is the mode tabs' defect in

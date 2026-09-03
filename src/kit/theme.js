@@ -1,5 +1,5 @@
 /*
- * kit 0.4.0 — the token bridge.
+ * kit 0.5.0 — the token bridge.
  *
  * Reads the host's palette and writes it back as `--fbk-*` custom properties
  * that a stylesheet can use, then follows `theme:changed`. This existed three
@@ -229,6 +229,17 @@ function write() {
         root.style.setProperty(PROP_PREFIX + slot, recipes[slot]);
     }
 
+    /*
+     * The touch scale, after the recipes so it wins over them — and after any
+     * consumer override too, deliberately: a plugin may redefine the look, it
+     * may not decide that a finger is smaller than it is.
+     */
+    if (coarsePointer()) {
+        for (const slot of Object.keys(TOUCH_HEIGHTS)) {
+            root.style.setProperty(PROP_PREFIX + slot, TOUCH_HEIGHTS[slot]);
+        }
+    }
+
     // The single reduced-motion gate. `--fbk-motion` is the only place
     // decorative timing is named, so setting it to `none` here disables every
     // transition in the kit at once and a consumer cannot forget the gate.
@@ -242,17 +253,69 @@ function write() {
  * — the escape hatch a plugin skin needs without reinventing the roles. Most
  * consumers pass nothing.
  */
+/**
+ * The height scale again, for a finger.
+ *
+ * A mouse lands within a pixel or two of where it is aimed; a fingertip
+ * contacts roughly 9mm of glass. So these are not the same control at two
+ * sizes, they are two different physical problems — and the honest fix is to
+ * change the SCALE rather than to grow individual controls, because growing
+ * one is how a row ends up with a 44px stepper next to a 26px chip and no
+ * shared rhythm left.
+ *
+ * 44px is the figure WCAG 2.5.5 (Target Size, AAA) asks for and the one both
+ * platform guidelines settle on. `h-sm` goes to 32 rather than 44 because it
+ * is the height of things that sit in groups — chips, small buttons — where
+ * the row's own padding contributes and 44 would make a five-rung ladder
+ * taller than the primary.
+ *
+ * This is applied by `write()` only when the pointer is actually coarse, and
+ * it is re-applied if that changes: a convertible laptop switches while the
+ * panel is open.
+ */
+const TOUCH_HEIGHTS = {
+    'h-sm': '32px',
+    'h-md': '44px',
+    'h-lg': '52px',
+};
+
+/** True when the primary pointer is a finger rather than a mouse. */
+function coarsePointer() {
+    try { return window.matchMedia('(pointer: coarse)').matches; } catch (_) { return false; }
+}
+
 export function follow(recipes = null) {
     recipeOverride = recipes;
     write();
     if (unsubscribe) return;
+
+    const stops = [];
+
+    /*
+     * A convertible laptop changes pointer while the panel is open — folding
+     * the keyboard back is exactly the moment the controls need to grow — so
+     * the touch scale is watched, not read once at install.
+     */
+    try {
+        const mq = window.matchMedia('(pointer: coarse)');
+        const onPointer = () => write();
+        if (typeof mq.addEventListener === 'function') {
+            mq.addEventListener('change', onPointer);
+            stops.push(() => mq.removeEventListener('change', onPointer));
+        }
+    } catch (_) { /* no matchMedia: the scale is whatever write() decided */ }
+
     const fb = window.feedBack;
-    if (!fb || typeof fb.on !== 'function') return;
-    const handler = () => write();
-    fb.on('theme:changed', handler);
-    unsubscribe = () => {
-        try { if (typeof fb.off === 'function') fb.off('theme:changed', handler); } catch (_) { /* going away */ }
-    };
+    if (fb && typeof fb.on === 'function') {
+        const handler = () => write();
+        fb.on('theme:changed', handler);
+        stops.push(() => {
+            try { if (typeof fb.off === 'function') fb.off('theme:changed', handler); } catch (_) { /* going away */ }
+        });
+    }
+
+    if (!stops.length) return;
+    unsubscribe = () => { for (const stop of stops) stop(); };
 }
 
 export function unfollow() {
@@ -261,6 +324,10 @@ export function unfollow() {
     const root = document.documentElement;
     for (const role of Object.keys(ROLES)) root.style.removeProperty(propFor(role));
     for (const slot of Object.keys(RECIPES)) root.style.removeProperty(PROP_PREFIX + slot);
+    // The touch scale writes the same property names, but removing a property
+    // twice is harmless and forgetting one would leave a 44px stepper behind
+    // after uninstall.
+    for (const slot of Object.keys(TOUCH_HEIGHTS)) root.style.removeProperty(PROP_PREFIX + slot);
 }
 
 /**

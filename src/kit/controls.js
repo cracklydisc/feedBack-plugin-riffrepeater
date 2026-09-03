@@ -1,5 +1,5 @@
 /*
- * kit 0.4.0 — the four control families, as builders.
+ * kit 0.5.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -361,26 +361,64 @@ export function stepper(opts = {}) {
 }
 
 /** A HUD gauge that is still an `<input type="range">`, for the keyboard. */
+/**
+ * A gauge you drag, in one row or as a full-width field.
+ *
+ * `wide: true` (with a `label`) gives the second shape:
+ *
+ *     CHART                                              100 %
+ *     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━●
+ *
+ * The one-row shape spends the row on three things — label, track, value — so
+ * the track gets whatever is left, which on a 306px panel body was 129px:
+ * 42% of the width for the only part of the control you actually touch. The
+ * wide shape gives the track the whole width and puts the value at the end of
+ * the label's line, where the track's own maximum is. Use it whenever the
+ * value is a *quantity being set* rather than one field among several; keep
+ * the row shape when the control sits in a stack of same-shaped rows and
+ * breaking the rhythm would cost more than the pixels are worth.
+ */
 export function slider(opts = {}) {
-    const { min = 0, max = 100, step = 1, unit = '%', ariaLabel, onInput = () => {} } = opts;
-    const wrap = el('div', 'fbk-row');
+    const {
+        min = 0, max = 100, step = 1, unit = '%',
+        ariaLabel, onInput = () => {},
+        wide = false, label = '',
+    } = opts;
+
     const input = document.createElement('input');
     input.type = 'range';
-    input.className = 'fbk-slider';
+    input.className = wide ? 'fbk-slider fbk-slider-full' : 'fbk-slider';
     input.min = String(min);
     input.max = String(max);
     input.step = String(step);
     if (ariaLabel) input.setAttribute('aria-label', ariaLabel);
+
     const out = readout(unit);
     input.addEventListener('input', () => {
         out.set(input.value);
         onInput(Number(input.value));
     });
-    wrap.appendChild(input);
-    wrap.appendChild(out.el);
+
+    let wrap;
+    let head = null;
+    if (wide) {
+        wrap = el('div', 'fbk-field');
+        head = el('div', 'fbk-field-head');
+        head.appendChild(el('span', 'fbk-label', label));
+        head.appendChild(out.el);
+        wrap.appendChild(head);
+        wrap.appendChild(input);
+    } else {
+        wrap = el('div', 'fbk-row');
+        wrap.appendChild(input);
+        wrap.appendChild(out.el);
+    }
+
     return {
         el: wrap,
         input,
+        /** The label/value line, for a caller that wants to hang a badge on it. */
+        head,
         /** Skipped while focused, so it cannot fight the user's drag. */
         set(v) {
             const n = num(v);

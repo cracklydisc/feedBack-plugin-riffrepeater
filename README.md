@@ -120,8 +120,19 @@ two seconds is a different amount of music in every song. A loop boundary off
 the grid turns a count-in into a guess.
 
 **A and B, from the playhead** — the way you actually mark a passage. Press
-**Set A** (or `I`), let the song run to the end of the phrase, press **Set B**
-(or `O`). Both snap to the bar grid. Pressing A with nothing selected gives you
+**A** (or `I`), let the song run to the end of the phrase, press **B** (or
+`O`). Both snap to the bar grid. One row per edge:
+
+```
+A                              −   0:08   +
+B                              −   0:22   +
+```
+
+The letter sets that edge at the playhead, the stepper moves it a bar. It was
+one row of nine controls until 0.8.0, and it fitted — but at 26px those are
+not touch targets, and at the touch scale the same nine need more width than
+the panel has. Splitting costs one row and buys 18px on each of eight
+targets. Pressing A with nothing selected gives you
 a loop of the default bar count immediately, so there is always something
 armable between the two presses; pressing B behind A is refused rather than
 silently swapped.
@@ -204,7 +215,18 @@ same rail of pills with the same five numbers, which is two different things
 wearing one costume; they are different shapes and different words now.
 
 **One lit primary, on its own line.** Nothing else in the panel is accent-
-filled, so there is never a question about what to press.
+filled, so there is never a question about what to press. Nothing rides on it
+either: it carried a status dot until 0.8.0, and the dot was always `ready`
+whenever the button was enabled — because a blocked engine is what disables
+it. A signal visible exactly when it says nothing. The blocked reason is a
+sentence under the button now.
+
+**Every size comes from the scale, so touch is one change.** Under
+`(pointer: coarse)` the kit swaps the height scale to 32 · 44 · 52 and all
+four control families grow together — a stepper is 32px under a mouse and
+44 × 44 under a thumb, which is WCAG 2.5.5. Growing the control that was
+complained about instead is how a row ends up with a 44px stepper beside a
+26px chip and no shared band left.
 
 **A data signal never looks like a selection signal.** Accuracy is the
 timeline block's fill and the weak list's bar; selection is a white bracket.

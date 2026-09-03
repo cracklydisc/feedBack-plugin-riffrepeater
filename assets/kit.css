@@ -1,5 +1,5 @@
 /*
- * kit 0.4.0 — the shared look.
+ * kit 0.5.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -318,6 +318,29 @@
 
 .fbk-push { margin-left: auto; }
 
+/*
+ * A FIELD — a label line, then the control at full width.
+ *
+ * The alternative to `.fbk-label-inline`, and the right one whenever the
+ * control is a track you drag: a one-row slider spends the row on label,
+ * track and value, and the track gets what is left — 129px of a 306px body,
+ * 42% of the width for the only part you touch. Here the value sits at the
+ * end of the label's line, which is where the track's maximum is, and the
+ * track gets the whole width.
+ */
+.fbk-field { margin: var(--fbk-s-3, 6px) 0; }
+
+.fbk-field-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--fbk-s-3, 6px);
+}
+
+/* The label is a block element by default, and its bottom margin would push
+   the value off the shared baseline. */
+.fbk-field-head .fbk-label { margin-bottom: 0; }
+
 .fbk-note {
     margin: var(--fbk-s-3, 6px) 0 0;
     color: rgb(var(--fbk-dim, 148 163 184));
@@ -630,7 +653,9 @@
 .fbk-stepper {
     display: inline-flex;
     align-items: center;
-    gap: var(--fbk-s-3, 6px);
+    /* Tight, because − value + is ONE control. The row's gap is for the space
+       between controls; using it here makes three parts read as three. */
+    gap: var(--fbk-s-2, 4px);
     height: var(--fbk-h-md, 32px);
 }
 
@@ -649,15 +674,36 @@
 
 .fbk-stepper-wide .fbk-readout { min-width: 76px; }
 
+/*
+ * A stepper button: a ROUNDED RECT at `h-md`, not a circle at `h-sm`.
+ *
+ * Two reasons, and the second is the one that forced it.
+ *
+ * SEPARATION. A circle is just a pill that happens to be square, so the
+ * stepper and the chip were sharing `radius-pill` — two of the four families
+ * wearing one geometry, which is the §1 mistake in slow motion. A stepper is
+ * a rounded square with a glyph, a chip is a pill with a word in it, a
+ * segmented cell is a cell inside a bordered track. Three shapes, three
+ * questions.
+ *
+ * SIZE. 26px is under WCAG 2.5.8's 24px floor once you count the border, and
+ * nowhere near 2.5.5's 44px — and these are the controls a player nudges
+ * mid-song. `h-md` is 32px on a mouse and **44px on a finger**, because
+ * src/theme.js swaps the whole height scale when the pointer is coarse. Which
+ * is why this is `min-width` and not `width`: at 44px the glyph is still one
+ * character, so the box may be square, but a caller who puts `A` or `12` in
+ * one gets a wider box rather than a clipped one.
+ */
 .fbk-step {
     flex: 0 0 auto;
-    width: var(--fbk-h-sm, 26px);
-    height: var(--fbk-h-sm, 26px);
+    min-width: var(--fbk-h-md, 32px);
+    height: var(--fbk-h-md, 32px);
+    padding: 0 var(--fbk-s-2, 4px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    border-radius: var(--fbk-radius-pill, 999px);
+    border-radius: var(--fbk-radius-sm, 8px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     background: rgb(var(--fbk-surface-2, 11 18 32));
     color: rgb(var(--fbk-text, 248 250 252));
@@ -685,6 +731,13 @@
  * shorthand that covers both — so the two blocks below are the same values
  * twice on purpose.
  * ═══════════════════════════════════════════════════════════════════════ */
+
+/* The full-width variant: `flex: none` so a flex parent cannot shrink it back
+   to its content, and 100% so it reaches both edges of the body. */
+.fbk-slider-full {
+    flex: none;
+    width: 100%;
+}
 
 .fbk-slider {
     flex: 1 1 auto;
@@ -998,11 +1051,40 @@
     white-space: nowrap;
 }
 
+/*
+ * A key cap on a filled button is INVERTED, not washed.
+ *
+ * It used to be `--fbk-bg / 0.35` with `color: inherit` — a 35% dark wash
+ * under the button's own near-white ink. Measured on the default accent that
+ * plate came out at **1.05 : 1** against the fill, so what reached the screen
+ * was white letters apparently floating in nothing, on a bright ground, at
+ * 10px. Reported as "the D is unreadable", and it was.
+ *
+ * Inverting fixes it in both directions at once: a near-white plate reads
+ * against any hue a button might be filled with, and the panel's own ground
+ * colour as ink reads against the plate at about 18:1. Roles, not device
+ * slots, on purpose — `--fbk-emph-on` is allowed to be `none`, and a `none`
+ * background here would delete the cap.
+ */
 .fbk-btn-primary .fbk-kbd,
 .fbk-btn-stop .fbk-kbd {
-    border-color: rgb(var(--fbk-on-accent, 248 250 252) / 0.3);
-    background: rgb(var(--fbk-bg, 15 23 42) / 0.35);
-    color: inherit;
+    border-color: rgb(var(--fbk-bg, 15 23 42) / 0.5);
+    background: rgb(var(--fbk-on-accent, 248 250 252));
+    color: rgb(var(--fbk-bg, 15 23 42));
+}
+
+/*
+ * A status dot on a filled button, if a consumer insists.
+ *
+ * DESIGN.md §16 says not to: a hue against a saturated fill is the one signal
+ * that cannot be read, and on an ENABLED primary the dot is always "ready"
+ * anyway, so it carries nothing the button's own state does not. This ring is
+ * here so that a consumer who does it regardless gets a visible dot rather
+ * than a 8px smudge — not as permission.
+ */
+.fbk-btn-primary .fbk-dot,
+.fbk-btn-stop .fbk-dot {
+    box-shadow: 0 0 0 var(--fbk-hairline, 1px) rgb(var(--fbk-bg, 15 23 42) / 0.6);
 }
 
 /*

@@ -1,5 +1,101 @@
 # Changelog
 
+## 0.8.0 — three details, three rules
+
+Reported: the Chart slider should run to the end of the panel; the colours
+inside `Start drill` can't be seen — the green disappears and the `D` is
+unreadable; and the round buttons don't always convince, they should be
+comfortable on a touch UI at the right size.
+
+All three turned out to be kit rules rather than local tweaks, so they landed
+in **kit 0.5.0** and this version consumes them.
+
+### The slider could not reach the edge, structurally
+
+| | before | after |
+| --- | --- | --- |
+| track width | **129px** | **296px** |
+| share of the 306px body | 42% | 97% |
+
+A one-row slider spends its row on three things — label column, track, value —
+so the track gets whatever is left, and the only part of the control you
+actually touch was the part being squeezed. It is a `.fbk-field` now: the
+value sits at the end of the label's line, which is where the track's maximum
+is anyway, and the track spans the panel.
+
+```
+CHART                                          100 %
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━●
+```
+
+### The key cap was washed, and the dot said nothing
+
+The cap was `--fbk-bg / 0.35` under the button's own near-white ink — a
+translucent dark plate *under* the ink means both halves move together, so the
+contrast between them can never improve. Measured against the accent fill:
+
+| | plate vs fill | ink vs plate |
+| --- | --- | --- |
+| before | **1.05 : 1** | — (`color: inherit`) |
+| after | 2.65 : 1 + a hairline | **17.06 : 1** |
+
+Inverted: near-white plate, panel-ground ink. It reads on any hue a button
+might be filled with.
+
+**The green dot got a different answer — it is gone, not recoloured.** Ask
+what it said: on an *enabled* primary it was always `ready`, because a blocked
+engine is exactly what disables the button. It was visible precisely when it
+carried nothing, and when it carried something the button was dimmed and the
+reason lived in a tooltip. So the reason moved into the `.fbk-note` below the
+button, in words, next to the control it is about — and that note now handles
+both causes of a dead primary with one sentence in one place.
+
+### 26px circles are not a touch target
+
+`h-sm` is under WCAG 2.5.8's 24×24 floor once the border counts, and nowhere
+near 2.5.5's 44×44 — on the controls a player nudges *while playing*.
+
+The fix is in the kit and it is a **scale swap**, not a control tweak: under
+`(pointer: coarse)` the height scale becomes 32 · 44 · 52, so all four
+families grow together. Verified in the running app at 375px:
+
+| | mouse | finger |
+| --- | --- | --- |
+| stepper | 32 × 32 | **44 × 44** |
+| primary | 44 | 52 |
+| rows overflowing | none | **none** |
+
+The shape changed with the size — a rounded rect, because a circle is a pill
+that happens to be square and the stepper had been sharing `radius-pill` with
+the chips: two of the four families in one geometry.
+
+**And the trim row became two rows, one per loop edge.** It fitted before —
+nine children came to 298px in a 306px body, 8px to spare — but at the touch
+scale the same nine need 354px, so no amount of tightening saves it.
+
+```
+A                              −   0:08   +
+B                              −   0:22   +
+```
+
+One row costs 18px on each of eight targets, which for a control you operate
+with a guitar in your hands is not a close call. It also reads better than
+what it replaced: the old row put A and B at the far ends with the clocks in
+the middle, so which stepper moved which edge was something you worked out
+from position. Now the edge's own letter starts its row.
+
+### Fixed on the way
+
+The first version of the edge row let the clock absorb the row's slack, which
+put `−` and `+` **182px apart** — at which point they are not a stepper, they
+are two unrelated buttons with a number between them. The nudges live in a
+real `.fbk-stepper` now (whose gap is deliberately smaller than a row's, for
+exactly this reason) and the slack goes *between the two jobs* instead: `A`
+sets the edge, the cluster adjusts it, and the space between them is what says
+they are different things. Both rows' clusters are the same width, so the `+`
+lands at the same x in each — measured at 1209 in both — with no constant to
+keep in sync.
+
 ## 0.7.0 — follow the write
 
 Asked: are there other parts that can be improved with the same logic?
