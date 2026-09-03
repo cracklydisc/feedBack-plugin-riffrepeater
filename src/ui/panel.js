@@ -113,7 +113,7 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
     const strip = c.rangeStrip({
         minHit: MIN_HIT_PX,
         ariaLabel: 'Phrase timeline — tap a block to loop it, drag a handle to move an edge',
-        onPick: (key) => actions.selectSection(key),
+        onPick: (key) => actions.selectBlock(key),
         onEdge: (edge, seconds) => actions.markEdgeAt(edge, seconds),
         onDrag: (a, b) => actions.selectDrag(a, b),
     });
@@ -372,15 +372,41 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
      * hands.
      *
      * So it folds while something is running: one big live number, the climb
-     * rail, and one row saying which passage and how far in. No buttons in it
-     * — the whole block is the target, because the only thing you might want
-     * mid-song is "give me the rest of it", and aiming at a chevron is not a
-     * gesture you can make while playing. Kit DESIGN.md §23.
+     * rail, and one row saying which passage and how far in. The whole block
+     * is one target, because the only thing you might want mid-song is "give
+     * me the rest of it", and aiming at a chevron is not a gesture you can
+     * make while playing. Kit DESIGN.md §23.
+     *
+     * The one exception is the WAY OUT. The detector's own drill HUD used to
+     * carry it and we now stand that HUD down while this strip shows, so the
+     * strip owes the player a stop they can hit without opening anything: a
+     * loop you cannot leave is a trap, and that was true of their HUD's End
+     * button before it was true of ours.
      */
     const strip2 = c.foldedStrip({
+        /*
+         * JUST "OPEN", no key badge.
+         *
+         * `OPEN · Y` next to a STOP footswitch read as two competing controls
+         * — reported that way — and the `Y` was the half carrying no weight:
+         * it is in the host's own keybinds list, and nobody hunting for the
+         * way back out of a folded panel is reading a two-character badge to
+         * find it. One word on the handle, and the footswitch beside it is
+         * unmistakably the other thing.
+         */
         label: 'OPEN',
-        hint: 'Y',
         onOpen: () => actions.unfold(),
+        endLabel: 'End',
+        onEnd: () => {
+            /*
+             * Which run is playing decides which verb. Asking the snapshot
+             * rather than remembering: the drill can end itself by graduating
+             * between two presses, and a remembered flag would then stop a
+             * loop that is not there.
+             */
+            if (lastSnap && lastSnap.drill.active) actions.endDrill();
+            else actions.clearLoop();
+        },
     });
 
     const liveTop = c.el('div', 'rr-live-top');
@@ -442,6 +468,8 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
             ? (nextStepLine(d) || '')
             : 'loop running';
 
+        strip2.setEnd(running ? 'End' : 'Stop');
+
         const sel = snap.selection;
         liveWhere.textContent = sel ? sel.label : '—';
         liveMeter.set(live, live === null ? null : c.band(live / 100));
@@ -488,7 +516,24 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
             const busy = snap.drill.active || snap.loopArmed;
             const small = busy && !wantsRack;
             if (small) renderFolded(snap);
-            panelApi.fold(small);
+            const folded = panelApi.fold(small);
+
+            /*
+             * STAND THE DETECTOR'S OWN DRILL HUD DOWN — but only while ours is
+             * actually on screen.
+             *
+             * `note_detect` builds `#nd-drill-hud` on document.body whenever a
+             * drill runs and offers no way to opt out, so two panels said the
+             * same things in two visual languages and the default one was the
+             * one on top. The flag goes on the root element and our stylesheet
+             * keys off it, which means the HUD comes straight back the moment
+             * our strip is not showing: the rack open, the panel closed, this
+             * plugin disabled or broken. Hiding another plugin's only way out
+             * and then failing would leave a drill with no exit at all.
+             */
+            document.documentElement.dataset.rrLive =
+                (folded && panelApi.isOpen()) ? 'true' : 'false';
+
             if (small) return;
         }
 

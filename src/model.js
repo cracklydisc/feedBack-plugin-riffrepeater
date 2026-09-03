@@ -169,6 +169,56 @@ export function selectSection(key) {
 }
 
 /**
+ * Put the selection on `block`, which may be a section or one of its phrases.
+ *
+ * THE STRIP DRAWS PHRASES AND THE PICK HANDLER ONLY KNEW SECTIONS.
+ *
+ * `onPick` handed `selectSection` a `part:` key; that searches `state.sections`
+ * and returns silently when it finds nothing — so on any chart WITH phrases,
+ * which is most of them, tapping the strip did nothing at all. Reported as
+ * "clicking a section on the chart does not select it for the loop", and it was
+ * every tap, not some.
+ *
+ * The walking gesture had it right the whole time: `,` and `.` resolved a
+ * phrase to its parent section and its index. Two gestures that mean the same
+ * thing were reading the same block list in two different ways, which is the
+ * shape of the bug rather than a detail of it — so there is one landing now,
+ * and both call it.
+ */
+function landOnBlock(block) {
+    if (!block) return;
+    state.barsRange = null;
+    if (block.kind === 'part') {
+        const parent = state.sections.find((sc) => sc.key === block.parent);
+        if (parent) state.sectionKey = parent.key;
+        state.mode = 'part';
+        rebuildParts();
+        const i = state.parts.findIndex((pp) => pp.key === block.key);
+        state.partIndex = i < 0 ? 0 : i;
+        return;
+    }
+    state.sectionKey = block.key;
+    landOnWhole();
+    rebuildParts();
+}
+
+/**
+ * Select whatever block the strip was tapped on — a section or a phrase.
+ *
+ * The strip's blocks are the song's phrases when it has any and its sections
+ * when it does not, so the handler behind it has to take either.
+ */
+export function selectBlock(key) {
+    const k = String(key === null || key === undefined ? '' : key);
+    const block = (state.phrases.length ? state.phrases : state.sections)
+        .find((b) => b.key === k)
+        || state.sections.find((b) => b.key === k);
+    if (!block) return;
+    landOnBlock(block);
+    announce();
+}
+
+/**
  * Put the selection on the WHOLE of whatever section was just chosen.
  *
  * Every gesture that picks a new section goes through here, and it has to,
@@ -420,19 +470,7 @@ export function stepBlock(delta) {
     const block = list[Math.max(0, Math.min(list.length - 1, at + d))];
     if (!block) return;
 
-    state.barsRange = null;
-    if (block.kind === 'part') {
-        const parent = state.sections.find((sc) => sc.key === block.parent);
-        if (parent) state.sectionKey = parent.key;
-        state.mode = 'part';
-        rebuildParts();
-        const i = state.parts.findIndex((pp) => pp.key === block.key);
-        state.partIndex = i < 0 ? 0 : i;
-    } else {
-        state.sectionKey = block.key;
-        landOnWhole();
-        rebuildParts();
-    }
+    landOnBlock(block);
     announce();
 }
 

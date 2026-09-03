@@ -856,22 +856,100 @@ export function rangeStrip(opts = {}) {
  * lifecycles, and two places for a bug about which one is showing.
  */
 export function foldedStrip(opts = {}) {
-    const { label = 'OPEN', hint = null, onOpen = null } = opts;
-    const wrap = el('button', 'fbk-folded');
-    wrap.type = 'button';
-    wrap.setAttribute('aria-expanded', 'false');
-    if (onOpen) wrap.addEventListener('click', onOpen);
+    const { label = 'OPEN', hint = null, onOpen = null, onEnd = null, endLabel = 'End' } = opts;
 
+    /*
+     * A DIV WITH A FULL-AREA HIT, not one big <button>.
+     *
+     * It was a button, which is the honest markup for "the whole block is the
+     * target" — and it capped the control at exactly one action, because a
+     * button inside a button is invalid and does not fire. That cap became a
+     * problem the moment we hid the detector's own drill HUD: that HUD carried
+     * the only one-press way OUT of a running drill, and a loop you cannot
+     * stop without first opening something is a trap.
+     *
+     * So: the hit is a button stretched behind the content, the content sits
+     * above it and passes clicks through, and anything that needs its own
+     * press takes `pointer-events: auto` and wins. Same single-target feel,
+     * room for the one control that has to be reachable.
+     */
+    const wrap = el('div', 'fbk-folded');
+
+    const hit = el('button', 'fbk-folded-hit');
+    hit.type = 'button';
+    hit.setAttribute('aria-expanded', 'false');
+    hit.setAttribute('aria-label', hint ? label + ' (' + hint + ')' : label);
+    if (onOpen) hit.addEventListener('click', onOpen);
+    wrap.appendChild(hit);
+
+    /*
+     * The grip and the cue share the top lane and CROSS-FADE.
+     *
+     * The cue used to be pinned to the bottom right, where it landed on top of
+     * the row of facts — reported as unreadable, and it was: two texts drawn
+     * in the same sixty pixels. The lane is the one place in the strip that
+     * holds no content, and it is already where the affordance is, so the
+     * handle simply labels itself when you point at it. Nothing is covered,
+     * because nothing else is ever there.
+     */
     wrap.appendChild(el('span', 'fbk-folded-grip'));
-    const body = el('span', 'fbk-folded-body');
-    const cue = el('span', 'fbk-folded-cue', hint ? `${label} · ${hint}` : label);
-    wrap.appendChild(body);
+    const cue = el('span', 'fbk-folded-cue', hint ? label + ' \u00b7 ' + hint : label);
     wrap.appendChild(cue);
+
+    const body = el('span', 'fbk-folded-body');
+    wrap.appendChild(body);
+
+    /*
+     * THE WAY OUT — a footswitch, and it looks like one.
+     *
+     * A tall thin column read as a scrollbar or a divider rather than a
+     * control, and next to a hover-revealed OPEN it looked like the pair of a
+     * thing it is not: reported as the two fighting. A square you stamp on is
+     * the shape this action has on real gear, and it settles the conflict by
+     * being a different KIND of object from the handle beside it — one is a
+     * lid you lift, one is a pedal you hit.
+     *
+     * The glyph is a DRAWN square, not `\u25a0`: at this size the character's
+     * weight and vertical placement move with whatever font resolved, and a
+     * stop icon that sits a pixel high looks broken rather than styled.
+     */
+    let end = null;
+    if (onEnd) {
+        end = el('button', 'fbk-folded-end');
+        end.type = 'button';
+        end.title = endLabel;
+        end.appendChild(el('span', 'fbk-folded-end-icon'));
+        end.appendChild(el('span', 'fbk-folded-end-cap', endLabel));
+        /*
+         * `stopPropagation` is not what keeps this from opening the panel —
+         * the hit is a SIBLING, and an event only bubbles to ancestors. It is
+         * here for a consumer that delegates on the wrap.
+         */
+        end.addEventListener('click', (ev) => { ev.stopPropagation(); onEnd(); });
+        wrap.appendChild(end);
+    }
 
     return {
         el: wrap,
-        /** Append the readouts here. Nothing pressable — the block is the button. */
+        /** The full-area target. Exposed so a consumer can focus it. */
+        hit,
+        /** Append the readouts here. Nothing pressable — clicks fall through. */
         body,
+        /** The stop control, or null when no `onEnd` was given. */
+        end,
+        /**
+         * Relabel the way out.
+         *
+         * Which run you are stopping is a state — a drill and a free loop are
+         * both "the thing that is playing" and they are not stopped by the
+         * same word — so the cap is settable rather than fixed at build.
+         */
+        setEnd(text) {
+            if (!end) return;
+            const cap = end.querySelector('.fbk-folded-end-cap');
+            if (cap) cap.textContent = text === null || text === undefined ? '' : String(text);
+            end.title = text ? String(text) : '';
+        },
         setCue(text) { cue.textContent = text === null || text === undefined ? '' : String(text); },
     };
 }

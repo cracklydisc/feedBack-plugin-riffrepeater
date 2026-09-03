@@ -173,6 +173,51 @@ test('clicking the timeline lands on the whole of what was clicked', () => {
     assert.deepEqual(pos(), { onPart: false, index: 0 });
 });
 
+test('tapping a PHRASE on the strip selects that phrase', () => {
+    /*
+     * THE STRIP'S ONE GESTURE, AND IT WAS DEAD.
+     *
+     * The strip draws the song's phrases when it has any, and its `onPick`
+     * called `selectSection` — which searches the sections and returns
+     * silently on a miss. So every tap on the strip did nothing, on every
+     * chart with phrases, and nothing said so.
+     *
+     * Reported as "clicking a section on the chart does not select it for the
+     * loop". What makes it worth a test rather than a fix is that the WALKING
+     * gesture had always resolved a phrase correctly: two paths to the same
+     * outcome, one of them wrong, and no assertion comparing them.
+     */
+    model.refreshSong();
+    const blocks = model.snapshot().blocks;
+    const phrase = blocks.find((b) => b.kind === 'part' && b.start >= 20);
+    assert.ok(phrase, 'the fixture should produce a phrase at 20s');
+
+    model.selectBlock(phrase.key);
+    const sel = model.snapshot().selection;
+    assert.equal(sel.key, phrase.key);
+    assert.equal(sel.start, phrase.start);
+    assert.equal(sel.end, phrase.end);
+    assert.equal(model.snapshot().onPart, true, 'and the walk knows where it is');
+});
+
+test('tapping a SECTION on the strip still selects the whole section', () => {
+    /* The other kind, because a chart without phrases puts sections there. */
+    model.refreshSong();
+    const outro = model.snapshot().sections.find((sc) => sc.label === 'Outro 1');
+    model.selectBlock(outro.key);
+    const snap = model.snapshot();
+    assert.equal(snap.selection.key, outro.key);
+    assert.equal(snap.onPart, false);
+});
+
+test('tapping a block that is not there changes nothing', () => {
+    model.refreshSong();
+    const before = JSON.stringify(model.snapshot().selection);
+    model.selectBlock('part:999999:1000000');
+    model.selectBlock(null);
+    assert.equal(JSON.stringify(model.snapshot().selection), before);
+});
+
 test('a zero step is a no-op', () => {
     // `Number(null) === 0` and `0` passes `Number.isFinite`, which is the bug
     // class this codebase keeps meeting — here it has to mean "do nothing",

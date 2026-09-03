@@ -990,6 +990,7 @@
     min-width: 0;
     font: var(--fbk-t-num-md, 900 18px/1.1 monospace);
     letter-spacing: var(--fbk-t-num-md-track, 0);
+    text-shadow: var(--fbk-num-glow, none);
 }
 
 /* One stepper on a rack holds the number that drives the drill; the rest are
@@ -1929,7 +1930,12 @@
 }
 
 .fbk-rail-mark[data-state="done"] { color: rgb(var(--fbk-good, 61 220 132)); }
-.fbk-rail-mark[data-state="on"] { color: rgb(var(--fbk-accent, 41 168 255)); }
+
+/* The rung you are ON is the one number on the rail you read while playing. */
+.fbk-rail-mark[data-state="on"] {
+    color: rgb(var(--fbk-accent, 41 168 255));
+    text-shadow: var(--fbk-num-glow, none);
+}
 
 /* ═══ 17. The LED meter — a grade that is honest about being discrete ════ */
 
@@ -1941,6 +1947,14 @@
     height: 8px;
 }
 
+/*
+ * A LIT cell carries its band as its COLOUR and fills itself from it.
+ *
+ * Setting `color` and filling with `currentColor` lets the glow be ONE slot
+ * for all three bands instead of three literals — see the note beside
+ * `led-glow` in theme.js. An unlit cell has no colour, so it has no glow, by
+ * construction rather than by a fourth rule.
+ */
 .fbk-led-cell {
     flex: 1 1 0;
     min-width: 0;
@@ -1948,9 +1962,14 @@
     background: rgb(var(--fbk-border, 42 46 58) / 0.55);
 }
 
-.fbk-led-cell[data-band="good"] { background: rgb(var(--fbk-good, 61 220 132)); }
-.fbk-led-cell[data-band="mid"] { background: rgb(var(--fbk-mid, 245 165 36)); }
-.fbk-led-cell[data-band="bad"] { background: rgb(var(--fbk-bad, 229 72 77)); }
+.fbk-led-cell[data-band] {
+    background: currentColor;
+    box-shadow: var(--fbk-led-glow, none);
+}
+
+.fbk-led-cell[data-band="good"] { color: rgb(var(--fbk-good, 61 220 132)); }
+.fbk-led-cell[data-band="mid"] { color: rgb(var(--fbk-mid, 245 165 36)); }
+.fbk-led-cell[data-band="bad"] { color: rgb(var(--fbk-bad, 229 72 77)); }
 
 /* ═══ 18. The status line — chrome that scales with urgency ══════════════ */
 
@@ -2232,7 +2251,7 @@
     outline-offset: 2px;
 }
 
-/* ═══ 21. The folded strip — the panel at reading size ═══════════════════ */
+/* ═══ 21. The folded strip — the panel at reading size ═══════════════ */
 
 /*
  * The folded state's slot.
@@ -2254,60 +2273,125 @@
    one signal per boundary (§18), one level down. */
 .fbk-folded-slot .fbk-folded {
     border: 0;
-    box-shadow: none;
     background: none;
-    padding: var(--fbk-s-4, 8px) var(--fbk-s-5, 10px);
 }
 
 .fbk-folded {
+    position: relative;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     gap: var(--fbk-s-4, 8px);
     box-sizing: border-box;
     width: 100%;
-    padding: var(--fbk-s-4, 8px) var(--fbk-s-5, 10px);
+    /*
+     * A LANE ALONG THE TOP, and it is structural.
+     *
+     * The grip and the key hint live in it and nothing else ever does, which
+     * is the whole reason the hint stopped landing on top of the facts. The
+     * hint's own box is 16px, so the lane is the next step up the scale —
+     * reserved always, so revealing it shifts nothing, and with two pixels of
+     * air rather than sitting flush against the first row.
+     */
+    padding: var(--fbk-s-7, 18px) var(--fbk-s-4, 8px) var(--fbk-s-4, 8px);
     border-radius: var(--fbk-radius, 14px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     background: linear-gradient(180deg,
         rgb(var(--fbk-surface, 12 15 22)),
         rgb(var(--fbk-bg, 5 7 12)));
-    box-shadow: var(--fbk-panel-shadow, none), var(--fbk-panel-inner, none);
     color: rgb(var(--fbk-text, 232 238 252));
     text-align: left;
-    cursor: pointer;
-    transition: border-color var(--fbk-motion, 140ms ease);
+    transition: border-color var(--fbk-motion, 140ms ease),
+                box-shadow var(--fbk-motion, 140ms ease);
 }
+
+/*
+ * THE FULL-AREA TARGET, stretched behind everything.
+ *
+ * The block used to BE the button, which is honest markup and a hard ceiling:
+ * a button cannot contain a button, so the strip could carry exactly one
+ * action. It needs two — open, and the way out. So the target is a layer
+ * instead, and the readouts above it pass their clicks straight through.
+ */
+.fbk-folded-hit {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: inherit;
+    background: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.fbk-folded-hit:focus-visible { outline: none; }
 
 /*
  * The affordance appears when you look for it.
  *
- * There are no buttons in here — the whole block is the target — so hover and
- * focus have to say so, and they do it by turning the stroke and the grip
- * blue and revealing the key hint. A permanent chevron would be a thing to
- * aim at, and aiming is the gesture this control exists to avoid.
+ * Hover and focus turn the stroke accent and light the edge, and the grip
+ * swaps itself for the key hint. A permanent chevron would be a thing to aim
+ * at, and aiming is the gesture this control exists to avoid.
  */
 .fbk-folded:hover,
-.fbk-folded:focus-visible {
+.fbk-folded:has(.fbk-folded-hit:focus-visible) {
     border-color: rgb(var(--fbk-accent, 41 168 255));
-    outline: none;
+    box-shadow: var(--fbk-edge-glow, none);
+}
+
+/* The readouts float above the target and never intercept a click. */
+.fbk-folded-grip,
+.fbk-folded-cue,
+.fbk-folded-body {
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
 }
 
 .fbk-folded-grip {
     position: absolute;
-    top: var(--fbk-s-2, 4px);
+    top: 6px;
     left: 50%;
     transform: translateX(-50%);
     width: 34px;
     height: 3px;
     border-radius: var(--fbk-radius-pill, 999px);
     background: rgb(var(--fbk-border, 42 46 58));
-    transition: background var(--fbk-motion, 140ms ease);
+    transition: opacity var(--fbk-motion, 140ms ease);
 }
 
-.fbk-folded { position: relative; }
+/*
+ * THE HANDLE LABELS ITSELF.
+ *
+ * The hint was pinned bottom-right, over the row of facts — two texts in the
+ * same sixty pixels, reported as unreadable. It sits in the lane now, in the
+ * grip's own place, and the two cross-fade: same spot, same meaning, and one
+ * of them is always fully drawn on the panel's own ground.
+ */
+.fbk-folded-cue {
+    position: absolute;
+    top: 1px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 1px var(--fbk-s-4, 8px);
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-surface-2, 30 34 44));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent, 41 168 255) / 0.55);
+    opacity: 0;
+    font: var(--fbk-t-rack, 900 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-rack-track, 0.16em);
+    color: rgb(var(--fbk-accent, 41 168 255));
+    white-space: nowrap;
+    transition: opacity var(--fbk-motion, 140ms ease);
+}
+
+.fbk-folded:hover .fbk-folded-cue,
+.fbk-folded:has(.fbk-folded-hit:focus-visible) .fbk-folded-cue { opacity: 1; }
 
 .fbk-folded:hover .fbk-folded-grip,
-.fbk-folded:focus-visible .fbk-folded-grip { background: rgb(var(--fbk-accent, 41 168 255)); }
+.fbk-folded:has(.fbk-folded-hit:focus-visible) .fbk-folded-grip { opacity: 0; }
 
 .fbk-folded-body {
     flex: 1 1 auto;
@@ -2317,26 +2401,72 @@
     gap: var(--fbk-s-3, 6px);
 }
 
-/* The key hint, hidden until you point at the block. */
-.fbk-folded-cue {
-    position: absolute;
-    right: var(--fbk-s-5, 10px);
-    bottom: var(--fbk-s-3, 6px);
-    opacity: 0;
-    font: var(--fbk-t-rack, 900 10px/1.2 sans-serif);
-    letter-spacing: var(--fbk-t-rack-track, 0.16em);
-    color: rgb(var(--fbk-accent, 41 168 255));
-    transition: opacity var(--fbk-motion, 140ms ease);
+/*
+ * THE WAY OUT — a footswitch, square and centred.
+ *
+ * It was a full-height column, which read as a scrollbar or a divider and, next
+ * to a hover-revealed OPEN, looked like half of a pair it is not: reported as
+ * the two conflicting. A square you stamp on is the shape this action has on
+ * real gear, and it settles that by being a different KIND of object from the
+ * handle beside it — one is a lid you lift, one is a pedal you hit.
+ *
+ * FILLED, and by the same argument as END DRILL in the footer: an alert wash
+ * next to a solid readout reads as disabled. White ink over the fill, which is
+ * the choice made for the footer's stop and kept for the same reason.
+ */
+.fbk-folded-end {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+    flex: 0 0 auto;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--fbk-s-2, 4px);
+    /* Square, on the height scale — `h-lg` is the footswitch size, and it
+       grows to 64 on a touch pointer where a 40px pedal is a miss. */
+    width: var(--fbk-h-lg, 56px);
+    height: var(--fbk-h-lg, 56px);
+    padding: 0;
+    border-radius: var(--fbk-radius-switch, 10px);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-alert, 229 72 77));
+    background: linear-gradient(180deg,
+        rgb(var(--fbk-alert, 229 72 77)),
+        rgb(var(--fbk-alert, 229 72 77) / 0.82));
+    box-shadow: 0 0 0 1px rgb(var(--fbk-alert, 229 72 77) / 0.45),
+                0 8px 24px rgb(var(--fbk-alert, 229 72 77) / 0.3),
+                var(--fbk-control-lift, none);
+    color: rgb(var(--fbk-text, 232 238 252));
+    cursor: pointer;
+    transition: filter var(--fbk-motion, 140ms ease);
 }
 
-.fbk-folded:hover .fbk-folded-cue,
-.fbk-folded:focus-visible .fbk-folded-cue { opacity: 1; }
+.fbk-folded-end:hover { filter: brightness(1.1); }
+.fbk-folded-end:active { box-shadow: var(--fbk-control-lift-down, none); }
+
+/* The stop glyph, drawn rather than typed — see the note on the builder. */
+.fbk-folded-end-icon {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: currentColor;
+}
+
+.fbk-folded-end-cap {
+    font: var(--fbk-t-rack, 900 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-rack-track, 0.16em);
+    text-transform: uppercase;
+}
 
 /* The one big live number. */
 .fbk-live-value {
     font: var(--fbk-t-num-xl, 900 28px/1 monospace);
     letter-spacing: var(--fbk-t-num-xl-track, -0.01em);
     color: rgb(var(--fbk-good, 61 220 132));
+    /* Backlit, and the glow follows the band because it follows the colour. */
+    text-shadow: var(--fbk-num-glow, none);
 }
 
 .fbk-live-value[data-band="mid"] { color: rgb(var(--fbk-mid, 245 165 36)); }

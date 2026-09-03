@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 /*
  * The store is where a wrong decision is expensive, because it is the only
  * thing here that outlives a session.
@@ -310,4 +312,26 @@ test('the goal does not cap the start, because they are different quantities', (
     store.setSettings({ goalPct: 80 });
     assert.equal(store.getSettings().startPct, 95);
     assert.equal(store.getSettings().goalPct, 80);
+});
+
+test('the version in main.js is the one in plugin.json', () => {
+    /*
+     * THE KIT STYLESHEET'S CACHE KEY.
+     *
+     * `kit.install({ version })` appends `?v=` to the kit.css link, so this
+     * constant is what makes a changed kit stylesheet actually arrive. It is
+     * kept by hand next to a plugin.json that is kept by hand, and it had
+     * already drifted a whole release behind — which does not fail, it just
+     * serves yesterday's CSS and makes the change look like it did not work.
+     * A restart does not help; only this number does.
+     */
+    const dir = path.join(import.meta.dirname, '..');
+    const main = fs.readFileSync(path.join(dir, 'src', 'main.js'), 'utf8');
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'plugin.json'), 'utf8'));
+    const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+
+    const m = main.match(/const VERSION = '([^']+)'/);
+    assert.ok(m, 'main.js declares a VERSION');
+    assert.equal(m[1], manifest.version, 'main.js VERSION vs plugin.json');
+    assert.equal(pkg.version, manifest.version, 'package.json vs plugin.json');
 });

@@ -19,7 +19,7 @@ import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.27.0';
+const VERSION = '0.28.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -76,6 +76,15 @@ const actions = {
         model.selectSection(key);
         if (model.snapshot().mode === 'bars') model.setMode('section');
     },
+
+    /**
+     * Select the block the strip was tapped on — a section OR a phrase.
+     *
+     * Separate from `selectSection` because the strip and the section buttons
+     * are handing over different things: a button names a section, and a tap
+     * on the strip names whichever block is under the finger.
+     */
+    selectBlock(key) { model.selectBlock(key); },
     stepPart(d) { model.stepPart(d); },
     stepSection(d) { model.stepSection(d); },
     selectDrag(a, b) { model.selectDrag(a, b); },
@@ -571,7 +580,7 @@ const api = {
         return { sections: snap.sections, parts: snap.parts, bars: snap.bars };
     },
 
-    select(key) { actions.selectSection(key); },
+    select(key) { actions.selectBlock(key); },
     selection() { return model.snapshot().selection; },
     barsAtPlayhead() { return model.selectBarsAtPlayhead(); },
 

@@ -325,7 +325,30 @@ const RECIPES = {
     'control-lift-down': 'inset 0 -1px 0 rgb(var(--fbk-text) / 0.14), inset 0 2px 4px rgb(var(--fbk-bg) / 0.8)',
 
     'lit-fill': 'rgb(var(--fbk-accent))',
-    'lit-halo': '0 0 10px rgb(var(--fbk-accent) / 0.45)',
+    'lit-halo': '0 0 12px rgb(var(--fbk-accent) / 0.55)',
+
+    /*
+     * ── THE GLOW ────────────────────────────────────────────────────────
+     *
+     * A number on a device is BACKLIT, and this is most of the gap between
+     * the drawn panel and the shipped one: same hue, same weight, same size,
+     * and the drawing looked lit where ours looked printed. Reported as
+     * "mancano i glow", which was exactly right.
+     *
+     * `currentColor` rather than a role, because everything that glows here
+     * already carries its band AS its colour — the live percentage is green
+     * or amber or red, the rail's numbers green or blue, the meter's cells
+     * one of three. One slot follows every one of them, where a glow per band
+     * would be five literals and a sixth to forget.
+     *
+     * Still slots, so `none` is legal: a shop skin that wants a flat panel
+     * sets these to `none` and gets flat numbers, not numbers with a halo it
+     * cannot reach.
+     */
+    'num-glow': '0 0 16px color-mix(in srgb, currentColor 42%, transparent)',
+    'led-glow': '0 0 8px color-mix(in srgb, currentColor 55%, transparent)',
+    /* The lit edge of a block you can press — the strip's stroke on hover. */
+    'edge-glow': '0 0 0 1px rgb(var(--fbk-accent) / 0.5), 0 0 20px rgb(var(--fbk-accent) / 0.26)',
     'lit-on': 'rgb(var(--fbk-on-accent))',
 
     /* A panel is an object over a stage: a real shadow and a top light line.

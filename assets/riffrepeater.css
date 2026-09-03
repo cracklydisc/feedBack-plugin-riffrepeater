@@ -169,3 +169,18 @@
 
 .rr-live-where { flex: 0 0 auto; width: auto; color: rgb(var(--fbk-accent-hi, 96 194 255)); }
 .rr-live-count { flex: 0 0 auto; min-width: 0; white-space: nowrap; }
+
+/* ── the detector's own drill HUD, while ours is showing ────────────────
+ *
+ * `note_detect` appends `#nd-drill-hud` to document.body for the length of a
+ * drill and has no flag to suppress it, so during a run there were two panels
+ * saying the same things — its own, in the app's language, sitting at z-210 on
+ * top of ours.
+ *
+ * Keyed off a flag OUR panel sets, and only while the folded strip is really
+ * on screen, so the HUD returns by itself whenever ours is not there to
+ * replace it: rack open, panel closed, plugin disabled, script thrown. It
+ * carries the drill's only one-press exit, and the rule that hides it must
+ * not be able to outlive the thing that took the job over.
+ */
+html[data-rr-live="true"] #nd-drill-hud { display: none !important; }
