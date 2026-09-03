@@ -1,5 +1,5 @@
 /*
- * kit 0.9.0 — the token bridge.
+ * kit 0.11.0 — the token bridge.
  *
  * Reads the host's palette and writes it back as `--fbk-*` custom properties
  * that a stylesheet can use, then follows `theme:changed`. This existed three
@@ -236,12 +236,23 @@ const RECIPES = {
     't-micro': '900 10px/1.2 var(--fbk-font)',
     't-micro-track': '0.16em',
 
+    /* ── SPACE — a 2px base on a 4px grid, six steps ─────────────────────
+     *
+     * The rack spec's gaps are 6 / 8 / 10 and its paddings 4 / 10 / 14 / 18,
+     * which is what these are. Two changes from the ramp they replace
+     * (2/4/6/10/14/20): the middle got denser and the top got shorter,
+     * because a rack is FLAT and divided by 1px strokes rather than by air —
+     * so the space that used to separate groups is now a line, and the space
+     * inside a group can close up.
+     */
     's-1': '2px',
     's-2': '4px',
     's-3': '6px',
-    's-4': '10px',
-    's-5': '14px',
-    's-6': '20px',
+    's-4': '8px',
+    's-5': '10px',
+    's-6': '14px',
+    /* Only the chassis's own outer padding needs this, hence the seventh. */
+    's-7': '18px',
 
     /* ── control heights: three, and no others ────────────────────────── */
     /* ── HEIGHT — sized by WHEN you touch it, not by what it is ───────────

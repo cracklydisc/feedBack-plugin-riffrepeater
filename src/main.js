@@ -14,12 +14,12 @@ import * as drill from './drill.js';
 import * as store from './store.js';
 import * as ranges from './ranges.js';
 import * as kit from './kit/index.js';
-import { normalizeLadder } from './ladder.js';
+import { buildLadder, clampStartPct, clampStepPct, STEPS } from './ladder.js';
 import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.12.0';
+const VERSION = '0.13.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -57,6 +57,18 @@ let activeDrill = null;   // { key, label, start, end, mine, scored }
 // actions — the panel's entire write surface
 // ─────────────────────────────────────────────────────────────────────────
 
+/**
+ * The rungs a drill would climb, from the stored start and step.
+ *
+ * One function, because two callers deriving the ladder separately is how the
+ * panel and the engine end up disagreeing about which rung you are on — and
+ * the panel's rail reads the engine's ladder while it runs, so a mismatch
+ * would show as the wrong dot lit.
+ */
+function ladderNow(settings) {
+    return buildLadder(settings.startPct, settings.stepPct, host.speedBounds());
+}
+
 const actions = {
     close() { setOpen(false); },
 
@@ -91,11 +103,27 @@ const actions = {
         await actions.startDrill();
     },
 
-    toggleRung(pct) {
-        const cur = model.getSettings().ladder || [];
-        const next = cur.includes(pct) ? cur.filter((p) => p !== pct) : [...cur, pct];
-        model.setSettings({ ladder: normalizeLadder(next, host.speedBounds()) });
+    /*
+     * The ladder is three numbers now, so there is nothing to toggle: a start,
+     * a step, and a top that is always full tempo. `buildLadder` derives the
+     * rungs, and the rail that shows them takes no input at all — which is
+     * kit DESIGN.md §21, and the reason the slow rungs no longer need a
+     * caveat badge. A rung below 80% exists only if you asked for one.
+     */
+    setStart(pct) {
+        model.setSettings({ startPct: clampStartPct(pct) });
     },
+
+    nudgeStart(delta) {
+        const cur = Number(model.getSettings().startPct) || 80;
+        const step = Number(delta) || 0;
+        model.setSettings({ startPct: clampStartPct(cur + step) });
+    },
+
+    setStep(pct) {
+        model.setSettings({ stepPct: clampStepPct(pct) });
+    },
+
     setGoal(pct) {
         const n = Math.max(10, Math.min(100, Math.round(Number(pct) || 0)));
         model.setSettings({ goalPct: n });
@@ -117,6 +145,43 @@ const actions = {
     },
     setWiden(on) { model.setSettings({ widen: !!on }); },
 
+    /** Which unit the edge steppers move by — `bars` or `time`. */
+    /**
+     * Walk the blocks the strip draws — the keyboard's version of tapping one.
+     *
+     * This is what the section chevrons became. Removing them cost nothing
+     * because the gesture survived here; what went was a second
+     * stepper-shaped control under the strip, doing in two presses what one
+     * tap does.
+     */
+    stepBlock(delta) { model.stepBlock(delta); },
+
+    setUnit(u) { model.setSettings({ unit: u === 'time' ? 'time' : 'bars' }); },
+
+    /**
+     * Put an edge at a given TIME rather than at the playhead.
+     *
+     * What the strip's A/B handles call while being dragged. `markEdge` sets an
+     * edge from where the song is, which is the keyboard gesture; this one
+     * sets it from where the pointer is, and the strip has already snapped the
+     * value to a block boundary before it arrives.
+     */
+    markEdgeAt(edge, seconds) { model.setEdge(edge, seconds); },
+
+    /**
+     * Turn the detector on, from the status line that says it is off.
+     *
+     * A blocked state you cannot act on is a dead end (kit DESIGN.md §18), and
+     * the fix is one call away — so it belongs next to the sentence rather
+     * than in a settings page the sentence does not mention.
+     */
+    enableDetection() {
+        const nd = window.noteDetect;
+        if (nd && typeof nd.enable === 'function') { try { nd.enable(); } catch (_) { /* it said no */ } }
+        else if (nd && typeof nd.setEnabled === 'function') { try { nd.setEnabled(true); } catch (_) { /* it said no */ } }
+        model.announce();
+    },
+
     async startDrill() {
         const snap = model.snapshot();
         const range = snap.selection;
@@ -124,7 +189,7 @@ const actions = {
         const s = snap.settings;
         const res = await drill.start(range, {
             goalPct: s.goalPct,
-            ladder: s.ladder,
+            ladder: ladderNow(s),
             widen: s.widen,
         });
         if (res.ok) {
@@ -422,14 +487,21 @@ const SHORTCUTS = [
     },
     {
         // Panel-open only: moving a selection you cannot see is not a feature.
+        /*
+         * `,` and `.` walk the blocks the strip draws — phrases when the chart
+         * has them, sections when it does not. They are the keyboard's version
+         * of tapping a block, and they are why removing the visible chevrons
+         * cost nothing: the gesture stayed, and the host's help panel still
+         * lists it.
+         */
         key: ',',
-        description: 'previous section (panel open)',
-        handler: () => { if (open) actions.stepSection(-1); },
+        description: 'previous passage (panel open)',
+        handler: () => { if (open) actions.stepBlock(-1); },
     },
     {
         key: '.',
-        description: 'next section (panel open)',
-        handler: () => { if (open) actions.stepSection(1); },
+        description: 'next passage (panel open)',
+        handler: () => { if (open) actions.stepBlock(1); },
     },
 ];
 
@@ -488,7 +560,7 @@ const api = {
                 label: range.label || 'Passage',
                 key: ranges.rangeKey('bars', range.start, range.end),
             };
-            const res = await drill.start(r, { goalPct: s.goalPct, ladder: s.ladder, widen: s.widen });
+            const res = await drill.start(r, { goalPct: s.goalPct, ladder: ladderNow(s), widen: s.widen });
             if (res.ok) activeDrill = { ...r, mine: true, scored: 0 };
             return res;
         }

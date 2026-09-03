@@ -1,284 +1,119 @@
 /*
- * Riff Repeater — what is specific to drilling a passage.
+ * Riff Repeater — only what the kit does not own.
  *
- * Everything shared moved to the kit (`assets/kit.css`, vendored from
- * feedBack-plugin-kit): the panel shell, the four control families, the
- * meters, the badges, the key caps and the layer map. Its DESIGN.md carries
- * the rules, each with the Riff Repeater version that taught it.
+ * As of 0.13.0 that is almost nothing, which is the point: the chassis, the
+ * racks and wells, the range strip with its A/B handles, the climb rail, the
+ * LED meters, the list rows, the status line, the footswitch and the folded
+ * strip are all in `feedBack-plugin-kit`, so the next plugin adopts a design
+ * system rather than a stylesheet.
  *
- * What is left below is about a SONG rather than about a setting: the
- * timeline, the per-iteration row, the live-drill block, and a handful of
- * labels the kit has no opinion about. Same discipline applies — every colour
- * is a `--fbk-*` role and every device is a `--fbk-*` slot, so there is no
- * literal hex, glow or gradient here either.
+ * What is left here is layout for the three composites this panel arranges out
+ * of kit parts, and nothing else. No colour that is not a `--fbk-*` role, no
+ * measurement that is not on a scale — the kit's own tests enforce both on its
+ * stylesheet, and breaking the rules here would only move the problem.
  */
 
-.rr-nav-name {
+.rr-main {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── the loop rack ─────────────────────────────────────────────────────── */
+
+/*
+ * The two edge steppers, side by side.
+ *
+ * They used to be two rows, one per edge, at a time when they were the only
+ * way to move an edge at all. The strip does the coarse work now, so these do
+ * the one job a pointer is bad at — exactly one unit — and two of them fit on
+ * a line.
+ */
+.rr-edges { gap: var(--fbk-s-3, 6px); }
+
+.rr-edge {
+    display: flex;
+    align-items: center;
+    gap: var(--fbk-s-2, 4px);
+    flex: 1 1 0;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: var(--fbk-s-1, 2px);
+    border-radius: var(--fbk-radius-sm, 8px);
+    background: rgb(var(--fbk-bg, 5 7 12));
+}
+
+/*
+ * The readout between the two buttons, and it is also a button.
+ *
+ * Tapping it puts the edge at the playhead — the `I` and `O` gesture. It is
+ * the readout rather than a third button because the row already has two and a
+ * third would make the pair read as a group of three unrelated things; the
+ * tooltip and the key cap carry the discovery.
+ */
+.rr-edge-mid {
     flex: 1 1 auto;
     min-width: 0;
-    font-weight: 700;
-    font-size: 12px;
-    text-align: center;
-    color: rgb(var(--fbk-text, 248 250 252));
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/*
- * The clock inside an edge row's stepper.
- *
- * Fixed width, NOT flexible — a flexible one absorbs the row's slack and puts
- * the − and + 182px apart, and three parts that far apart are not one control
- * any more. The kit's `.fbk-stepper .fbk-readout` uses the same 56px for the
- * same reason: pressing − must not shuffle the row as the number's width
- * changes.
- */
-.rr-time {
-    flex: 0 0 auto;
-    min-width: 56px;
-    font-variant-numeric: tabular-nums;
-    text-align: center;
-}
-
-
-/* ── the timeline ───────────────────────────────────────────────────────
- *
- * Proportional to the song, so "where is the solo" is answered by position
- * rather than by reading twenty labels — and it takes a drag, which no
- * arrangement of chips can.
- *
- * COLOUR MEANS ONE THING HERE: how well you play that stretch. On the chips
- * this replaced it meant two things at once — an accent border for "selected"
- * and a green/amber/red underline for accuracy — and a reviewer read the amber
- * as a second kind of selected. Selection is the white bracket now; the fill
- * is only ever the number.
- */
-
-/*
- * One signal per boundary: the track has its own background, so it does not
- * also need a hairline. Kit DESIGN.md §18 — the panel measured 41 bordered
- * elements, and three of them were containers drawing a boundary twice.
- */
-.rr-timeline {
-    position: relative;
-    height: 32px;
-    margin: 9px 0 5px;
-    border-radius: var(--fbk-radius-sm, 8px);
-    background: rgb(var(--fbk-surface-2, 11 18 32));
-    box-shadow: var(--fbk-panel-inner, inset 0 1px 0 rgb(255 255 255 / 0.06));
-    overflow: hidden;
-    cursor: crosshair;
-    touch-action: none;          /* the drag is ours, not the browser's */
-}
-
-.rr-tl-blocks { position: absolute; inset: 0; }
-
-/*
- * A block, and the state that matters most: NOT YET PLAYED.
- *
- * This was `--fbk-border / 0.55`, which measured **1.33 : 1** against the
- * strip's own track. Seven of the ten sections of a typical song have no
- * number yet, so the panel's primary picker rendered as two coloured smears
- * with eight invisible gaps between them — a map that only appears once you
- * have already practised everything, which is exactly backwards.
- *
- * The fix is not more colour, it is the right ROLE: `--fbk-dim` is the token
- * for "present, secondary". The alpha was then swept against the measured
- * track colour rather than chosen: 0.34 came out at 1.89:1 and 0.55 at
- * **3.02:1**, which is the 3:1 that WCAG 1.4.11 asks of a UI component's
- * boundary — and a block here is a click target, not decoration. It stays
- * plainly unmeasured next to the three accuracy bands below, so accuracy is
- * the block's HUE rather than the reason it exists.
- */
-.rr-tl-block {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    box-sizing: border-box;
-    border-right: var(--fbk-hairline, 1px) solid rgb(var(--fbk-bg, 15 23 42));
-    background: rgb(var(--fbk-dim, 148 163 184) / 0.55);
-}
-
-.rr-tl-block[data-band="good"] { background: rgb(var(--fbk-good, 34 197 94) / 0.6); }
-.rr-tl-block[data-band="mid"]  { background: rgb(var(--fbk-mid, 234 179 8) / 0.6); }
-.rr-tl-block[data-band="bad"]  { background: rgb(var(--fbk-bad, 239 68 68) / 0.6); }
-
-/*
- * A passage with no notes in it — a Noguitar marker, usually.
- *
- * Drawn, because the strip has to stay proportional to the song or it stops
- * being a map. Not in the hit table, because a drill on it cannot do anything
- * — so it also must not invite the click. Hatched rather than merely faint:
- * "unmeasured" is already what faint means one rule above, and these are two
- * different nothings.
- */
-.rr-tl-block[data-empty="true"] {
-    background: repeating-linear-gradient(135deg,
-        rgb(var(--fbk-dim, 148 163 184) / 0.16) 0 3px,
-        rgb(var(--fbk-bg, 15 23 42) / 0) 3px 6px);
-    cursor: default;
-}
-
-.rr-tl-block:hover { filter: brightness(1.35); }
-
-.rr-tl-block[data-empty="true"]:hover { filter: none; }
-
-/* Graduated a drill. A tick would not fit in 14px, so it is a top edge. */
-.rr-tl-block-done { box-shadow: inset 0 2px 0 0 rgb(var(--fbk-good, 34 197 94)); }
-
-/*
- * The selection: an outline and a bracket, never a fill.
- *
- * `pointer-events: none` matters — it lies over the blocks, and a click has to
- * reach what is underneath.
- */
-.rr-tl-sel {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    pointer-events: none;
-    box-sizing: border-box;
-    border: 2px solid rgb(var(--fbk-text, 248 250 252));
-    border-radius: 3px;
-    background: rgb(var(--fbk-text, 248 250 252) / 0.12);
-}
-
-.rr-tl-head {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    margin-left: -1px;
-    pointer-events: none;
-    background: rgb(var(--fbk-accent-hi, 56 189 248));
-    box-shadow: var(--fbk-lit-halo, none);
-}
-
-/* ── the live drill ─────────────────────────────────────────────────────── */
-
-.rr-live {
-    margin-top: 10px;
-    padding: 9px 10px;
-    border-radius: var(--fbk-radius-sm, 8px);
-    background: rgb(var(--fbk-accent, 14 165 233) / 0.09);
-}
-
-.rr-live-status {
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-}
-
-.rr-live-next {
-    color: rgb(var(--fbk-dim, 148 163 184));
-    font-size: 11px;
-}
-
-.rr-live-focus {
-    margin-top: 3px;
-    font-size: 11px;
-    color: rgb(var(--fbk-mid, 234 179 8));
-}
-
-/* Every graded pass of the loop, oldest first — improving or just repeating. */
-.rr-iters {
     display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-    margin-top: 8px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    cursor: pointer;
+    border-radius: var(--fbk-radius-seg, 5px);
 }
 
-.rr-iter {
-    min-width: 33px;
-    text-align: center;
-    padding: 2px 4px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-    background: rgb(var(--fbk-surface-2, 11 18 32));
-    color: rgb(var(--fbk-dim, 148 163 184));
-    border-bottom: 2px solid transparent;
+.rr-edge-mid:hover { background: rgb(var(--fbk-surface-2, 30 34 44) / 0.7); }
+
+/* The unit is named in the label, so no separate legend has to say it. */
+.rr-edge-cap {
+    font: var(--fbk-t-field, 600 9px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-field-track, 0.12em);
+    text-transform: uppercase;
+    color: rgb(var(--fbk-dim, 138 160 200));
 }
 
-.rr-iter[data-band="good"] { border-bottom-color: rgb(var(--fbk-good, 34 197 94)); color: rgb(var(--fbk-text, 248 250 252)); }
-.rr-iter[data-band="mid"] { border-bottom-color: rgb(var(--fbk-mid, 234 179 8)); color: rgb(var(--fbk-text, 248 250 252)); }
-.rr-iter[data-band="bad"] { border-bottom-color: rgb(var(--fbk-bad, 239 68 68)); }
-
-/* The pass in progress. */
-.rr-iter-now {
-    outline: 1px dashed rgb(var(--fbk-dim, 148 163 184));
-    outline-offset: 1px;
+.rr-edge-time {
+    font: var(--fbk-t-num-md, 900 18px/1.1 monospace);
+    letter-spacing: var(--fbk-t-num-md-track, 0);
+    color: rgb(var(--fbk-text, 232 238 252));
 }
 
-/* ── the map ────────────────────────────────────────────────────────────── */
+/* ── the drill rack ────────────────────────────────────────────────────── */
 
-.rr-weak { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+/* START and GOAL share a line: a speed and an accuracy, equally weighted
+   because you set both once and then live with them. */
+.rr-set { gap: var(--fbk-s-3, 6px); }
+.rr-set .fbk-stepper { flex: 1 1 0; min-width: 0; }
+
+.rr-steprow .fbk-seg { flex: 1 1 auto; }
 
 /*
- * The plate, previewing rather than reporting.
+ * The climb well's own heading, which is a rack legend one level down.
  *
- * Sweeping the timeline names whatever is under the cursor — the only way a
- * 2px section is discoverable at all. The border goes quiet while it does, so
- * "this is what you would get" never reads as "this is what you have".
+ * Dim rather than full-weight: it labels a readout inside a rack that already
+ * has a legend, and two headings at the same weight in one block is how a
+ * panel stops having a hierarchy.
  */
-.rr-plate-preview {
-    border-color: rgb(var(--fbk-border, 51 65 85) / 0.4);
-    border-style: dashed;
-}
+.rr-climb-head { min-height: 0; margin-bottom: 0; }
+.rr-climb-label { color: rgb(var(--fbk-dim, 138 160 200)); }
+.rr-climb-note { text-align: right; }
 
-/* ── the picker row ──────────────────────────────────────────────────────
- *
- * Just the plate now. It had a chevron either side that stepped through the
- * sections, and those were the "arrows on arrows" — a second stepper-shaped
- * control directly under the phrase stepper. They went rather than the phrase
- * stepper, because a click on the timeline already picks a section in one
- * gesture, while the strip carries no phrase marks. The `,` and `.` shortcuts
- * are still registered.
- */
+/* ── the weak-spots rack ───────────────────────────────────────────────── */
 
-.rr-pick .fbk-plate { margin: var(--fbk-s-2, 4px) 0; }
+.rr-weak { display: flex; flex-direction: column; }
 
+.rr-weakacts { gap: var(--fbk-s-3, 6px); }
+.rr-weakest { flex: 1 1 auto; }
+.rr-more { flex: 0 0 auto; }
 
-/*
- * A and B — the same shape as the steppers beside them, accented.
- *
- * The shape is deliberate and unchanged in intent: putting an edge at the
- * playhead and nudging it by a bar are the same job from two directions, so
- * they are one family. What changed in 0.8.0 is that the family is a rounded
- * rect at `h-md` rather than a circle at `h-sm` — kit DESIGN.md §17, because
- * 26px is not a touch target and a circle was sharing `radius-pill` with the
- * chips.
- *
- * The accent is what separates A and B from the nudges inside the row: it
- * marks the button that *sets* rather than *adjusts*, which is now also the
- * button that opens its row.
- */
-.rr-mark {
-    font-weight: 800;
-    border-color: rgb(var(--fbk-accent, 14 165 233) / 0.5);
-    color: rgb(var(--fbk-accent-hi, 56 189 248));
-}
-
-.rr-mark:hover:not(:disabled) {
-    background: rgb(var(--fbk-accent, 14 165 233) / 0.2);
-    border-color: rgb(var(--fbk-accent, 14 165 233));
-}
-
-/* ── the footer's action bar ─────────────────────────────────────────────
- *
- * The primary takes the room, the alternative takes what it needs. Kit
- * DESIGN.md §2: at most one thing shares the primary's line, and only an
- * alternative to it.
- */
+/* ── the footer ────────────────────────────────────────────────────────── */
 
 .rr-actions { gap: var(--fbk-s-3, 6px); }
 
 /*
- * `width: auto` overrides the kit's full-width primary, because here it is
+ * `width: auto` overrides the kit's full-width footswitch, because here it is
  * one of two children of a flex row rather than a block on its own line.
- * `flex: 1 1 auto` with `min-width: 0` so the label ellipsizes rather than
- * pushing `Loop` off the row on a narrow panel.
+ * `min-width: 0` so the label ellipsizes instead of pushing `Free loop` off.
  */
 .rr-primary {
     width: auto;
@@ -288,27 +123,7 @@
 
 .rr-alt { flex: 0 0 auto; }
 
-/* No top margin: the note above it is either present with its own spacing or
-   collapsed to nothing, and the footer's padding is the rest. */
-.rr-dead { margin: 0 0 var(--fbk-s-3, 6px); }
-.rr-dead[hidden] { margin: 0; }
-
-/*
- * An aside on a section heading — five words, and only when they are needed.
- *
- * The panel already puts a section-level control on a heading row (`Clear`,
- * `Practice weakest`), so this is the same slot used for a sentence fragment
- * rather than a button. Dim and lower case on purpose: it must not read as a
- * second heading, and it must not read as a warning.
- */
-.rr-head-note {
-    flex: 0 0 auto;
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
-    font-weight: 500;
-    text-transform: none;
-    letter-spacing: 0;
-    color: rgb(var(--fbk-dim, 148 163 184) / 0.9);
-}
-
-/* The `?` sits against the toggle it explains, not at the row's end. */
-.rr-widen .fbk-badge { margin-left: var(--fbk-s-2, 4px); }
+/* The status line sits above the footswitch it explains, and collapses to
+   nothing when there is nothing to explain. */
+.fbk-status { margin-bottom: var(--fbk-s-3, 6px); }
+.fbk-status[hidden] { margin: 0; }

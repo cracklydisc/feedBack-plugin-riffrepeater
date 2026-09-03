@@ -22,6 +22,7 @@ import { host } from './host.js';
 import * as ranges from './ranges.js';
 import * as store from './store.js';
 import * as stats from './stats.js';
+import * as ladder from './ladder.js';
 import * as drill from './drill.js';
 
 /**
@@ -42,6 +43,7 @@ const state = {
     songKey: null,
     songTitle: '',
     sections: [],
+    phrases: [],
     parts: [],
     settings: store.getSettings(),
 
@@ -100,6 +102,17 @@ export function refreshSong() {
     const hasNotesBefore = (t) => Number.isFinite(firstNoteTime) && firstNoteTime < t;
 
     state.sections = ranges.buildSections(host.sections(), duration, hasNotesBefore);
+    /*
+     * EVERY phrase in the song, not just the selected section's.
+     *
+     * `rebuildParts` builds the parts of one section, which is what the old
+     * phrase stepper walked. The strip is the only loop selector now and it
+     * draws the whole song, so it needs the lot — built by the same tested
+     * builder, once per section, concatenated.
+     */
+    state.phrases = state.sections.flatMap(
+        (sec) => ranges.buildParts(sec, host.phrases(), duration),
+    );
     invalidateEvents();
 
     if (changed) {
@@ -291,9 +304,22 @@ export function selectDrag(startSec, endSec) {
  * half-defined range; pressing B before A is refused rather than guessed at.
  */
 export function markEdge(edge) {
+    return setEdge(edge, host.time());
+}
+
+/**
+ * Set one end of the loop at a given TIME.
+ *
+ * The same job from the pointer: what the strip's A/B handles call while being
+ * dragged. Factored out of `markEdge` rather than duplicated, because the
+ * hard parts — snapping, the missing-other-edge case, refusing B behind A —
+ * are the same whether the time came from the playhead or from a drag, and two
+ * copies of that is two places for the refusals to diverge.
+ */
+export function setEdge(edge, seconds) {
     const bars = ranges.barLines(host.beats());
     const dur = host.duration();
-    const t = ranges.snapToBar(bars, host.time());
+    const t = ranges.snapToBar(bars, seconds);
     if (!Number.isFinite(t)) return { ok: false, reason: 'no-playhead' };
 
     const cur = selection();
@@ -366,6 +392,51 @@ export function stepSection(delta) {
 }
 
 /**
+ * Move to the next or previous block on the strip.
+ *
+ * The blocks are phrases when the chart has them and sections when it does
+ * not, so this walks whatever the strip is actually showing — a keyboard that
+ * stepped sections while the strip drew phrases would be two ideas of "next"
+ * in one panel.
+ */
+export function stepBlock(delta) {
+    const d = Number(delta) || 0;
+    if (!d) return;
+    const list = state.phrases.length ? state.phrases : state.sections;
+    if (!list.length) return;
+
+    const cur = selection();
+    let at = cur ? list.findIndex((b) => b.key === cur.key) : -1;
+    if (at < 0) {
+        /*
+         * Nothing on the strip is selected — a custom range, or a fresh song.
+         * Start from the block the playhead is inside, so the first press
+         * moves from where you ARE rather than from the top of the song.
+         */
+        const t = host.time();
+        at = list.findIndex((b) => t >= b.start && t < b.end);
+        if (at < 0) at = d > 0 ? -1 : 0;
+    }
+    const block = list[Math.max(0, Math.min(list.length - 1, at + d))];
+    if (!block) return;
+
+    state.barsRange = null;
+    if (block.kind === 'part') {
+        const parent = state.sections.find((sc) => sc.key === block.parent);
+        if (parent) state.sectionKey = parent.key;
+        state.mode = 'part';
+        rebuildParts();
+        const i = state.parts.findIndex((pp) => pp.key === block.key);
+        state.partIndex = i < 0 ? 0 : i;
+    } else {
+        state.sectionKey = block.key;
+        landOnWhole();
+        rebuildParts();
+    }
+    announce();
+}
+
+/**
  * Select the passage you play worst, and say which it was.
  *
  * The weak list already knows; this is the one-press version of reading it and
@@ -393,7 +464,21 @@ export function setBarCount(n) {
 }
 
 /** Move one edge of the current range by a bar. Snaps onto the bar grid. */
-export function nudge(edge, direction) {
+/**
+ * Move a loop edge by one unit.
+ *
+ * `unit` is `bars` or `time`, and the switch that picks it is a header control
+ * on the LOOP rack — set once, not per passage. The two exist for different
+ * jobs and neither is a fallback for the other:
+ *
+ *   bars   the default, because a boundary off the bar grid turns the drill's
+ *          count-in into a guess. This is the one you want almost always.
+ *   time   a tenth of a second, for a pickup that starts mid-bar or a chart
+ *          whose bar lines are wrong. It CAN put an edge off the grid, which
+ *          is exactly why it is not the default.
+ */
+export function nudge(edge, direction, unit = 'bars') {
+    if (unit === 'time') return nudgeBySeconds(edge, direction);
     const cur = selection();
     if (!cur) return;
     const bars = ranges.barLines(host.beats());
@@ -414,6 +499,43 @@ export function nudge(edge, direction) {
             : 'Custom range';
     }
     state.mode = 'bars';
+    announce();
+}
+
+/**
+ * The same edge, moved by a tenth of a second.
+ *
+ * `MIN_RANGE_SEC` is enforced here rather than left to `isUsable`, because a
+ * stepper you can hold down would otherwise walk the two edges through each
+ * other and hand the conductor a backwards range.
+ */
+function nudgeBySeconds(edge, direction, secs = 0.1) {
+    const cur = selection();
+    if (!cur) return;
+    const d = (Number(direction) || 0) * secs;
+    if (!d) return;
+
+    const dur = host.duration();
+    let start = cur.start;
+    let end = cur.end;
+    if (edge === 'start') start = Math.max(0, Math.min(end - ranges.MIN_RANGE_SEC, start + d));
+    else end = Math.max(start + ranges.MIN_RANGE_SEC, Math.min(dur || end + d, end + d));
+    if (start === cur.start && end === cur.end) return;
+
+    /*
+     * A nudged section stops being that section, exactly as with bars — it is
+     * a custom range now, and showing "Verse 1" for a passage a tenth longer
+     * than Verse 1 would be a label that lies.
+     */
+    state.barsRange = {
+        kind: 'bars',
+        start,
+        end,
+        label: 'Custom range',
+        key: ranges.rangeKey('bars', start, end),
+    };
+    state.mode = 'bars';
+    invalidateEvents();
     announce();
 }
 
@@ -631,6 +753,26 @@ export function snapshot() {
         selectionUsable: ranges.isUsable(sel ? decorate(sel) : null, duration),
 
         settings: { ...state.settings },
+
+        /*
+         * THE BLOCKS THE STRIP DRAWS.
+         *
+         * Phrases when the chart has them, sections when it does not. The
+         * strip is the only loop selector now, so what it draws decides what
+         * grain you can pick at all — and a chart with no phrase table would
+         * otherwise leave it empty and the panel unusable.
+         */
+        blocks: (state.phrases.length ? state.phrases : state.sections).map(decorate),
+
+        /*
+         * The rungs a drill WOULD climb, from the stored start and step.
+         *
+         * Derived here rather than in the panel, so the rail and the engine
+         * cannot disagree about which speeds exist — the panel reads the
+         * engine's ladder while a drill runs and this one otherwise, and a
+         * mismatch would show as the wrong dot lit.
+         */
+        ladder: ladder.buildLadder(state.settings.startPct, state.settings.stepPct, host.speedBounds()),
         /** The speed the song is PLAYING at — the audio element's rate. */
         speedPct: host.speedPct(),
         /**
@@ -711,7 +853,7 @@ function eventsNow() {
         return map;
     }
 
-    const all = [...state.sections, ...state.parts];
+    const all = [...state.sections, ...state.phrases, ...state.parts];
     if (state.barsRange) all.push(state.barsRange);
     for (const r of all) {
         map.set(r.key, ranges.countEvents(notes, chords, r.start, r.end));
@@ -731,9 +873,9 @@ function eventsNow() {
  */
 function tallyNow() {
     const size = state.log.size();
-    const shape = `${state.barsRange ? state.barsRange.key : ''}|${state.sectionKey || ''}|${state.sections.length}`;
+    const shape = `${state.barsRange ? state.barsRange.key : ''}|${state.sectionKey || ''}|${state.sections.length}|${state.phrases.length}`;
     if (state._tally && state._tallyAt === size && state._tallyShape === shape) return state._tally;
-    const all = [...state.sections, ...state.parts];
+    const all = [...state.sections, ...state.phrases, ...state.parts];
     if (state.barsRange) all.push(state.barsRange);
     state._tally = stats.tallyByRange(all, state.log.get());
     state._tallyAt = size;

@@ -26,18 +26,43 @@
 
 export const KEY = 'riffrepeater.v1';
 const DISABLED_KEY = 'riffrepeater.disabled';
-const VERSION = 1;
+/*
+ * 2 as of 0.13.0, when the ladder stopped being a ticked set.
+ *
+ * Bumped rather than left alone because the shape of `settings` changed, and
+ * `read()` migrates instead of discarding — the settings are six numbers, the
+ * songs are every passage you have ever practised, and only one of those is
+ * cheap to lose.
+ */
+const VERSION = 2;
 
 /** Cap the per-song range table so a long session can't grow storage without bound. */
 const MAX_RANGES_PER_SONG = 400;
 /** Cap the number of songs kept. Oldest-touched go first. */
 const MAX_SONGS = 200;
 
-import { DEFAULT_LADDER, DEFAULT_GOAL_PCT, clampGoalPct } from './ladder.js';
+import {
+    DEFAULT_GOAL_PCT, DEFAULT_START_PCT, DEFAULT_STEP_PCT,
+    clampGoalPct, clampStartPct, clampStepPct,
+} from './ladder.js';
 
 export function defaults() {
     return {
-        ladder: DEFAULT_LADDER.slice(),
+        /*
+         * The ladder is three numbers now, not a set of ticked rungs.
+         * `startPct` + `stepPct` -> `goalPct` generates them; see
+         * `buildLadder`. A stored `ladder` array from before 0.13.0 is
+         * migrated in `read()`.
+         */
+        /*
+         * `bars` by default, and TIME is the escape hatch rather than the
+         * other way round: a boundary off the bar grid turns the drill's
+         * count-in into a guess, so the unit that can produce one is the one
+         * you have to ask for.
+         */
+        unit: 'bars',
+        startPct: DEFAULT_START_PCT,
+        stepPct: DEFAULT_STEP_PCT,
         goalPct: DEFAULT_GOAL_PCT,
         widen: true,            // the conductor's expandContext — widen once nailed
         rememberSpeed: true,    // the host resets speed to 100% every song; we don't
@@ -57,14 +82,65 @@ function read() {
     let parsed = null;
     try { parsed = JSON.parse(raw); } catch (_) { return blank(); }
     if (!parsed || typeof parsed !== 'object') return blank();
-    // No migration to do yet; an unknown future version is treated as absent
-    // rather than half-read, so a downgrade cannot corrupt an upgrade's data.
-    if (parsed.v !== VERSION) return blank();
+    /*
+     * An unknown FUTURE version is treated as absent rather than half-read, so
+     * a downgrade cannot corrupt an upgrade's data.
+     */
+    if (parsed.v > VERSION) return blank();
+
+    const settings = { ...defaults(), ...(parsed.settings || {}) };
     return {
         v: VERSION,
-        settings: { ...defaults(), ...(parsed.settings || {}) },
+        settings: migrateSettings(settings),
         songs: (parsed.songs && typeof parsed.songs === 'object') ? parsed.songs : {},
     };
+}
+
+/**
+ * Carry an old settings blob forward.
+ *
+ * The alternative was the version gate above discarding everything, which is
+ * cheap to write and expensive to be on the receiving end of: the settings are
+ * six numbers, and the songs are every passage you have ever practised. A
+ * migration that only has to handle the settings can therefore keep the part
+ * that matters.
+ *
+ * 0.13.0: `ladder` was an array of ticked rungs; it is now generated from
+ * `startPct` + `stepPct` -> `goalPct`. A stored `[80, 90, 100]` becomes
+ * start 80, step 10, goal 100 — the same ladder. An unevenly spaced set like
+ * `[50, 65, 80, 90, 100]` cannot be expressed exactly, so it takes its
+ * smallest gap: the result is a ladder with MORE rungs than you had, which is
+ * the safe direction to be wrong in. A ladder that skips a rung you were
+ * relying on is a drill that suddenly asks for a speed you cannot play.
+ */
+function migrateSettings(settings) {
+    const out = { ...settings };
+    const old = settings.ladder;
+    if (!Array.isArray(old) || !old.length) {
+        delete out.ladder;
+        return out;
+    }
+
+    const rungs = old
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0)
+        .sort((a, b) => a - b);
+    delete out.ladder;
+    if (!rungs.length) return out;
+
+    /*
+     * `goalPct` is NOT touched. The old `ladder` array was speeds and always
+     * ended at 100 (its own normaliser forced full tempo); `goalPct` was, and
+     * remains, the accuracy a pass has to clear. Reading the ladder's top rung
+     * as the goal silently overwrote a stored 85% accuracy with 100 — caught
+     * by the migration test, which is the only place the two could be seen
+     * side by side.
+     */
+    out.startPct = rungs[0];
+    let gap = Infinity;
+    for (let i = 1; i < rungs.length; i += 1) gap = Math.min(gap, rungs[i] - rungs[i - 1]);
+    if (Number.isFinite(gap) && gap > 0) out.stepPct = gap;
+    return out;
 }
 
 function write(state) {
@@ -113,6 +189,14 @@ export function setSettings(patch) {
     const state = read();
     const next = { ...state.settings, ...(patch || {}) };
     if (patch && 'goalPct' in patch) next.goalPct = clampGoalPct(next.goalPct);
+    if (patch && 'stepPct' in patch) next.stepPct = clampStepPct(next.stepPct);
+    /*
+     * The start is clamped on its own, against full tempo. It is deliberately
+     * NOT clamped against `goalPct`: one is a speed and the other an accuracy,
+     * and treating the goal as the ladder's ceiling is the mistake this
+     * migration was written twice because of.
+     */
+    if (patch && 'startPct' in patch) next.startPct = clampStartPct(next.startPct);
     state.settings = next;
     write(state);
     return state.settings;

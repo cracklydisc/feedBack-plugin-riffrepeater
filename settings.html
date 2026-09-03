@@ -19,7 +19,8 @@
     const root = document.getElementById('rr-settings');
     if (!root) return;
 
-    const PRESETS = [50, 65, 80, 90, 100];
+    const STARTS = [50, 60, 70, 80, 90];
+    const STEPS = [2, 5, 10];
 
     function el(tag, cls, text) {
         const n = document.createElement(tag);
@@ -45,33 +46,44 @@
             + 'gives it a way in, a passage to work on, and a memory. Open it from the '
             + 'Plugins button in the player rail.'));
 
-        // ── the ladder ───────────────────────────────────────────────────
+        // ── the ladder: a start and a step ───────────────────────────────
         const ladderField = field('Default speed ladder',
-            'The rungs a drill climbs. It clears your goal on one pass of the loop to '
-            + 'move up, and finishes with three clean passes at full tempo. 100% is '
-            + 'always the last rung: a drill that never asks for the real tempo has '
-            + 'not taught the passage.');
+            'A drill climbs from this speed to full tempo in these increments. '
+            + 'The top rung is always 100%: a drill that never asks for the real '
+            + 'tempo has not taught the passage.');
         const ladderRow = el('div', 'flex items-center gap-2 pt-1');
-        const rungs = [];
-        for (const p of PRESETS) {
-            const b = el('button', 'px-3 py-1.5 rounded border text-xs font-semibold', String(p));
-            b.type = 'button';
-            if (p === 100) {
-                b.disabled = true;
-                b.title = 'Always included';
-            }
-            b.addEventListener('click', () => {
-                const cur = api.settings.get().ladder || [];
-                const next = cur.includes(p) ? cur.filter((x) => x !== p) : cur.concat([p]);
-                api.settings.set({ ladder: next });
-                sync();
-            });
-            rungs.push({ pct: p, node: b });
-            ladderRow.appendChild(b);
+
+        const startSel = document.createElement('select');
+        startSel.className = 'bg-fb-cardMuted border border-fb-border rounded px-2 py-1.5 text-sm text-fb-text';
+        for (const v of STARTS) {
+            const o = document.createElement('option');
+            o.value = String(v);
+            o.textContent = 'start ' + v + '%';
+            startSel.appendChild(o);
         }
+        startSel.addEventListener('change', () => {
+            api.settings.set({ startPct: Number(startSel.value) });
+            sync();
+        });
+        ladderRow.appendChild(startSel);
+
+        const stepSel = document.createElement('select');
+        stepSel.className = 'bg-fb-cardMuted border border-fb-border rounded px-2 py-1.5 text-sm text-fb-text';
+        for (const v of STEPS) {
+            const o = document.createElement('option');
+            o.value = String(v);
+            o.textContent = 'step +' + v;
+            stepSel.appendChild(o);
+        }
+        stepSel.addEventListener('change', () => {
+            api.settings.set({ stepPct: Number(stepSel.value) });
+            sync();
+        });
+        ladderRow.appendChild(stepSel);
+
+        const rungs = el('span', 'text-xs text-fb-textDim');
+        ladderRow.appendChild(rungs);
         ladderField.appendChild(ladderRow);
-        const stretch = el('div', 'text-xs pt-1');
-        ladderField.appendChild(stretch);
         root.appendChild(ladderField);
 
         // ── goal ─────────────────────────────────────────────────────────
@@ -196,20 +208,18 @@
 
         function sync() {
             const s = api.settings.get();
-            const ladder = s.ladder || [];
-            for (const r of rungs) {
-                const on = r.pct === 100 || ladder.includes(r.pct);
-                r.node.className = 'px-3 py-1.5 rounded border text-xs font-semibold '
-                    + (on ? 'bg-fb-primary border-fb-primary text-fb-text'
-                          : 'bg-fb-cardMuted border-fb-border text-fb-textDim');
-            }
-            const slow = ladder.some((p) => p < 80);
-            stretch.textContent = slow
-                ? 'Below 80% the backing track is audibly time-stretched. Worth it for a '
-                  + 'passage you cannot play yet; not worth leaving on.'
-                : '';
-            stretch.className = 'text-xs pt-1 ' + (slow ? 'text-fb-mid' : 'text-fb-textDim');
-
+            /*
+             * The rungs, spelled out. This page is a form and a form can
+             * afford to show its own arithmetic — the panel shows the same
+             * thing as a rail, which is denser but needs the space a form
+             * does not have to save.
+             */
+            startSel.value = String(s.startPct);
+            stepSel.value = String(s.stepPct);
+            const built = [];
+            for (let v = Number(s.startPct) || 80; v < 100; v += (Number(s.stepPct) || 5)) built.push(v);
+            built.push(100);
+            rungs.textContent = '\u2192 ' + built.join(' \u00b7 ') + '%';
             if (document.activeElement !== goal) goal.value = String(s.goalPct);
             if (document.activeElement !== bars) bars.value = String(s.barCount);
             for (const b of boxes) b.box.checked = !!s[b.key];
@@ -222,7 +232,9 @@
             const isOff = api.isDisabled();
             off.textContent = isOff ? 'Turn Riff Repeater back on' : 'Turn Riff Repeater off';
             status.textContent = isOff ? 'Off — no button in the player.' : '';
-            for (const r of rungs) r.node.disabled = isOff || r.pct === 100;
+            // The ladder is two selects now, not a row of togglable rungs.
+            startSel.disabled = isOff;
+            stepSel.disabled = isOff;
             goal.disabled = isOff;
             bars.disabled = isOff;
             for (const b of boxes) b.box.disabled = isOff;

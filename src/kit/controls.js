@@ -1,5 +1,5 @@
 /*
- * kit 0.9.0 — the four control families, as builders.
+ * kit 0.11.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -183,6 +183,511 @@ export function fold(opts = {}) {
     };
 }
 
+/**
+ * A RACK — one block of the unit.
+ *
+ *     ● LOOP   INTRO 1 · BEST 58%              [ TIME | BARS ]
+ *     ────────────────────────────────────────────────────────
+ *     …controls…
+ *
+ * The panel is a chassis and this is a module bolted into it: a label, an
+ * optional read-only aside, an optional header control, and a body. Racks are
+ * FLAT and separated by a 1px stroke rather than by margin — which is why the
+ * space scale got denser when this arrived. Air between groups was doing a
+ * line's job.
+ *
+ * `setAside` is for a VALUE, never a control: it sits in the label's row at
+ * the mono readout step, and the point of the slot is that you can read the
+ * rack's state without opening anything. A control goes in `header`, which is
+ * right-aligned after it and sized for something set once (`h-sm`).
+ */
+export function rack(opts = {}) {
+    const { label = '', tone = null } = opts;
+    const wrap = el('section', 'fbk-rack');
+    if (tone) wrap.dataset.tone = tone;
+
+    const head = el('div', 'fbk-rack-head');
+    head.appendChild(el('span', 'fbk-rack-dot'));
+    const name = el('h4', 'fbk-rack-label', label);
+    const aside = el('span', 'fbk-rack-aside');
+    const header = el('div', 'fbk-rack-header');
+    head.appendChild(name);
+    head.appendChild(aside);
+    head.appendChild(header);
+
+    const body = el('div', 'fbk-rack-body');
+    wrap.appendChild(head);
+    wrap.appendChild(body);
+
+    return {
+        el: wrap,
+        /** Append the rack's controls here. */
+        body,
+        /** Right-aligned slot for ONE control that is set once. */
+        header,
+        head,
+        /** The read-only state, in the label's row. Nullish clears it. */
+        setAside(text) { aside.textContent = (text === null || text === undefined) ? '' : String(text); },
+        setLabel(text) { name.textContent = text === null || text === undefined ? '' : String(text); },
+    };
+}
+
+/**
+ * A WELL — a slot cut into the chassis.
+ *
+ * Darker than what surrounds it, rounder than the chassis (a routed slot has a
+ * tool radius), and it means one thing: *this is a readout, not a control*.
+ * The climb rail lives in one; so does a blocked status line, which is the
+ * same idea turned to urgency — a message that has to stop you gets cut into
+ * the panel instead of printed on it.
+ *
+ * `tone` paints the stroke: `warn` for the amber one.
+ */
+export function well(tone = null) {
+    const n = el('div', 'fbk-well');
+    if (tone) n.dataset.tone = tone;
+    return n;
+}
+
+/**
+ * A RAIL — a ladder, as a readout.
+ *
+ *     CLIMB · ON RUNG              3 clean runs to goal
+ *     ●───────◉───────○───────○───────○
+ *     80      85      90      95     100
+ *
+ * NOT PRESSABLE, and that is the design rather than a limitation. The rungs
+ * DERIVE from start, step and goal — three steppers own those — so a rail you
+ * could click would be a fourth writer of a value three controls already
+ * write, which is §15's defect exactly. It shows three states: cleared,
+ * current, ahead.
+ *
+ * And there is deliberately no caption warning about time-stretch on the slow
+ * rungs. The rack is called SPEED, its audience already reaches for a practice
+ * tool, and a permanent warning about a choice somebody made on purpose is
+ * what §4 exists to prevent.
+ */
+export function rail(opts = {}) {
+    const { ariaLabel = null } = opts;
+    const wrap = el('div', 'fbk-rail');
+    wrap.setAttribute('role', 'img');
+    if (ariaLabel) wrap.setAttribute('aria-label', ariaLabel);
+    const line = el('div', 'fbk-rail-line');
+    const dots = el('div', 'fbk-rail-dots');
+    const marks = el('div', 'fbk-rail-marks');
+    wrap.appendChild(line);
+    wrap.appendChild(dots);
+    wrap.appendChild(marks);
+
+    let signature = '';
+
+    return {
+        el: wrap,
+        /**
+         * `rungs` is `[{ value, label, state }]`, state `done | on | next`.
+         * Rebuilt only when the shape changes, so an idle tick is a class swap.
+         */
+        set(rungs) {
+            const list = Array.isArray(rungs) ? rungs : [];
+            const sig = list.map((r) => r.value + ':' + (r.label === undefined ? '' : r.label)).join(',');
+            if (sig !== signature) {
+                signature = sig;
+                dots.textContent = '';
+                marks.textContent = '';
+                for (const r of list) {
+                    dots.appendChild(el('span', 'fbk-rail-dot'));
+                    marks.appendChild(el('span', 'fbk-rail-mark', String(r.label === undefined ? r.value : r.label)));
+                }
+            }
+            const dn = dots.children;
+            const mn = marks.children;
+            for (let i = 0; i < list.length; i += 1) {
+                if (dn[i]) dn[i].dataset.state = list[i].state || 'next';
+                if (mn[i]) mn[i].dataset.state = list[i].state || 'next';
+            }
+            /*
+             * The line fills to the current rung, so progress is a LENGTH.
+             * Without it the only cue is how many dots are green, which is a
+             * number you have to count — and counting is the thing a HUD is
+             * supposed to save you.
+             */
+            const onAt = list.findIndex((r) => r.state === 'on');
+            const pct = list.length > 1 && onAt >= 0 ? (onAt / (list.length - 1)) * 100 : 0;
+            line.style.setProperty('--fbk-fill', pct + '%');
+        },
+    };
+}
+
+/**
+ * An LED METER — a discrete grade bar.
+ *
+ * Segments rather than a smooth fill, because what it reports IS discrete: a
+ * count of judged notes, of attempts, of cleared runs. A continuous bar
+ * promises a precision the number behind it does not have — and at 8% a smooth
+ * meter is a sliver you cannot see, while ten cells with one lit is
+ * unambiguous.
+ *
+ * Grade colours only, and never on anything pressable (§3).
+ */
+export function ledMeter(opts = {}) {
+    const { segments = 10 } = opts;
+    const wrap = el('span', 'fbk-led');
+    const cells = [];
+    for (let i = 0; i < segments; i += 1) {
+        const c = el('span', 'fbk-led-cell');
+        cells.push(c);
+        wrap.appendChild(c);
+    }
+    return {
+        el: wrap,
+        /** `value` 0..100 and a band name. A nullish value lights nothing. */
+        set(value, bandName) {
+            const v = num(value);
+            const lit = v === null ? 0 : Math.round((Math.max(0, Math.min(100, v)) / 100) * segments);
+            for (let i = 0; i < cells.length; i += 1) {
+                if (i < lit && bandName) cells[i].dataset.band = bandName;
+                else delete cells[i].dataset.band;
+            }
+        },
+    };
+}
+
+/**
+ * A STATUS LINE whose chrome scales with urgency.
+ *
+ *     ● ok — a plain line, no well
+ *     ┌────────────────────────────────────────────────┐
+ *     │ ● blocked — a well, an amber stroke    Fix ›   │
+ *     └────────────────────────────────────────────────┘
+ *
+ * Three states, three amounts of furniture, and that is the part worth
+ * copying: a message that is merely true gets a line; a message that stops you
+ * gets cut into the chassis and outlined.
+ *
+ * `ok` is SILENT unless a caller insists. "Everything is normal" is a signal
+ * that carries nothing (§16) — the green dot on a primary, again — so nothing
+ * is drawn until there is something to say.
+ *
+ * `act` adds the trailing link, because a blocked state you cannot act on is a
+ * dead end. If there is a fix, it belongs within reach of the sentence.
+ */
+export function statusLine() {
+    const wrap = el('div', 'fbk-status');
+    wrap.hidden = true;
+    wrap.appendChild(el('span', 'fbk-status-dot'));
+    const text = el('span', 'fbk-status-text');
+    const action = el('button', 'fbk-status-action');
+    action.type = 'button';
+    action.hidden = true;
+    wrap.appendChild(text);
+    wrap.appendChild(action);
+
+    let handler = null;
+    action.addEventListener('click', () => { if (handler) handler(); });
+
+    return {
+        el: wrap,
+        /** `state` is `ok | warn | blocked`, or nullish to say nothing. */
+        set(state, message, act = null) {
+            const quiet = !state || !message;
+            wrap.hidden = quiet;
+            if (quiet) { handler = null; action.hidden = true; return; }
+            wrap.dataset.state = state;
+            text.textContent = String(message);
+            handler = act && typeof act.onClick === 'function' ? act.onClick : null;
+            action.hidden = !handler;
+            action.textContent = handler ? String(act.label) + ' ›' : '';
+        },
+    };
+}
+
+/**
+ * A LIST ROW — a name, a grade, a value, and a way in.
+ *
+ * `h-md`, because it is pressed while the song is running.
+ */
+export function listRow(opts = {}) {
+    const {
+        label = '', value = null, band: bandName = null,
+        title = '', onClick = null, segments = 12,
+    } = opts;
+    const row = el(onClick ? 'button' : 'div', 'fbk-list-row');
+    if (onClick) {
+        row.type = 'button';
+        row.addEventListener('click', onClick);
+    }
+    if (title) row.title = title;
+    row.appendChild(el('span', 'fbk-list-name', label));
+    const meter = ledMeter({ segments });
+    meter.set(value, bandName);
+    row.appendChild(meter.el);
+    row.appendChild(el('span', 'fbk-list-value', num(value) === null ? '–' : Math.round(num(value)) + '%'));
+    if (onClick) row.appendChild(el('span', 'fbk-list-chev', '›'));
+    return row;
+}
+
+/**
+ * A RANGE STRIP — the phrase timeline, and the only loop selector there is.
+ *
+ *     ┌──┬────────────┬──┐
+ *     │A │            │B │   ▮▮▯▮▮▯▯▮▮▯
+ *     └──┴────────────┴──┘
+ *
+ * One control replaced four: mode tabs, section chevrons, a phrase stepper and
+ * two rows of edge steppers. The argument is direct manipulation — the thing
+ * you want to say is "loop from here to here", and every one of those controls
+ * was a way of spelling that out in numbers instead of pointing at it.
+ *
+ * Three gestures, and they do not overlap:
+ *   - **tap a block** loops that block
+ *   - **drag a handle** moves that edge, snapping to block edges
+ *   - **drag across the blocks** takes a fresh range
+ *
+ * The blocks stay PROPORTIONAL to the song, because the strip is a map and a
+ * map whose widths lie is not one. Which makes some blocks too thin to hit, so
+ * the geometry and the hit test are separate: every block gets a target at
+ * least `minHit` wide grown about its own centre, and a tap picks the target
+ * whose centre is nearest. Nothing moves on screen. (§12.)
+ *
+ * A block with nothing in it is drawn and NOT in the hit table — the strip
+ * stays truthful about the song's shape while refusing to let you land
+ * somewhere nothing can happen.
+ *
+ * `onPick(key)`, `onEdge(which, seconds)` and `onDrag(a, b)` are the whole
+ * write surface; the strip holds no state and is redrawn from `set()`.
+ */
+export function rangeStrip(opts = {}) {
+    const {
+        minHit = 40, ariaLabel = null,
+        onPick = null, onEdge = null, onDrag = null,
+        slop = 4,
+    } = opts;
+
+    const wrap = el('div', 'fbk-strip');
+    wrap.setAttribute('role', 'group');
+    if (ariaLabel) wrap.setAttribute('aria-label', ariaLabel);
+    const blocks = el('div', 'fbk-strip-blocks');
+    const sel = el('div', 'fbk-strip-sel');
+    const handleA = el('button', 'fbk-strip-handle', 'A');
+    const handleB = el('button', 'fbk-strip-handle', 'B');
+    handleA.type = 'button';
+    handleB.type = 'button';
+    handleA.dataset.edge = 'start';
+    handleB.dataset.edge = 'end';
+    handleA.title = 'Drag to move the loop start — snaps to a phrase edge';
+    handleB.title = 'Drag to move the loop end — snaps to a phrase edge';
+    sel.appendChild(handleA);
+    sel.appendChild(handleB);
+    wrap.appendChild(blocks);
+    wrap.appendChild(sel);
+
+    let items = [];          // [{key, start, end, events, band, graduated}]
+    let duration = 0;
+    let hits = [];           // [{key, centre, from, to}] in px
+    let signature = '';
+    const nodes = new Map();
+
+    const rect = () => wrap.getBoundingClientRect();
+    const timeAt = (clientX) => {
+        const r = rect();
+        if (!r.width || !duration) return 0;
+        const x = Math.max(0, Math.min(r.width, clientX - r.left));
+        return (x / r.width) * duration;
+    };
+
+    /** The block boundary nearest a time — what a handle snaps to. */
+    function snap(seconds) {
+        let best = seconds;
+        let dist = Infinity;
+        for (const it of items) {
+            for (const edge of [it.start, it.end]) {
+                const d = Math.abs(edge - seconds);
+                if (d < dist) { dist = d; best = edge; }
+            }
+        }
+        return best;
+    }
+
+    function hitAt(clientX) {
+        if (!hits.length) return null;
+        const x = clientX - rect().left;
+        let best = null;
+        let bestDist = Infinity;
+        for (const h of hits) {
+            if (x < h.from || x > h.to) continue;
+            const d = Math.abs(x - h.centre);
+            if (d < bestDist) { bestDist = d; best = h.key; }
+        }
+        return best;
+    }
+
+    /*
+     * A drag on a HANDLE and a drag on the STRIP are different gestures, and
+     * the handle has to win — it sits on top of the blocks, so without the
+     * `dragging` guard a grab of the handle would also start a fresh range
+     * underneath it.
+     */
+    let dragging = null;     // 'start' | 'end'
+    let sweepFrom = null;    // {x, t}
+
+    for (const h of [handleA, handleB]) {
+        h.addEventListener('pointerdown', (e) => {
+            dragging = h.dataset.edge;
+            h.setPointerCapture?.(e.pointerId);
+            e.stopPropagation();
+        });
+        h.addEventListener('pointermove', (e) => {
+            if (dragging !== h.dataset.edge || !onEdge) return;
+            onEdge(dragging, snap(timeAt(e.clientX)));
+        });
+        h.addEventListener('pointerup', () => { dragging = null; });
+        h.addEventListener('pointercancel', () => { dragging = null; });
+    }
+
+    wrap.addEventListener('pointerdown', (e) => {
+        if (dragging) return;
+        sweepFrom = { x: e.clientX, t: timeAt(e.clientX) };
+    });
+    wrap.addEventListener('pointermove', (e) => {
+        if (dragging || !sweepFrom || !onDrag) return;
+        if (Math.abs(e.clientX - sweepFrom.x) < slop) return;
+        const t = timeAt(e.clientX);
+        onDrag(Math.min(sweepFrom.t, t), Math.max(sweepFrom.t, t));
+    });
+    wrap.addEventListener('pointerup', (e) => {
+        if (dragging) { dragging = null; sweepFrom = null; return; }
+        if (!sweepFrom) return;
+        // Under the slop it was a tap, which loops the block it landed on.
+        if (Math.abs(e.clientX - sweepFrom.x) < slop && onPick) {
+            const key = hitAt(e.clientX);
+            if (key) onPick(key);
+        }
+        sweepFrom = null;
+    });
+
+    return {
+        el: wrap,
+        handles: { start: handleA, end: handleB },
+        /**
+         * `list` is the blocks, `range` is `{start, end}` or null.
+         *
+         * `band` paints the grade; `events === 0` marks a block as empty and
+         * takes it out of the hit table. `null` events means NOT COUNTED YET
+         * and is left alone — `Number(null)` is 0, and reading absent as empty
+         * is how a whole strip once went inert between a song loading and its
+         * chart arriving.
+         */
+        set(list, songSeconds, range) {
+            items = Array.isArray(list) ? list : [];
+            duration = Number(songSeconds) > 0 ? Number(songSeconds) : 0;
+
+            const sig = items.map((i) => i.key).join('|') + '@' + duration;
+            if (sig !== signature) {
+                signature = sig;
+                blocks.textContent = '';
+                nodes.clear();
+                for (const it of items) {
+                    const b = el('div', 'fbk-strip-block');
+                    b.dataset.key = it.key;
+                    b.style.left = ((it.start / duration) * 100) + '%';
+                    b.style.width = (((it.end - it.start) / duration) * 100) + '%';
+                    nodes.set(it.key, b);
+                    blocks.appendChild(b);
+                }
+            }
+
+            for (const it of items) {
+                const node = nodes.get(it.key);
+                if (!node) continue;
+                node.dataset.band = it.band || 'none';
+                node.dataset.empty = num(it.events) === 0 ? 'true' : 'false';
+                node.classList.toggle('fbk-strip-block-done', !!it.graduated);
+                if (it.title) node.title = it.title;
+            }
+
+            /*
+             * The hit table: each selectable block's own extent, PADDED by
+             * half a hit target on each side, resolved by nearest centre.
+             *
+             * The padding is what makes a thin block reachable, and it is
+             * also what makes the two empty-block behaviours fall out of one
+             * rule. Growing symmetrically about the CENTRE instead — which is
+             * what this did first — left a dead band wherever an empty block
+             * sat between two blocks already wider than `minHit`: neither
+             * neighbour grew, so a 3px gap swallowed taps and gave no reason.
+             * Padding the edges tiles a small gap and still leaves a wide one
+             * dead, which is the right pair: a tap that silently jumps an inch
+             * away is worse than a tap that plainly does nothing.
+             */
+            const w = rect().width || 0;
+            const pad = minHit / 2;
+            hits = items
+                .filter((it) => num(it.events) !== 0)
+                .map((it) => {
+                    const l = (it.start / duration) * w;
+                    const r = (it.end / duration) * w;
+                    return { key: it.key, centre: (l + r) / 2, from: l - pad, to: r + pad };
+                });
+
+            const has = range && duration > 0
+                && Number.isFinite(Number(range.start)) && Number.isFinite(Number(range.end));
+            sel.hidden = !has;
+            if (has) {
+                sel.style.left = ((range.start / duration) * 100) + '%';
+                sel.style.width = (((range.end - range.start) / duration) * 100) + '%';
+            }
+        },
+        /** Light the block under the playhead's key, or nothing. */
+        mark(key) {
+            for (const [k, node] of nodes) node.classList.toggle('fbk-strip-block-at', k === key);
+        },
+        disable(off) {
+            handleA.disabled = !!off;
+            handleB.disabled = !!off;
+        },
+    };
+}
+
+/**
+ * A FOLDED STRIP — the panel, shrunk to what you can read while playing.
+ *
+ *     ┌──────────────────────────────────────────────┐
+ *     │  LIVE  SPEED                3 runs to goal   │
+ *     │  91%   ●───◉───○───○───○                     │
+ *     │  ● Intro 1  ▮▮▮▯▯▯   4/7 · 0:41.2            │
+ *     └──────────────────────────────────────────────┘
+ *
+ * No buttons in it. The WHOLE BLOCK is the target, because the one thing you
+ * might want mid-song is "give me the rest of it" and aiming at a chevron with
+ * a guitar in your hands is not a gesture. Hover and focus turn the stroke and
+ * the grip blue and reveal the key hint in the corner — the affordance appears
+ * when you go looking for it and stays out of the way when you do not.
+ *
+ * It is a STATE of the panel, not a second widget: same layer, same open and
+ * close, same shortcut registry. Two objects would be two z-indexes, two
+ * lifecycles, and two places for a bug about which one is showing.
+ */
+export function foldedStrip(opts = {}) {
+    const { label = 'OPEN', hint = null, onOpen = null } = opts;
+    const wrap = el('button', 'fbk-folded');
+    wrap.type = 'button';
+    wrap.setAttribute('aria-expanded', 'false');
+    if (onOpen) wrap.addEventListener('click', onOpen);
+
+    wrap.appendChild(el('span', 'fbk-folded-grip'));
+    const body = el('span', 'fbk-folded-body');
+    const cue = el('span', 'fbk-folded-cue', hint ? `${label} · ${hint}` : label);
+    wrap.appendChild(body);
+    wrap.appendChild(cue);
+
+    return {
+        el: wrap,
+        /** Append the readouts here. Nothing pressable — the block is the button. */
+        body,
+        setCue(text) { cue.textContent = text === null || text === undefined ? '' : String(text); },
+    };
+}
+
 /** A big tabular number with a small unit — DESIGN.md §7. */
 export function readout(unit) {
     const wrap = el('span', 'fbk-readout');
@@ -216,8 +721,18 @@ export function plate() {
  *
  * `items` is `[{ value, label, title }]`. `onPick` gets the value.
  */
-export function segmented(items, onPick, ariaLabel) {
-    const wrap = el('div', 'fbk-seg');
+export function segmented(items, onPick, ariaLabel, opts = {}) {
+    /*
+     * TWO SIZES, and the rule is when you touch it, not what it holds.
+     *
+     *   row     `h-md` — values you change while setting up a passage
+     *   header  `h-sm` — a unit or a mode set once, in a rack's header slot
+     *
+     * A `TIME | BARS` switch and a `+2 | +5 | +10` step are the same widget
+     * and want different sizes, because one of them you set on the first day
+     * and the other you reach for every passage.
+     */
+    const wrap = el('div', opts.size === 'header' ? 'fbk-seg fbk-seg-header' : 'fbk-seg');
     wrap.setAttribute('role', 'group');
     if (ariaLabel) wrap.setAttribute('aria-label', ariaLabel);
     const nodes = new Map();
@@ -344,10 +859,35 @@ export function stepper(opts = {}) {
     let value = num(opts.value) ?? 0;
 
     const down = button('fbk-step', '−', downTitle, () => bump(-step));
+
+    /*
+     * THE LABEL NAMES THE UNIT, and it goes INSIDE the stepper.
+     *
+     *     ┌───┬──────────┬───┐
+     *     │ − │  START   │ + │
+     *     │   │   80%    │   │
+     *     └───┴──────────┴───┘
+     *
+     * Two steppers side by side with their legends in a separate label column
+     * is two rows and a guess about which legend belongs to which; stacked
+     * over the value it names, a stepper is one object you can read on its
+     * own. It is also what lets `A · ±1 bar` exist at all — the label carries
+     * both what the control is and what one press does, which no external
+     * legend has room for.
+     *
+     * The `emph` flag paints the value blue: on a rack of steppers, one of
+     * them is the number that drives the drill and the rest are policy.
+     */
+    const stack = el('div', 'fbk-stepper-stack');
+    const legend = opts.label ? el('span', 'fbk-stepper-label', opts.label) : null;
+    if (legend) stack.appendChild(legend);
     const out = readout(unit);
+    if (opts.emph) out.el.dataset.emph = '1';
+    stack.appendChild(out.el);
+
     const up = button('fbk-step', '+', upTitle, () => bump(step));
     wrap.appendChild(down);
-    wrap.appendChild(out.el);
+    wrap.appendChild(stack);
     wrap.appendChild(up);
 
     function bump(by) {
@@ -369,6 +909,8 @@ export function stepper(opts = {}) {
 
     return {
         el: wrap,
+        /** The legend above the value, for a caller that renames the unit. */
+        label: legend,
         get() { return value; },
         set(v) {
             const n = num(v);

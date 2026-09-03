@@ -531,6 +531,173 @@ body {
     kit already had.</p>
 </section>
 
+<section class="g-card g-wide">
+    <h2>The rack — chassis, racks, wells</h2>
+    <p class="g-why">The panel is a chassis and each block is a rack bolted
+    into it: a label, a read-only <strong>aside</strong> in the label's row, a
+    <strong>header</strong> slot for one control set once, and a body. Racks
+    are flat and divided by a 1px stroke rather than by air — which is why the
+    space scale got denser when this arrived. A <strong>well</strong> is the
+    opposite gesture: a slot cut <em>into</em> the chassis, darker and rounder,
+    meaning "readout, not control".</p>
+    <div class="g-grid g-grid-1" style="max-width:332px">
+        <div style="border-radius:var(--fbk-radius);border:1px solid rgb(var(--fbk-border));background:rgb(var(--fbk-surface));padding:0 14px">
+            <section class="fbk-rack">
+                <div class="fbk-rack-head">
+                    <span class="fbk-rack-dot"></span>
+                    <h4 class="fbk-rack-label">Loop</h4>
+                    <span class="fbk-rack-aside">INTRO 1 · BEST 58%</span>
+                    <div class="fbk-rack-header">
+                        <div class="fbk-seg fbk-seg-header">
+                            <button class="fbk-seg-btn fbk-on">TIME</button>
+                            <button class="fbk-seg-btn">BARS</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="fbk-rack-body">
+                    <div class="fbk-strip">
+                        <div class="fbk-strip-blocks">
+                            <div class="fbk-strip-block" style="left:0%;width:22%" data-band="mid"></div>
+                            <div class="fbk-strip-block" style="left:22%;width:8%" data-band="bad"></div>
+                            <div class="fbk-strip-block" style="left:30%;width:10%" data-band="mid"></div>
+                            <div class="fbk-strip-block" style="left:40%;width:12%" data-band="good"></div>
+                            <div class="fbk-strip-block" style="left:52%;width:9%" data-band="bad"></div>
+                            <div class="fbk-strip-block" style="left:61%;width:24%" data-band="bad"></div>
+                            <div class="fbk-strip-block" style="left:85%;width:15%" data-empty="true"></div>
+                        </div>
+                        <div class="fbk-strip-sel" style="left:0%;width:22%">
+                            <button class="fbk-strip-handle" data-edge="start">A</button>
+                            <button class="fbk-strip-handle" data-edge="end">B</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="fbk-rack">
+                <div class="fbk-rack-head">
+                    <span class="fbk-rack-dot"></span>
+                    <h4 class="fbk-rack-label">Speed</h4>
+                    <span class="fbk-rack-aside"></span>
+                    <div class="fbk-rack-header">
+                        <label class="fbk-toggle"><input type="checkbox" checked><span class="fbk-toggle-track"></span><span class="fbk-toggle-text">Widen when clean</span></label>
+                    </div>
+                </div>
+                <div class="fbk-rack-body">
+                    <div class="fbk-well">
+                        <div class="fbk-rack-head" style="margin:0">
+                            <h4 class="fbk-rack-label" style="color:rgb(var(--fbk-dim))">Climb · on rung</h4>
+                            <span class="fbk-rack-aside" style="text-align:right">3 clean runs to goal</span>
+                        </div>
+                        <div class="fbk-rail" role="img" aria-label="Climb ladder">
+                            <div class="fbk-rail-line" style="--fbk-fill:25%"></div>
+                            <div class="fbk-rail-dots">
+                                <span class="fbk-rail-dot" data-state="done"></span>
+                                <span class="fbk-rail-dot" data-state="on"></span>
+                                <span class="fbk-rail-dot" data-state="next"></span>
+                                <span class="fbk-rail-dot" data-state="next"></span>
+                                <span class="fbk-rail-dot" data-state="next"></span>
+                            </div>
+                            <div class="fbk-rail-marks">
+                                <span class="fbk-rail-mark" data-state="done">80</span>
+                                <span class="fbk-rail-mark" data-state="on">85</span>
+                                <span class="fbk-rail-mark" data-state="next">90</span>
+                                <span class="fbk-rail-mark" data-state="next">95</span>
+                                <span class="fbk-rail-mark" data-state="next">100</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+    <p class="g-why">The <strong>rail</strong> is not pressable, and that is
+    the design rather than a limitation: the rungs derive from start, step and
+    goal, so a rail you could click would be a fourth writer of a value three
+    steppers already own — §15's defect exactly. Three states, and each is a
+    different <em>kind</em> of mark rather than the same mark in three hues, so
+    it still reads with no colour at all.</p>
+</section>
+
+<section class="g-card g-wide">
+    <h2>Status, list rows, and the folded strip</h2>
+    <p class="g-why">A status line's <strong>chrome scales with urgency</strong>:
+    a message that is merely true gets a line, one that has to stop you gets
+    cut into the chassis and outlined, and it carries its own way out — because
+    a blocked state you cannot act on is a dead end. And "ok" is silent by
+    default: <em>everything is normal</em> is a signal that carries nothing.</p>
+    <div class="g-grid g-grid-1" style="max-width:332px">
+        <div class="fbk-status" data-state="ok">
+            <span class="fbk-status-dot"></span>
+            <span class="fbk-status-text">Note detection on — graded from what you play</span>
+        </div>
+        <div class="fbk-status" data-state="blocked">
+            <span class="fbk-status-dot"></span>
+            <span class="fbk-status-text">Turn on note detection in the player — a drill is graded from what you play.</span>
+            <button class="fbk-status-action">Turn on ›</button>
+        </div>
+        <div class="fbk-status" data-state="blocked">
+            <span class="fbk-status-dot"></span>
+            <span class="fbk-status-text">This passage has no notes — move A or B onto a phrase with notes.</span>
+        </div>
+    </div>
+    <p class="g-why">A <strong>list row</strong> is <code>h-md</code>, because
+    it is pressed while the song is running. Its meter is an
+    <strong>LED bar</strong> — segments rather than a smooth fill, because what
+    it reports <em>is</em> discrete, and at 8% a smooth meter is a sliver you
+    cannot see while one lit cell in twelve is unambiguous.</p>
+    <div class="g-grid g-grid-1" style="max-width:332px">
+        <button class="fbk-list-row">
+            <span class="fbk-list-name">Solo 1</span>
+            <span class="fbk-led"><span class="fbk-led-cell" data-band="bad"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span></span>
+            <span class="fbk-list-value">8%</span>
+            <span class="fbk-list-chev">›</span>
+        </button>
+        <button class="fbk-list-row">
+            <span class="fbk-list-name">Bridge 1</span>
+            <span class="fbk-led"><span class="fbk-led-cell" data-band="mid"></span><span class="fbk-led-cell" data-band="mid"></span><span class="fbk-led-cell" data-band="mid"></span><span class="fbk-led-cell" data-band="mid"></span><span class="fbk-led-cell" data-band="mid"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span></span>
+            <span class="fbk-list-value">42%</span>
+            <span class="fbk-list-chev">›</span>
+        </button>
+    </div>
+    <p class="g-why">The <strong>folded strip</strong> is the panel at reading
+    size, and it holds <em>no buttons</em>: the whole block is the target,
+    because the one thing you might want mid-song is "give me the rest of it"
+    and aiming at a chevron with a guitar in your hands is not a gesture.
+    Hover or focus it — the stroke and the grip turn blue and the key hint
+    appears.</p>
+    <div class="g-grid g-grid-1" style="max-width:346px">
+        <button class="fbk-folded" aria-expanded="false">
+            <span class="fbk-folded-grip"></span>
+            <span class="fbk-folded-body">
+                <span style="display:flex;align-items:center;gap:10px">
+                    <span style="display:flex;flex-direction:column">
+                        <span class="fbk-rack-label" style="color:rgb(var(--fbk-dim))">Live</span>
+                        <span class="fbk-live-value">91<span class="fbk-live-unit">%</span></span>
+                    </span>
+                    <span style="flex:1 1 auto;min-width:0">
+                        <span class="fbk-rack-label" style="color:rgb(var(--fbk-dim))">Speed</span>
+                        <span class="fbk-rail" role="img" aria-label="Climb">
+                            <span class="fbk-rail-line" style="--fbk-fill:25%"></span>
+                            <span class="fbk-rail-dots">
+                                <span class="fbk-rail-dot" data-state="done"></span>
+                                <span class="fbk-rail-dot" data-state="on"></span>
+                                <span class="fbk-rail-dot" data-state="next"></span>
+                                <span class="fbk-rail-dot" data-state="next"></span>
+                                <span class="fbk-rail-dot" data-state="next"></span>
+                            </span>
+                        </span>
+                    </span>
+                </span>
+                <span style="display:flex;align-items:center;gap:8px">
+                    <span class="fbk-list-name">Intro 1</span>
+                    <span class="fbk-led"><span class="fbk-led-cell" data-band="good"></span><span class="fbk-led-cell" data-band="good"></span><span class="fbk-led-cell" data-band="mid"></span><span class="fbk-led-cell" data-band="good"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span><span class="fbk-led-cell"></span></span>
+                    <span class="fbk-list-value">4/7 · 0:41.2</span>
+                </span>
+            </span>
+            <span class="fbk-folded-cue">OPEN · Y</span>
+        </button>
+    </div>
+</section>
+
 <!-- ── the whole shell ────────────────────────────────────────────────── -->
 <section class="g-card g-wide">
     <h2>The panel, assembled</h2>

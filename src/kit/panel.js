@@ -1,5 +1,5 @@
 /*
- * kit 0.9.0 — the parked panel, and the button in the player that opens it.
+ * kit 0.11.0 — the parked panel, and the button in the player that opens it.
  *
  * Two plugins wrote this before it lived here: Riff Repeater (155 lines) and
  * Live Tab (~410 lines across `mountControls`, `panelCSS` and

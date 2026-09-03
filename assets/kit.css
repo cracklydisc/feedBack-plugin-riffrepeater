@@ -1,5 +1,5 @@
 /*
- * kit 0.9.0 — the shared look.
+ * kit 0.11.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -41,6 +41,13 @@
  *  12  small parts: badge, dot, key cap, flash
  *  13  the rail button
  *  14  narrow windows and the motion gate
+ *  15  the rack: chassis, racks, wells
+ *  16  the rail
+ *  17  the LED meter
+ *  18  the status line
+ *  19  the list row
+ *  20  the range strip
+ *  21  the folded strip
  */
 
 /* ═══ 0. `hidden` has to actually hide ═══════════════════════════════════
@@ -71,10 +78,10 @@
 .fbk-panel {
     position: fixed;
     top: 64px;
-    right: var(--fbk-s-5, 14px);
+    right: var(--fbk-s-5, 10px);
     z-index: 150;
     width: 336px;
-    max-width: calc(100vw - var(--fbk-s-6, 20px) * 2);
+    max-width: calc(100vw - var(--fbk-s-6, 14px) * 2);
     max-height: 76vh;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -106,7 +113,7 @@
     display: flex;
     align-items: center;
     gap: var(--fbk-s-3, 6px);
-    padding: var(--fbk-s-4, 10px) var(--fbk-s-5, 14px);
+    padding: var(--fbk-s-4, 8px) var(--fbk-s-5, 10px);
     position: sticky;
     top: 0;
     z-index: 2;
@@ -135,7 +142,7 @@
 }
 
 .fbk-body {
-    padding: var(--fbk-s-4, 10px) var(--fbk-s-5, 14px) var(--fbk-s-5, 14px);
+    padding: var(--fbk-s-4, 8px) var(--fbk-s-5, 10px) var(--fbk-s-5, 10px);
 }
 
 /*
@@ -153,7 +160,7 @@
     position: sticky;
     bottom: 0;
     z-index: 2;
-    padding: var(--fbk-s-3, 6px) var(--fbk-s-5, 14px) var(--fbk-s-4, 10px);
+    padding: var(--fbk-s-3, 6px) var(--fbk-s-5, 10px) var(--fbk-s-4, 8px);
     background: rgb(var(--fbk-bg, 15 23 42));
     border-top: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     border-radius: 0 0 var(--fbk-radius, 10px) var(--fbk-radius, 10px);
@@ -180,7 +187,7 @@
  * jammed into the corner — reported as "the D badge is too close to the edge".
  */
 .fbk-foot .fbk-btn-primary,
-.fbk-foot .fbk-btn-stop { padding: 0 var(--fbk-s-4, 10px); }
+.fbk-foot .fbk-btn-stop { padding: 0 var(--fbk-s-4, 8px); }
 
 /*
  * And the cap itself is one step bigger on a primary.
@@ -209,7 +216,7 @@
     display: flex;
     align-items: center;
     gap: var(--fbk-s-3, 6px);
-    margin: var(--fbk-s-6, 20px) 0 var(--fbk-s-3, 6px);
+    margin: var(--fbk-s-6, 14px) 0 var(--fbk-s-3, 6px);
 }
 
 .fbk-section:first-child { margin-top: 0; }
@@ -247,7 +254,7 @@
  * that has a 296px row available (DESIGN.md §12), and it is the row people
  * aim at anyway.
  */
-.fbk-fold { margin: var(--fbk-s-6, 20px) 0 var(--fbk-s-3, 6px); }
+.fbk-fold { margin: var(--fbk-s-6, 14px) 0 var(--fbk-s-3, 6px); }
 
 .fbk-fold:first-child { margin-top: 0; }
 
@@ -514,7 +521,7 @@
     flex-direction: column;
     gap: var(--fbk-s-1, 2px);
     margin: var(--fbk-s-3, 6px) 0;
-    padding: var(--fbk-s-3, 6px) var(--fbk-s-4, 10px);
+    padding: var(--fbk-s-3, 6px) var(--fbk-s-4, 8px);
     border-radius: var(--fbk-radius-sm, 8px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
     box-shadow: var(--fbk-panel-inner, none);
@@ -574,6 +581,33 @@
     background: rgb(var(--fbk-border, 51 65 85) / 0.35);
 }
 
+/*
+ * The HEADER size: a unit or a mode set once, in a rack's header slot.
+ *
+ * AFTER `.fbk-seg` and `.fbk-seg-btn` on purpose: both are single-class
+ * selectors, so at equal specificity source order decides. Written above them
+ * this rule lost, silently, and a header switch rendered at the row height —
+ * the same cascade trap that made `.fbk-row-nowrap` a kit rule in the first
+ * place (§13).
+ *
+ * `h-sm` and the tighter radius, because it is not something you reach for
+ * mid-song — the spec's own split, and a better question than "how big is a
+ * segmented control".
+ */
+.fbk-seg-header {
+    flex: 0 0 auto;
+    height: var(--fbk-h-sm, 24px);
+    border-radius: var(--fbk-radius-seg, 5px);
+}
+
+.fbk-seg-header .fbk-seg-btn {
+    flex: 0 0 auto;
+    padding: 0 var(--fbk-s-4, 8px);
+    border-radius: calc(var(--fbk-radius-seg, 5px) - var(--fbk-s-1, 2px));
+    font-size: 10px;
+}
+
+
 /* A LIT cell, not a bordered box. The halo is a slot, so a glow-less skin
    gets the fill alone and still reads as selected. */
 .fbk-seg-btn.fbk-on {
@@ -621,8 +655,8 @@
 .fbk-chips-rail::before {
     content: '';
     position: absolute;
-    left: var(--fbk-s-4, 10px);
-    right: var(--fbk-s-4, 10px);
+    left: var(--fbk-s-4, 8px);
+    right: var(--fbk-s-4, 8px);
     top: 50%;
     height: 2px;
     margin-top: -1px;
@@ -634,7 +668,7 @@
     z-index: 1;
     box-sizing: border-box;
     height: var(--fbk-h-sm, 24px);
-    padding: 0 var(--fbk-s-4, 10px);
+    padding: 0 var(--fbk-s-4, 8px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     border-radius: var(--fbk-radius-pill, 999px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
@@ -787,6 +821,46 @@
 .fbk-stepper-wide .fbk-readout { min-width: 76px; }
 
 /*
+ * The label and the value, stacked inside the stepper.
+ *
+ * Two steppers side by side with their legends in a separate label column is
+ * two rows plus a guess about which legend belongs to which. Stacked, a
+ * stepper is one object that reads on its own — and it is what lets a label
+ * say `A · ±1 bar`, carrying both what the control is and what one press does.
+ */
+.fbk-stepper-stack {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+}
+
+.fbk-stepper-label {
+    font: var(--fbk-t-field, 600 9px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-field-track, 0.12em);
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: rgb(var(--fbk-dim, 138 160 200));
+}
+
+/* The value a stepper sets is bigger than a readout in a line of text: you
+   aim at it, and on a rack of steppers it is the thing you came to change. */
+.fbk-stepper-stack .fbk-readout {
+    min-width: 0;
+    font: var(--fbk-t-num-md, 900 18px/1.1 monospace);
+    letter-spacing: var(--fbk-t-num-md-track, 0);
+}
+
+/* One stepper on a rack holds the number that drives the drill; the rest are
+   policy. Blue says which — the same blue that means "pressable" everywhere
+   else, used here for "this is the live one". */
+.fbk-stepper-stack .fbk-readout[data-emph="1"] { color: rgb(var(--fbk-accent, 41 168 255)); }
+
+
+/*
  * A stepper button: a ROUNDED RECT at `h-md`, not a circle at `h-sm`.
  *
  * Two reasons, and the second is the one that forced it.
@@ -923,7 +997,7 @@
     gap: var(--fbk-s-3, 6px);
     box-sizing: border-box;
     height: var(--fbk-h-md, 40px);
-    padding: 0 var(--fbk-s-5, 14px);
+    padding: 0 var(--fbk-s-5, 10px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     border-radius: var(--fbk-radius-sm, 8px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
@@ -965,8 +1039,8 @@
 .fbk-btn-primary {
     width: 100%;
     height: var(--fbk-h-lg, 56px);
-    margin: var(--fbk-s-4, 10px) 0 var(--fbk-s-2, 4px);
-    padding: 0 var(--fbk-s-6, 20px);
+    margin: var(--fbk-s-4, 8px) 0 var(--fbk-s-2, 4px);
+    padding: 0 var(--fbk-s-6, 14px);
     font-size: 14px;
     font-weight: 800;
     background: var(--fbk-emph-fill, rgb(var(--fbk-accent, 14 165 233)));
@@ -982,8 +1056,8 @@
 .fbk-btn-stop {
     width: 100%;
     height: var(--fbk-h-lg, 56px);
-    margin: var(--fbk-s-4, 10px) 0 var(--fbk-s-2, 4px);
-    padding: 0 var(--fbk-s-6, 20px);
+    margin: var(--fbk-s-4, 8px) 0 var(--fbk-s-2, 4px);
+    padding: 0 var(--fbk-s-6, 14px);
     font-size: 14px;
     font-weight: 800;
     background: rgb(var(--fbk-alert, 239 68 68) / 0.16);
@@ -996,7 +1070,7 @@
 
 .fbk-btn-small {
     height: var(--fbk-h-sm, 24px);
-    padding: 0 var(--fbk-s-4, 10px);
+    padding: 0 var(--fbk-s-4, 8px);
     font-size: 11px;
     font-weight: 600;
 }
@@ -1067,7 +1141,7 @@
 .fbk-meter-row {
     display: flex;
     align-items: center;
-    gap: var(--fbk-s-4, 10px);
+    gap: var(--fbk-s-4, 8px);
     width: 100%;
     box-sizing: border-box;
     height: var(--fbk-h-sm, 24px);
@@ -1209,8 +1283,8 @@
  * disabled control's own tooltip.
  */
 .fbk-flash {
-    margin: var(--fbk-s-4, 10px) 0 0;
-    padding: var(--fbk-s-3, 6px) var(--fbk-s-4, 10px);
+    margin: var(--fbk-s-4, 8px) 0 0;
+    padding: var(--fbk-s-3, 6px) var(--fbk-s-4, 8px);
     border-radius: var(--fbk-radius-sm, 8px);
     background: rgb(var(--fbk-mid, 234 179 8) / 0.12);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-mid, 234 179 8) / 0.4);
@@ -1221,7 +1295,7 @@
 
 /* Nothing to show yet. Not an error, so it is quiet. */
 .fbk-empty {
-    margin: var(--fbk-s-4, 10px) 0;
+    margin: var(--fbk-s-4, 8px) 0;
     color: rgb(var(--fbk-dim, 148 163 184));
     font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
     font-size: 12px;
@@ -1235,7 +1309,7 @@
     gap: var(--fbk-s-3, 6px);
     box-sizing: border-box;
     height: var(--fbk-h-sm, 24px);
-    padding: 0 var(--fbk-s-4, 10px);
+    padding: 0 var(--fbk-s-4, 8px);
     border-radius: var(--fbk-radius-sm, 8px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     background: rgb(var(--fbk-surface-2, 11 18 32));
@@ -1279,10 +1353,536 @@
     background: rgb(var(--fbk-surface-2, 11 18 32));
 }
 
+/* ═══ 15. The rack — chassis, racks, wells ═══════════════════════════════
+ *
+ * The panel is a CHASSIS and each block is a rack bolted into it. Racks are
+ * flat and divided by a 1px stroke, not by air: the space that used to
+ * separate groups is a line now, which is why the space scale got denser when
+ * this arrived and why a rack has no margin of its own.
+ *
+ * A WELL is the opposite gesture — a slot cut INTO the chassis, darker and
+ * rounder than what surrounds it. It means "readout, not control", and the
+ * same shape carries urgency: a message that has to stop you is cut in and
+ * outlined rather than printed on top.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.fbk-rack {
+    padding: var(--fbk-s-5, 10px) 0 var(--fbk-s-6, 14px);
+    border-bottom: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+}
+
+.fbk-rack:first-child { padding-top: var(--fbk-s-3, 6px); }
+.fbk-rack:last-child { border-bottom: 0; padding-bottom: var(--fbk-s-3, 6px); }
+
+.fbk-rack-head {
+    display: flex;
+    align-items: center;
+    gap: var(--fbk-s-3, 6px);
+    min-height: var(--fbk-h-sm, 24px);
+    margin-bottom: var(--fbk-s-4, 8px);
+}
+
+/*
+ * The bullet. It is decoration in the strictest sense — it carries no state —
+ * and it earns its place by being the thing that makes a rack label read as a
+ * hardware legend rather than a heading. If it ever needs to mean something,
+ * it becomes a `.fbk-dot` and this rule goes.
+ */
+.fbk-rack-dot {
+    flex: 0 0 auto;
+    width: 5px;
+    height: 5px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-accent, 41 168 255));
+}
+
+.fbk-rack-label {
+    flex: 0 0 auto;
+    margin: 0;
+    font: var(--fbk-t-rack, 900 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-rack-track, 0.16em);
+    text-transform: uppercase;
+    color: rgb(var(--fbk-text, 232 238 252));
+}
+
+/*
+ * The rack's own state, in its label's row.
+ *
+ * Mono, because it holds quantities that change while you play, and dim
+ * because it is a readout sitting next to a legend — if it read at the label's
+ * weight the row would have two headings.
+ */
+.fbk-rack-aside {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font: var(--fbk-t-num, 700 11px/1.2 monospace);
+    letter-spacing: var(--fbk-t-num-track, 0.02em);
+    color: rgb(var(--fbk-dim, 138 160 200));
+}
+
+.fbk-rack-aside:empty { flex: 1 1 auto; }
+
+.fbk-rack-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--fbk-s-3, 6px);
+    margin-left: auto;
+}
+
+.fbk-rack-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--fbk-s-4, 8px);
+}
+
+/* ── a well ──────────────────────────────────────────────────────────────── */
+
+.fbk-well {
+    box-sizing: border-box;
+    padding: var(--fbk-s-4, 8px) var(--fbk-s-5, 10px);
+    border-radius: var(--fbk-radius-well, 12px);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58) / 0.7);
+    background: rgb(var(--fbk-bg, 5 7 12));
+}
+
+.fbk-well[data-tone="warn"] { border-color: rgb(var(--fbk-mid, 245 165 36) / 0.85); }
+.fbk-well[data-tone="bad"] { border-color: rgb(var(--fbk-bad, 229 72 77) / 0.85); }
+
+/* ═══ 16. The rail — a ladder you read, never press ══════════════════════ */
+
+.fbk-rail {
+    position: relative;
+    display: block;
+    padding: var(--fbk-s-3, 6px) 0 0;
+}
+
+/*
+ * The track, and the fill that says how far up you are.
+ *
+ * `--fbk-fill` is set by `rail.set()` from the current rung's index, so
+ * progress is a length. Counting green dots is the thing a HUD should save
+ * you from.
+ */
+.fbk-rail-line {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    top: calc(var(--fbk-s-3, 6px) + 5px);
+    height: 2px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-border, 42 46 58));
+}
+
+.fbk-rail-line::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--fbk-fill, 0%);
+    border-radius: inherit;
+    background: rgb(var(--fbk-good, 61 220 132));
+    transition: width var(--fbk-motion, 140ms ease);
+}
+
+.fbk-rail-dots,
+.fbk-rail-marks {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.fbk-rail-marks { margin-top: var(--fbk-s-2, 4px); }
+
+/*
+ * Three states, and each one is a different KIND of mark rather than the same
+ * mark in three hues: cleared is filled green, current is a filled blue disc
+ * with a halo, ahead is an outline. So the rail still reads with no colour at
+ * all — which is what §3's "semantic colour is not enough" asks for.
+ */
+.fbk-rail-dot {
+    box-sizing: border-box;
+    width: 10px;
+    height: 10px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    border: 2px solid rgb(var(--fbk-border, 42 46 58));
+    background: rgb(var(--fbk-bg, 5 7 12));
+}
+
+.fbk-rail-dot[data-state="done"] {
+    border-color: rgb(var(--fbk-good, 61 220 132));
+    background: rgb(var(--fbk-good, 61 220 132));
+}
+
+.fbk-rail-dot[data-state="on"] {
+    width: 14px;
+    height: 14px;
+    border-color: rgb(var(--fbk-accent, 41 168 255));
+    background: rgb(var(--fbk-accent, 41 168 255));
+    box-shadow: var(--fbk-lit-halo, none);
+}
+
+.fbk-rail-dot[data-state="next"] { border-color: rgb(var(--fbk-accent, 41 168 255) / 0.55); }
+
+.fbk-rail-mark {
+    font: var(--fbk-t-num, 700 11px/1.2 monospace);
+    letter-spacing: var(--fbk-t-num-track, 0.02em);
+    color: rgb(var(--fbk-dim, 138 160 200) / 0.75);
+}
+
+.fbk-rail-mark[data-state="done"] { color: rgb(var(--fbk-good, 61 220 132)); }
+.fbk-rail-mark[data-state="on"] { color: rgb(var(--fbk-accent, 41 168 255)); }
+
+/* ═══ 17. The LED meter — a grade that is honest about being discrete ════ */
+
+.fbk-led {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 2px;
+    height: 8px;
+}
+
+.fbk-led-cell {
+    flex: 1 1 0;
+    min-width: 0;
+    border-radius: 1px;
+    background: rgb(var(--fbk-border, 42 46 58) / 0.55);
+}
+
+.fbk-led-cell[data-band="good"] { background: rgb(var(--fbk-good, 61 220 132)); }
+.fbk-led-cell[data-band="mid"] { background: rgb(var(--fbk-mid, 245 165 36)); }
+.fbk-led-cell[data-band="bad"] { background: rgb(var(--fbk-bad, 229 72 77)); }
+
+/* ═══ 18. The status line — chrome that scales with urgency ══════════════ */
+
+.fbk-status {
+    display: flex;
+    align-items: center;
+    gap: var(--fbk-s-3, 6px);
+    min-height: var(--fbk-h-sm, 24px);
+    font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
+    color: rgb(var(--fbk-dim, 138 160 200));
+}
+
+/* `blocked` is the one that gets furniture: a well, and an amber stroke. */
+.fbk-status[data-state="blocked"],
+.fbk-status[data-state="warn"] {
+    box-sizing: border-box;
+    padding: var(--fbk-s-3, 6px) var(--fbk-s-4, 8px);
+    border-radius: var(--fbk-radius-well, 12px);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-mid, 245 165 36) / 0.85);
+    background: rgb(var(--fbk-bg, 5 7 12));
+    color: rgb(var(--fbk-text, 232 238 252));
+    font-weight: 700;
+}
+
+.fbk-status-dot {
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-dim, 138 160 200));
+}
+
+.fbk-status[data-state="ok"] .fbk-status-dot { background: rgb(var(--fbk-good, 61 220 132)); }
+.fbk-status[data-state="warn"] .fbk-status-dot,
+.fbk-status[data-state="blocked"] .fbk-status-dot { background: rgb(var(--fbk-mid, 245 165 36)); }
+
+.fbk-status-text { flex: 1 1 auto; min-width: 0; }
+
+/* The way out of a blocked state, in reach of the sentence that describes it. */
+.fbk-status-action {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
+    font-size: 11px;
+    color: rgb(var(--fbk-accent, 41 168 255));
+}
+
+.fbk-status-action:hover { color: rgb(var(--fbk-accent-hi, 96 194 255)); }
+
+/* ═══ 19. The list row ═══════════════════════════════════════════════════ */
+
+.fbk-list-row {
+    display: flex;
+    align-items: center;
+    gap: var(--fbk-s-4, 8px);
+    box-sizing: border-box;
+    width: 100%;
+    min-height: var(--fbk-h-md, 40px);
+    padding: 0 var(--fbk-s-3, 6px);
+    border: 0;
+    border-radius: var(--fbk-radius-sm, 8px);
+    background: none;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+    transition: background var(--fbk-motion, 140ms ease);
+}
+
+.fbk-list-row:hover { background: rgb(var(--fbk-surface-2, 30 34 44) / 0.6); }
+
+.fbk-list-row:focus-visible {
+    outline: 2px solid rgb(var(--fbk-focus, 41 168 255));
+    outline-offset: -2px;
+}
+
+.fbk-list-name {
+    flex: 0 0 auto;
+    width: 68px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
+    font-size: 12px;
+}
+
+.fbk-list-value {
+    flex: 0 0 auto;
+    min-width: 34px;
+    text-align: right;
+    font: var(--fbk-t-num, 700 11px/1.2 monospace);
+    letter-spacing: var(--fbk-t-num-track, 0.02em);
+    color: rgb(var(--fbk-dim, 138 160 200));
+}
+
+.fbk-list-chev {
+    flex: 0 0 auto;
+    width: 10px;
+    text-align: center;
+    font-size: 14px;
+    line-height: 1;
+    color: rgb(var(--fbk-dim, 138 160 200) / 0.6);
+}
+
+.fbk-list-row:hover .fbk-list-chev { color: rgb(var(--fbk-text, 232 238 252)); }
+
+/* ═══ 20. The range strip — the only loop selector ═══════════════════════
+ *
+ * Blocks stay PROPORTIONAL to the song, because the strip is a map. The hit
+ * table is built separately in JS so a thin block is still reachable (§12) and
+ * an empty one is drawn but unclickable — truthful about the shape, refusing
+ * to let you land where nothing can happen.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.fbk-strip {
+    position: relative;
+    height: var(--fbk-h-md, 40px);
+    border-radius: var(--fbk-radius-sm, 8px);
+    background: rgb(var(--fbk-bg, 5 7 12));
+    cursor: pointer;
+    touch-action: none;             /* the drag is ours, not the browser's */
+    user-select: none;
+}
+
+.fbk-strip-blocks { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
+
+/*
+ * A block, and the state that matters most: NOT YET PLAYED.
+ *
+ * Grey rather than invisible. An earlier version painted the unplayed state at
+ * `border / 0.55`, which measured 1.33:1 against the track — so on a
+ * ten-section song the picker rendered as two coloured smears with eight
+ * invisible gaps, a map that only appeared once you had practised everything.
+ * Accuracy is the block's HUE, never the reason it is visible.
+ */
+.fbk-strip-block {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    box-sizing: border-box;
+    border-right: var(--fbk-hairline, 1px) solid rgb(var(--fbk-bg, 5 7 12));
+    background: rgb(var(--fbk-border, 42 46 58));
+}
+
+.fbk-strip-block[data-band="good"] { background: rgb(var(--fbk-good, 61 220 132)); }
+.fbk-strip-block[data-band="mid"] { background: rgb(var(--fbk-mid, 245 165 36)); }
+.fbk-strip-block[data-band="bad"] { background: rgb(var(--fbk-bad, 229 72 77)); }
+
+/*
+ * Nothing in it — a Noguitar marker, usually. Hatched rather than merely
+ * faint, because faint is what "unmeasured" already means one rule above and
+ * these are two different nothings.
+ */
+.fbk-strip-block[data-empty="true"] {
+    background: repeating-linear-gradient(135deg,
+        rgb(var(--fbk-border, 42 46 58) / 0.5) 0 3px,
+        rgb(var(--fbk-bg, 5 7 12) / 0) 3px 6px);
+    cursor: default;
+}
+
+.fbk-strip-block:hover { filter: brightness(1.3); }
+.fbk-strip-block[data-empty="true"]:hover { filter: none; }
+
+/* Graduated a drill. A tick would not fit in 40px of height next to nine
+   others, so it is a top edge. */
+.fbk-strip-block-done { box-shadow: inset 0 2px 0 0 rgb(var(--fbk-good, 61 220 132)); }
+
+/* Where the playhead is, as a lit left edge — not a fill, which would compete
+   with the grade the fill already carries (§3). */
+.fbk-strip-block-at { box-shadow: inset 2px 0 0 0 rgb(var(--fbk-text, 232 238 252)); }
+
+/*
+ * The selection: an outline, never a fill. `pointer-events: none` on the box
+ * itself matters — it lies over the blocks and a tap has to reach what is
+ * underneath — but the handles inside it are interactive again.
+ */
+.fbk-strip-sel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    box-sizing: border-box;
+    border: 2px solid rgb(var(--fbk-accent, 41 168 255));
+    border-radius: var(--fbk-radius-seg, 5px);
+    pointer-events: none;
+}
+
+/*
+ * A handle: 28 wide with a 44 hit area.
+ *
+ * The visible grip is small because it sits ON the map and a fat one would
+ * cover the blocks it is meant to point at; the target is large because it is
+ * dragged mid-song. `::before` grows the touch area without growing the paint
+ * — the same split as the strip's own hit table, one level down.
+ */
+.fbk-strip-handle {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--fbk-radius-seg, 5px);
+    background: rgb(var(--fbk-accent, 41 168 255));
+    color: rgb(var(--fbk-on-accent, 5 7 12));
+    font: var(--fbk-t-rack, 900 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-rack-track, 0.16em);
+    cursor: ew-resize;
+    pointer-events: auto;
+    touch-action: none;
+}
+
+.fbk-strip-handle::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    bottom: -8px;
+    left: -8px;
+    right: -8px;
+}
+
+.fbk-strip-handle[data-edge="start"] { left: -2px; }
+.fbk-strip-handle[data-edge="end"] { right: -2px; }
+
+.fbk-strip-handle:hover:not(:disabled) { background: rgb(var(--fbk-accent-hi, 96 194 255)); }
+
+.fbk-strip-handle:focus-visible {
+    outline: 2px solid rgb(var(--fbk-focus, 41 168 255));
+    outline-offset: 2px;
+}
+
+/* ═══ 21. The folded strip — the panel at reading size ═══════════════════ */
+
+.fbk-folded {
+    display: flex;
+    align-items: center;
+    gap: var(--fbk-s-4, 8px);
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--fbk-s-4, 8px) var(--fbk-s-5, 10px);
+    border-radius: var(--fbk-radius, 10px);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+    background: linear-gradient(180deg,
+        rgb(var(--fbk-surface, 12 15 22)),
+        rgb(var(--fbk-bg, 5 7 12)));
+    box-shadow: var(--fbk-panel-shadow, none), var(--fbk-panel-inner, none);
+    color: rgb(var(--fbk-text, 232 238 252));
+    text-align: left;
+    cursor: pointer;
+    transition: border-color var(--fbk-motion, 140ms ease);
+}
+
+/*
+ * The affordance appears when you look for it.
+ *
+ * There are no buttons in here — the whole block is the target — so hover and
+ * focus have to say so, and they do it by turning the stroke and the grip
+ * blue and revealing the key hint. A permanent chevron would be a thing to
+ * aim at, and aiming is the gesture this control exists to avoid.
+ */
+.fbk-folded:hover,
+.fbk-folded:focus-visible {
+    border-color: rgb(var(--fbk-accent, 41 168 255));
+    outline: none;
+}
+
+.fbk-folded-grip {
+    position: absolute;
+    top: var(--fbk-s-2, 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 34px;
+    height: 3px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-border, 42 46 58));
+    transition: background var(--fbk-motion, 140ms ease);
+}
+
+.fbk-folded { position: relative; }
+
+.fbk-folded:hover .fbk-folded-grip,
+.fbk-folded:focus-visible .fbk-folded-grip { background: rgb(var(--fbk-accent, 41 168 255)); }
+
+.fbk-folded-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--fbk-s-3, 6px);
+}
+
+/* The key hint, hidden until you point at the block. */
+.fbk-folded-cue {
+    position: absolute;
+    right: var(--fbk-s-5, 10px);
+    bottom: var(--fbk-s-3, 6px);
+    opacity: 0;
+    font: var(--fbk-t-rack, 900 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-rack-track, 0.16em);
+    color: rgb(var(--fbk-accent, 41 168 255));
+    transition: opacity var(--fbk-motion, 140ms ease);
+}
+
+.fbk-folded:hover .fbk-folded-cue,
+.fbk-folded:focus-visible .fbk-folded-cue { opacity: 1; }
+
+/* The one big live number. */
+.fbk-live-value {
+    font: var(--fbk-t-num-xl, 900 28px/1 monospace);
+    letter-spacing: var(--fbk-t-num-xl-track, -0.01em);
+    color: rgb(var(--fbk-good, 61 220 132));
+}
+
+.fbk-live-value[data-band="mid"] { color: rgb(var(--fbk-mid, 245 165 36)); }
+.fbk-live-value[data-band="bad"] { color: rgb(var(--fbk-bad, 229 72 77)); }
+.fbk-live-value[data-band="none"] { color: rgb(var(--fbk-dim, 138 160 200)); }
+
+.fbk-live-unit {
+    font: var(--fbk-t-num, 700 11px/1.2 monospace);
+    letter-spacing: var(--fbk-t-num-track, 0.02em);
+}
+
 /* ═══ 14. Narrow windows, and the motion gate's belt-and-braces ══════════ */
 
 @media (max-width: 480px) {
-    .fbk-panel { width: calc(100vw - var(--fbk-s-6, 20px) * 2); }
+    .fbk-panel { width: calc(100vw - var(--fbk-s-6, 14px) * 2); }
     .fbk-meter-name { flex-basis: 72px; }
 }
 

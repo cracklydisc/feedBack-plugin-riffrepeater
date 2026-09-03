@@ -232,3 +232,82 @@ test('a storage that throws does not take the plugin down', () => {
         globalThis.localStorage = good;
     }
 });
+
+// ── the 0.13.0 migration ─────────────────────────────────────────────────
+
+test('an old ticked ladder becomes a start, a step and a goal', () => {
+    /*
+     * The version gate used to discard the whole blob on a shape change, which
+     * is cheap to write and expensive to receive: the settings are six numbers,
+     * the songs are every passage you have ever practised.
+     */
+    reset();
+    map.set('riffrepeater.v1', JSON.stringify({
+        v: 1,
+        settings: { ladder: [80, 90, 100], goalPct: 85, widen: false },
+        songs: { 'a.feedpak::Lead': { ranges: { 'section:0:1000': { best: 0.42, plays: 3 } } } },
+    }));
+    const s = store.getSettings();
+    assert.equal(s.startPct, 80);
+    assert.equal(s.stepPct, 10);
+    // The stored ACCURACY is untouched: the old ladder's top rung was a speed.
+    assert.equal(s.goalPct, 85);
+    assert.equal(s.ladder, undefined, 'the old key is dropped, not carried');
+    // The preference that had nothing to do with the change survives.
+    assert.equal(s.widen, false);
+    // And so does the expensive half.
+    assert.ok(store.getSong('a.feedpak::Lead'), 'the practice history survived');
+});
+
+test('an unevenly spaced ladder takes its smallest gap', () => {
+    /*
+     * `[50, 65, 80, 90, 100]` cannot be expressed as start+step exactly. The
+     * smallest gap gives MORE rungs than the user had, which is the safe
+     * direction: a ladder that SKIPS a rung somebody relied on is a drill that
+     * suddenly asks for a speed they cannot play.
+     */
+    reset();
+    map.set('riffrepeater.v1', JSON.stringify({
+        v: 1,
+        settings: { ladder: [50, 65, 80, 90, 100] },
+        songs: {},
+    }));
+    const s = store.getSettings();
+    assert.equal(s.startPct, 50);
+    assert.equal(s.stepPct, 10);
+});
+
+test('a junk ladder migrates to the defaults rather than to nothing', () => {
+    reset();
+    map.set('riffrepeater.v1', JSON.stringify({
+        v: 1, settings: { ladder: ['x', null, NaN] }, songs: {},
+    }));
+    const s = store.getSettings();
+    assert.equal(s.startPct, 80);
+    assert.equal(s.ladder, undefined);
+});
+
+test('a future version is still treated as absent, not half-read', () => {
+    reset();
+    map.set('riffrepeater.v1', JSON.stringify({ v: 99, settings: { goalPct: 55 }, songs: {} }));
+    assert.equal(store.getSettings().goalPct, 100);
+});
+
+test('the goal does not cap the start, because they are different quantities', () => {
+    /*
+     * `startPct` is a SPEED the ladder begins at; `goalPct` is the ACCURACY a
+     * pass has to clear to climb a rung. An earlier version clamped the first
+     * by the second — the rail's top rung reads 100 and so does a goal of
+     * 100%, and two different hundreds looked like one number.
+     *
+     * Lowering the goal to 80% accuracy must leave a 95% start alone: you have
+     * said "a pass is clean at 80% of the notes", not "stop practising above
+     * 80% speed".
+     */
+    reset();
+    store.setSettings({ startPct: 95 });
+    assert.equal(store.getSettings().startPct, 95);
+    store.setSettings({ goalPct: 80 });
+    assert.equal(store.getSettings().startPct, 95);
+    assert.equal(store.getSettings().goalPct, 80);
+});

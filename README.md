@@ -418,7 +418,7 @@ Two things learned from the DOM, in case that PR is written by somebody else:
 node --test tests/*.test.js
 ```
 
-114 tests, no dependencies, no build step.
+120 tests, no dependencies, no build step.
 
 `src/kit/` and `assets/kit.css` are **vendored** — edit them in
 [feedBack-plugin-kit](https://github.com/cracklydisc/feedBack-plugin-kit) and

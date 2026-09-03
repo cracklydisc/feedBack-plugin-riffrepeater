@@ -7,9 +7,28 @@
  * about time-stretch artefacts rather than about learning. Meanwhile the
  * host's own speed presets go down to 50%.
  *
- * So this module's whole job is to turn a set of percentages the user ticked
- * into something `startDrill` will accept, and to be honest about the cost of
- * the slow end.
+ * So this module's whole job is to turn a ladder into something `startDrill`
+ * will accept.
+ *
+ * ── THE LADDER IS GENERATED, NOT TICKED (0.13.0) ────────────────────────
+ *
+ * It used to be a set: five fixed chips, `[50, 65, 80, 90, 100]`, and you
+ * ticked the ones you wanted. Now it is three numbers — **start, step,
+ * goal** — and the rungs derive from them:
+ *
+ *     start 80 · step +5 · goal 100   ->   80 · 85 · 90 · 95 · 100
+ *     start 50 · step +10 · goal 100  ->   50 · 60 · 70 · 80 · 90 · 100
+ *
+ * Three reasons it is better, and the third is the one that mattered:
+ *
+ * 1. It expresses ladders the chips could not. Five fixed values could not
+ *    give you 85 or 95 at all.
+ * 2. It is three controls instead of five, and they are steppers — a family
+ *    that already means "a number you set".
+ * 3. THE SLOW RUNGS COST NOTHING NOW. With chips, offering 50% meant a chip
+ *    on screen forever plus a caveat badge explaining time-stretch. With a
+ *    start you set, a rung below 80 exists only if you asked for one — so the
+ *    warning went too, and the rack being called SPEED is enough.
  *
  * WHAT IS NOT HERE, on purpose: the number of full-speed repetitions before
  * graduation. The conductor fixes that at 3 and takes no option for it
@@ -18,11 +37,21 @@
  * ignores would be worse than not offering one.
  */
 
-/** The rungs a user can tick. Multiples of 5 so they land on the host slider's step. */
-export const PRESETS = [50, 65, 80, 90, 100];
+/** The steps a ladder can climb by. Three, because a fourth is a slider. */
+export const STEPS = [2, 5, 10];
 
-/** The conductor's own default, as percentages. Ticking nothing gets you this. */
-export const DEFAULT_LADDER = [80, 90, 100];
+export const DEFAULT_START_PCT = 80;
+export const DEFAULT_STEP_PCT = 5;
+
+/**
+ * The slowest rung a start can reach, and the reason it is not the host's 15.
+ *
+ * `speedBounds().min` is 15%, which is a legal playback rate and an illegal
+ * practice speed: at 15% a passage is not slow, it is a different piece of
+ * music, and the note timings stop resembling what you are learning. 50 is the
+ * floor the fixed chips had and it was the right one.
+ */
+export const START_MIN_PCT = 50;
 
 /*
  * 100, not the engine's 85.
@@ -64,15 +93,15 @@ export function clampGoalPct(pct) {
     return Math.max(GOAL_MIN_PCT, Math.min(GOAL_MAX_PCT, Math.round(n)));
 }
 
-/**
- * Below this, a slowed backing track is audibly time-stretched.
+/*
+ * WHAT USED TO BE HERE: `STRETCH_WARN_PCT` and `warnsAboutStretch`.
  *
- * Not a limit — a warning. The detector's source calls 0.8 a floor because
- * "slower time-stretches sound distorted", and it is right about the sound;
- * it is wrong to make that decision for somebody learning a passage they
- * cannot play at 80%. So the rung exists and the panel says what it costs.
+ * A caveat badge warned that a rung below 80% time-stretches the backing
+ * track audibly. It was right about the sound, and it went with the fixed
+ * chips that made it necessary: when 50 and 65 were always on screen, the
+ * panel had to explain why you might not want them. A start you set does not
+ * need explaining — you asked for it — and the rack is called SPEED.
  */
-export const STRETCH_WARN_PCT = 80;
 
 /** The conductor graduates after this many consecutive clears at the top rung. */
 export const FULLSPEED_REPS = 3;
@@ -92,31 +121,71 @@ function toPct(v) {
  *     to perform the passage, which is the point of the exercise
  *   - never empty
  */
-export function normalizeLadder(pcts, bounds = {}) {
-    const min = Number.isFinite(Number(bounds.min)) ? Number(bounds.min) : 15;
-    const max = Number.isFinite(Number(bounds.max)) ? Number(bounds.max) : 150;
-    const step = Number.isFinite(Number(bounds.step)) && Number(bounds.step) > 0 ? Number(bounds.step) : 5;
+/**
+ * The rungs, from a start and a step. The top is always FULL TEMPO.
+ *
+ *     start 80 · step +5   ->   80 · 85 · 90 · 95 · 100
+ *     start 50 · step +10  ->   50 · 60 · 70 · 80 · 90 · 100
+ *
+ * There is no control for the top and there must not be: a drill that never
+ * asks for the real tempo has not taught the passage. A ladder topping out at
+ * 90% would graduate you on a speed the song is never played at.
+ *
+ * THIS IS NOT `goalPct`, and conflating them cost a rewrite. `goalPct` is the
+ * ACCURACY a pass has to clear to move up a rung — the conductor compares it
+ * against what you played. The rail's top rung reading 100 and the goal
+ * reading 100% is a coincidence of two different hundreds: one is a speed,
+ * one is a percentage of notes.
+ *
+ * Everything is snapped to the host's slider step, so a rung is always a speed
+ * the host can actually play.
+ */
+export function buildLadder(startPct, stepPct, bounds) {
+    const b = bounds || {};
+    const grid = Math.max(1, Number(b.step) || 5);
+    const snap = (v) => Math.round(v / grid) * grid;
 
-    const seen = new Set();
-    const out = [];
-    for (const raw of (Array.isArray(pcts) ? pcts : [])) {
-        let p = toPct(raw);
-        if (!Number.isFinite(p) || p <= 0) continue;
-        p = Math.round(p / step) * step;
-        p = Math.max(min, Math.min(max, p));
-        if (p > 100) continue;            // a drill ramps UP TO tempo, never past it
-        if (seen.has(p)) continue;
-        seen.add(p);
-        out.push(p);
-    }
-    if (!seen.has(100)) { out.push(100); seen.add(100); }
-    out.sort((a, b) => a - b);
-    return out.length ? out : DEFAULT_LADDER.slice();
+    const top = 100;
+    const start = Math.max(START_MIN_PCT, Math.min(top, snap(num(startPct, DEFAULT_START_PCT))));
+    const step = Math.max(grid, snap(num(stepPct, DEFAULT_STEP_PCT)));
+
+    const rungs = [];
+    for (let v = start; v < top; v += step) rungs.push(v);
+    rungs.push(top);
+    return rungs;
 }
+
+/** A number, with a fallback that is used for nullish and for junk alike. */
+function num(v, fallback) {
+    if (v === null || v === undefined || v === '') return fallback;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+/**
+ * Put a start percentage inside its one legal range: 50 to full tempo.
+ *
+ * Clamped against 100 and NOT against `goalPct` — they are a speed and an
+ * accuracy, and clamping one by the other is the confusion this module now
+ * has a paragraph about.
+ */
+export function clampStartPct(pct) {
+    const n = num(pct, DEFAULT_START_PCT);
+    return Math.max(START_MIN_PCT, Math.min(100, Math.round(n / 5) * 5));
+}
+
+/** Put a step inside the three the segmented control offers. */
+export function clampStepPct(pct) {
+    const n = num(pct, DEFAULT_STEP_PCT);
+    let best = STEPS[0];
+    for (const s of STEPS) if (Math.abs(s - n) < Math.abs(best - n)) best = s;
+    return best;
+}
+
 
 /** Percentages -> the rate multipliers `startDrill` expects. */
 export function toRates(pcts) {
-    return normalizeLadder(pcts).map((p) => p / 100);
+    return (Array.isArray(pcts) ? pcts : []).map((p) => p / 100);
 }
 
 /** A goal percentage -> the 0..1 the conductor compares against. */
@@ -124,10 +193,6 @@ export function normalizeGoal(pct) {
     return clampGoalPct(pct) / 100;
 }
 
-/** Whether any rung is slow enough to be audibly stretched. */
-export function warnsAboutStretch(pcts) {
-    return normalizeLadder(pcts).some((p) => p < STRETCH_WARN_PCT);
-}
 
 /**
  * The one-line status for a live drill.

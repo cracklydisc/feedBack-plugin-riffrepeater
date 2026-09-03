@@ -1,5 +1,111 @@
 # Changelog
 
+## 0.13.0 — the rack
+
+The panel is a rack unit now: three racks, wells cut into them, and a
+footswitch. It is your design, built, and the components are all in the kit —
+which was the point, so Live Tab adopts a design system rather than a
+stylesheet.
+
+### The ladder is generated, not ticked
+
+Three numbers instead of five chips:
+
+```
+START 80 · STEP +5   ->   80 · 85 · 90 · 95 · 100
+START 50 · STEP +10  ->   50 · 60 · 70 · 80 · 90 · 100
+```
+
+Three reasons, and the third is the one that paid:
+
+1. It expresses ladders the chips could not — five fixed values could not
+   give you 85 or 95 at all.
+2. Three controls instead of five, and they are steppers, a family that
+   already means "a number you set".
+3. **The slow rungs cost nothing now.** With chips, offering 50% meant a chip
+   on screen forever *plus* a caveat badge explaining time-stretch. With a
+   start you set, a rung below 80 exists only if you asked for one — so the
+   warning went, exactly as you said it should.
+
+**The top rung is always full tempo and has no control**, because a drill that
+never asks for the real tempo has not taught the passage.
+
+**And the two hundreds are not the same hundred.** `GOAL 100%` is the share of
+notes a pass has to land; the rail's top rung reading 100 is a speed. I
+conflated them, wrote a migration that read the ladder's top as the goal, and
+it silently overwrote a stored 85% accuracy with 100 — caught by the store's
+migration test, which is the only place the two numbers sit side by side.
+`src/ladder.js` now has a paragraph about it.
+
+**The store migrates rather than discarding.** The version gate used to blank
+the whole blob on a shape change, which is cheap to write and expensive to
+receive: the settings are six numbers, the songs are every passage you have
+ever practised. `[80, 90, 100]` becomes start 80, step 10; an unevenly spaced
+`[50, 65, 80, 90, 100]` takes its **smallest** gap, so you get more rungs than
+you had — the safe direction, because a ladder that *skips* a rung you relied
+on is a drill that suddenly asks for a speed you cannot play.
+
+### The strip is the only loop selector
+
+Four controls retired: three mode tabs, two section chevrons, a phrase
+stepper, two rows of edge steppers. Every one of them was a way of spelling
+out in numbers the thing you wanted to point at.
+
+It draws **phrases** where the chart has them — 17 blocks on *Waterloo* rather
+than 10 sections — and sections where it does not, because the strip being the
+only selector means what it draws decides what grain you can pick at all.
+
+The `±` steppers survive for the one job a pointer is bad at, moving an edge by
+exactly one unit, and `BARS | TIME` in the rack's header says which. **BARS is
+the default** and TIME is the escape hatch: a boundary off the bar grid turns
+the count-in into a guess, so the unit that can produce one is the one you have
+to ask for. Their label carries both — `A · ±1 bar` — which is why the label
+had to move *inside* the stepper.
+
+`,` and `.` still walk the blocks, so removing the chevrons cost nothing: the
+gesture stayed and the host's help panel still lists it.
+
+### `PLAY AT` came back as `START`
+
+I flagged twice that dropping it lost a control justified by measurement — the
+host's speed slider auto-hides at `opacity: 0`. The answer turned out to be
+that there was never more than one number: **the speed you want to practise at
+IS the speed a ladder starts from.** So `START` sets the live playback rate
+while no drill is running, and the arrow keys move it. That also settles the
+"which speed wins?" report from three versions back — nothing wins, because
+there is only one.
+
+### What the footer says
+
+The status line sits above the footswitch and is **silent when everything is
+fine**: "note detection on" is a signal that carries nothing. Blocked, it gets
+a well and an amber stroke and carries its own way out —
+
+> ● Turn on note detection in the player — a drill is graded from what you
+> play.  **Turn on ›**
+
+— because a blocked state you cannot act on is a dead end.
+
+### Verified in the game
+
+| | |
+| --- | --- |
+| racks | Loop · Speed · Weak spots |
+| blocks on the strip | **17** (phrases) |
+| rungs on the rail | 5, from start 80 step +5 |
+| stepper labels | `START` `GOAL` `A · ±1 bar` `B · ±1 bar` |
+| the live number | 1, and it is `START` |
+| console errors | **0** |
+
+120 tests here, 62 in the kit.
+
+### Fixed on the way
+
+`settings.html` kept a `for (const r of rungs)` from the chip era, iterating
+what is now a readout span — and because that page mounts once at plugin load,
+the error survived four reloads before I stopped assuming a cache and read the
+stack.
+
 ## 0.11.0 — the review, point by point
 
 Eight items. Seven are implemented as asked; one is implemented differently

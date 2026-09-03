@@ -422,10 +422,19 @@ export function isUsable(range, duration) {
 }
 
 /** mm:ss for a panel label. */
-export function clock(sec) {
+export function clock(sec, decimals = 0) {
     const n = fin(sec);
     if (!Number.isFinite(n) || n < 0) return '–';
     const m = Math.floor(n / 60);
-    const s = Math.floor(n % 60);
-    return `${m}:${String(s).padStart(2, '0')}`;
+    const rest = n - m * 60;
+    /*
+     * `decimals` exists for the TIME nudge unit, which moves an edge by a
+     * tenth: a stepper whose step is finer than its readout is a control you
+     * can press twice with nothing happening on screen.
+     */
+    if (decimals > 0) {
+        const s = rest.toFixed(decimals);
+        return `${m}:${(Number(s) < 10 ? '0' : '') + s}`;
+    }
+    return `${m}:${String(Math.floor(rest)).padStart(2, '0')}`;
 }

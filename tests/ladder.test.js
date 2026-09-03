@@ -15,63 +15,105 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-    PRESETS,
-    DEFAULT_LADDER,
+    STEPS,
     DEFAULT_GOAL_PCT,
+    DEFAULT_START_PCT,
+    DEFAULT_STEP_PCT,
     GOAL_MIN_PCT,
-    clampGoalPct,
-    STRETCH_WARN_PCT,
+    START_MIN_PCT,
     FULLSPEED_REPS,
-    normalizeLadder,
+    buildLadder,
+    clampGoalPct,
+    clampStartPct,
+    clampStepPct,
     toRates,
     normalizeGoal,
-    warnsAboutStretch,
     statusLine,
     nextStepLine,
     band,
 } from '../src/ladder.js';
 
+import * as mod from '../src/ladder.js';
+
 const BOUNDS = { min: 15, max: 150, step: 5 };
 
-test('the presets are all on the host slider step', () => {
-    for (const p of PRESETS) assert.equal(p % BOUNDS.step, 0, `${p} is not a multiple of 5`);
+test('the steps are all on the host slider grid', () => {
+    for (const st of STEPS) assert.equal(st % 1, 0, `${st} is not whole`);
+    assert.deepEqual(STEPS, [2, 5, 10]);
 });
 
-test('the default ladder is the engine own default', () => {
-    assert.deepEqual(DEFAULT_LADDER, [80, 90, 100]);
+test('a ladder is generated from start, step and goal', () => {
+    /*
+     * The whole point of the change: five fixed chips could not express 85 or
+     * 95 at all, and three steppers express every ladder there is.
+     */
+    assert.deepEqual(buildLadder(80, 5, BOUNDS), [80, 85, 90, 95, 100]);
+    assert.deepEqual(buildLadder(80, 10, BOUNDS), [80, 90, 100]);
+    assert.deepEqual(buildLadder(50, 10, BOUNDS), [50, 60, 70, 80, 90, 100]);
 });
 
-test('a ladder is sorted ascending — the engine treats rung 0 as slowest', () => {
-    assert.deepEqual(normalizeLadder([100, 50, 80], BOUNDS), [50, 80, 100]);
+test('a ladder always ends at FULL TEMPO, however the step falls', () => {
+    /*
+     * There is no control for the top and there must not be: a drill that
+     * never asks for the real tempo has not taught the passage. The last gap
+     * may be short — 80 stepping by 30 gives 80 then 100 — and that is
+     * correct: full tempo is not negotiable, the spacing is.
+     */
+    assert.deepEqual(buildLadder(80, 30, BOUNDS), [80, 100]);
+    assert.deepEqual(buildLadder(95, 10, BOUNDS), [95, 100]);
 });
 
-test('a ladder always ends at full tempo', () => {
-    assert.deepEqual(normalizeLadder([50, 65], BOUNDS), [50, 65, 100]);
-    assert.deepEqual(normalizeLadder([], BOUNDS), [100]);
+test('start at full tempo is a one-rung ladder, not an empty one', () => {
+    assert.deepEqual(buildLadder(100, 5, BOUNDS), [100]);
 });
 
-test('duplicates and junk are dropped', () => {
-    assert.deepEqual(normalizeLadder([80, 80, 'x', null, NaN, -5, 0, 90], BOUNDS), [80, 90, 100]);
+test('a nullish or junk ladder still builds something playable', () => {
+    // `Number(null) === 0`, and a start of 0 would hand the conductor a rate
+    // of 0 — silence that never advances.
+    assert.deepEqual(buildLadder(null, null, BOUNDS), [80, 85, 90, 95, 100]);
+    assert.deepEqual(buildLadder('x', 'y', BOUNDS), [80, 85, 90, 95, 100]);
+    for (const r of buildLadder(0, 0, BOUNDS)) assert.ok(r >= START_MIN_PCT, `rung ${r}`);
 });
 
-test('rungs above full tempo are dropped, not clamped', () => {
-    // A drill ramps UP TO tempo. A 120% rung would make "graduate at full
-    // speed" mean something the player never asked for.
-    assert.deepEqual(normalizeLadder([80, 120, 150], BOUNDS), [80, 100]);
+test('rungs are snapped to the slider step, so every one is playable', () => {
+    assert.deepEqual(buildLadder(82, 5, BOUNDS), [80, 85, 90, 95, 100]);
 });
 
-test('rungs are snapped to the slider step and clamped to its minimum', () => {
-    assert.deepEqual(normalizeLadder([52, 63], BOUNDS), [50, 65, 100]);
-    assert.deepEqual(normalizeLadder([2], BOUNDS), [15, 100]);
+test('the start floor is 50, not the host bound of 15', () => {
+    /*
+     * 15% is a legal playback rate and an illegal practice speed: at 15% a
+     * passage is not slow, it is a different piece of music, and the timings
+     * stop resembling what you are learning. 50 is the floor the fixed chips
+     * had and it was right.
+     */
+    assert.equal(START_MIN_PCT, 50);
+    assert.equal(clampStartPct(20, 100), 50);
+    assert.ok(buildLadder(15, 5, BOUNDS)[0] >= 50);
 });
 
-test('normalizeLadder never returns empty, whatever it is given', () => {
-    assert.ok(normalizeLadder(null, BOUNDS).length > 0);
-    assert.ok(normalizeLadder('nonsense', BOUNDS).length > 0);
+test('a start is clamped against full tempo, NOT against the goal', () => {
+    /*
+     * `goalPct` is an ACCURACY and the start is a SPEED. Clamping one by the
+     * other read the rail's top rung as the goal and silently overwrote a
+     * stored 85% accuracy with 100 — which the store's migration test caught,
+     * because it is the only place the two numbers sit side by side.
+     */
+    assert.equal(clampStartPct(120), 100);
+    assert.equal(clampStartPct(95), 95);
+    // A goal of 60% accuracy does not cap a start of 95% speed.
+    assert.equal(clampStartPct(95, 60), 95);
+});
+
+test('a step snaps to one of the three offered', () => {
+    assert.equal(clampStepPct(7), 5);
+    assert.equal(clampStepPct(1), 2);
+    assert.equal(clampStepPct(100), 10);
+    assert.equal(clampStepPct(null), DEFAULT_STEP_PCT);
 });
 
 test('toRates hands the engine multipliers, not percentages', () => {
     assert.deepEqual(toRates([50, 80, 100]), [0.5, 0.8, 1]);
+    assert.deepEqual(toRates(null), []);
 });
 
 test('the goal becomes the 0..1 the conductor compares against', () => {
@@ -104,10 +146,16 @@ test('an absent goal is the default, not zero', () => {
     }
 });
 
-test('the time-stretch warning fires below the engine own floor', () => {
-    assert.equal(warnsAboutStretch([80, 90, 100]), false);
-    assert.equal(warnsAboutStretch([65, 80, 100]), true);
-    assert.equal(STRETCH_WARN_PCT, 80);
+test('there is no time-stretch warning any more, and that is deliberate', () => {
+    /*
+     * A caveat badge used to explain that a rung below 80% stretches the
+     * backing track audibly. It was right about the sound and it went with the
+     * fixed chips that made it necessary: when 50 and 65 were always on screen
+     * the panel had to say why you might not want them. A start you SET does
+     * not need explaining, and the rack is called SPEED.
+     */
+    assert.equal(typeof mod.warnsAboutStretch, 'undefined');
+    assert.equal(typeof mod.STRETCH_WARN_PCT, 'undefined');
 });
 
 // ── the two sentences ────────────────────────────────────────────────────
