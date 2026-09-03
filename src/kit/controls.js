@@ -1,5 +1,5 @@
 /*
- * kit 0.5.0 — the four control families, as builders.
+ * kit 0.6.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -114,9 +114,23 @@ export function fold(opts = {}) {
      */
     const chev = el('span', 'fbk-fold-chev', '›');
 
+    /*
+     * CHEVRON FIRST. It was trailing, 200px from the title, and it was also
+     * the quietest thing in its own row — so the only signal that the row did
+     * anything sat where nobody was looking, at the lowest contrast in the
+     * group. Reported as "it isn't clear that the section expands", which was
+     * the row telling the truth about itself.
+     *
+     * Leading fixes three things at once. The affordance is where the eye
+     * enters the row. It is next to the text it belongs to rather than
+     * flushed to an edge it has no relationship with. And the summary can
+     * then right-align against the panel's other values — the Chart field's
+     * readout lands on the same pixel, which is one shared alignment instead
+     * of a third ragged one (Refactoring UI: use fewer alignments).
+     */
+    head.appendChild(chev);
     head.appendChild(heading);
     head.appendChild(sum);
-    head.appendChild(chev);
 
     const body = el('div', 'fbk-fold-body');
 
@@ -145,6 +159,8 @@ export function fold(opts = {}) {
         /** Append the folded controls here. */
         body,
         head,
+        /** The three head cells, in DOM order: chevron, title, summary. */
+        parts: { chev, title: heading, summary: sum },
         /**
          * The value, kept visible while the body is shut.
          *

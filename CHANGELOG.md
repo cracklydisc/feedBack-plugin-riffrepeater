@@ -1,5 +1,98 @@
 # Changelog
 
+## 0.9.0 — a dead end, a stray pair, and Refactoring UI by measurement
+
+Four reports. The first is a bug I shipped in 0.8.0; the rest are the panel
+being honest about itself.
+
+### The whole timeline went hatched, and there was no way back
+
+**Zero out of zero is not empty, it is unknown.** 0.8.0 started *acting* on a
+note count of 0 — hatching the block, dropping it from the hit table, refusing
+to drill it — and `countEvents` cannot tell "this passage has no notes" from
+"the host is reporting no notes at all". It reports nothing in more states than
+you would expect: between `song:loaded` and the chart arriving, after a song is
+closed while the panel still holds the last section table, on an arrangement it
+has no note array for. In any of those the strip went uniformly hatched and
+**nothing on it could be clicked** — the panel had turned one missing input
+into twenty-one confident assertions.
+
+The question is asked once now, of the chart: no events anywhere means every
+count stays `null`, and null means unknown all the way down. A passage is empty
+only when the chart has notes somewhere and none of them are here. Verified in
+the app: 1 hatched block out of 10, which is the Noguitar marker.
+
+**And a custom range had no exit.** Both phrase arrows were disabled in `bars`
+mode, so the walk dead-ended. That matters more than it looks: 0.6.0 removed
+the mode tabs on the argument that position zero of the phrase stepper *is* the
+whole section — and that argument only holds if every state can reach position
+zero. A step back now lands on the whole of the section the range **starts** in
+(not the previously selected one, which could be anywhere and would read as the
+panel losing your place), and the arrow's tooltip says so.
+
+### `Loop only` and `Clear` looked placed at random
+
+They were, in the sense that mattered: two buttons sharing a row while being
+different kinds of thing, with nothing saying what either belonged to.
+`Loop only` is an **alternative** to `Start drill`. `Clear` drops the loop that
+**A and B define three rows above**.
+
+So they were grouped by proximity instead. `Clear` moved onto the *What to
+loop* heading — which is also the pattern the panel already used once, since
+`Practice weakest` sits on its own heading the same way — and `Loop only`
+stayed under the primary, alone, quiet and centred, where it reads as "or just
+loop it".
+
+### The fold did not look like it opened
+
+Correct, and the row was telling the truth about itself: the chevron was
+**trailing, 200px from the title, and the lowest-contrast thing in its own
+row** — the only signal the row does anything, placed where nobody looks, at
+the weight of an afterthought.
+
+Chevron leads now, at the value's contrast rather than the label's, with a
+hover surface covering the whole row (the row is the hit target — kit
+DESIGN.md §12). And the summary right-aligns as a consequence, which was worth
+having on its own:
+
+| value | right edge, before | after |
+| --- | --- | --- |
+| Chart readout | −14px | −14px |
+| fold summary | **−26px** | **−14px** |
+| weak-list % | −20px | −20px |
+
+### Refactoring UI, applied by measurement
+
+The panel was counted rather than admired: **41 bordered elements** in 336px.
+That sounds damning until you look at what they are — 10 steppers, 5 chips, 4
+buttons, a toggle track, a segmented track, where the border **is** the
+control; plus 10 hairlines between timeline blocks, which are the only thing
+separating one block from the next. What was actually wrong was three
+**containers** drawing a boundary twice, over a background that already
+separated them: the plate, the timeline track and the live-drill box. Those
+went. The other 38 stayed. The rule is not "fewer borders", it is *one signal
+per boundary*.
+
+The kit's DESIGN.md §18 records this, and also what this panel deliberately
+does **not** take from the book — the section headings keep their hairlines
+(replacing four with whitespace needs more vertical space than there is, and
+they are the app's own device), and the uppercase micro headings stay labels,
+because each names a *group* of controls rather than a single value.
+
+### Two CSS facts, learned getting that −26 to −14
+
+- **A `<button>` shrink-to-fits even with `display: flex`** — its `width:
+  auto` is fit-content, not fill-available. Removing `width: 100%` collapsed a
+  296px row to 264.
+- **A fixed-width box with negative horizontal margins shifts rather than
+  widens.** `width: 100%` plus `margin: 0 -6px` moved the head 6px left and
+  left it 6px short on the right, so a hover surface meant to bleed past the
+  padding bled out of one side only and the value stayed 12px inside the
+  alignment it had just been moved to join. The bleed was the nicer detail; the
+  alignment was the documented one, so the bleed went.
+
+114 tests (+3 for the way out of a custom range).
+
 ## 0.8.0 — three details, three rules
 
 Reported: the Chart slider should run to the end of the panel; the colours

@@ -108,10 +108,14 @@ one stepper walks both:
    ◀        Part 1 of 2           ▶
 ```
 
-Position zero is the whole section, so a step left from part 1 hands it back.
-There used to be three mode tabs above this; version 0.6.0 removed them,
-because a control that seven other gestures overwrite is reporting rather than
-commanding — [CHANGELOG](CHANGELOG.md) has the count.
+Position zero is the whole section, so a step left from part 1 hands it back —
+and from a **custom range** a step left hands back the whole of the section
+that range starts in. That completeness is the condition the design rests on:
+version 0.6.0 removed three mode tabs on the argument that this stepper's
+position zero *is* the whole section, and the argument only holds if every
+state can reach position zero. It could not until 0.9.0, and a drag was a dead
+end. [CHANGELOG](CHANGELOG.md) has the count of gestures that made the tabs a
+readout rather than a control.
 
 A drag across the timeline gives a **custom range** snapped to bar lines, for
 when you fluff something while playing and want the bars you are in. Trimming
@@ -388,7 +392,7 @@ Two things learned from the DOM, in case that PR is written by somebody else:
 node --test tests/*.test.js
 ```
 
-111 tests, no dependencies, no build step.
+114 tests, no dependencies, no build step.
 
 `src/kit/` and `assets/kit.css` are **vendored** — edit them in
 [feedBack-plugin-kit](https://github.com/cracklydisc/feedBack-plugin-kit) and

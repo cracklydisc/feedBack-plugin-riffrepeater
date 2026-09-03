@@ -1,5 +1,5 @@
 /*
- * kit 0.5.0 — the entry point.
+ * kit 0.6.0 — the entry point.
  *
  * `install()` does the two things every consumer needs and would otherwise
  * each get slightly wrong: it puts the kit's stylesheet on the page, and it
@@ -24,7 +24,7 @@
 
 import { follow, unfollow } from './theme.js';
 
-export const VERSION = '0.5.0';
+export const VERSION = '0.6.0';
 
 const LINK_ATTR = 'data-fbk-kit';
 

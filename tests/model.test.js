@@ -185,6 +185,52 @@ test('a zero step is a no-op', () => {
     assert.deepEqual(pos(), { onPart: true, index: 0 });
 });
 
+// ── no dead ends ─────────────────────────────────────────────────────────
+
+test('a step back from a custom range returns to whole sections', () => {
+    // 0.6.0 removed the mode tabs on the argument that position zero of this
+    // stepper is the whole section. That only holds if EVERY state can reach
+    // position zero, and a custom range could not: both arrows were disabled
+    // and the walk dead-ended. Reported as "with a custom range you can't go
+    // back", which it was.
+    onVerse();
+    const r = model.selectBarsAtPlayhead();
+    assert.ok(r, 'the fixture has bar lines, so a bar range should be takeable');
+    assert.equal(model.snapshot().mode, 'bars');
+
+    model.stepPart(-1);
+    const snap = model.snapshot();
+    assert.notEqual(snap.mode, 'bars');
+    assert.equal(snap.onPart, false);
+    assert.equal(snap.bars.range, null);
+});
+
+test('it lands on the section the range STARTS in, not the last one selected', () => {
+    // Handing back a section from before the drag reads as the panel losing
+    // your place.
+    model.refreshSong();
+    const outro = model.snapshot().sections.find((s) => s.label === 'Outro 1');
+    model.selectSection(outro.key);
+    model.selectAtTime(0);                 // a click inside Intro 1
+    model.selectSection(outro.key);        // …and back to Outro 1
+
+    // A custom range that starts inside Verse 1 (10 → 30).
+    model.selectDrag(12, 18);
+    assert.equal(model.snapshot().mode, 'bars');
+    model.stepPart(-1);
+
+    const snap = model.snapshot();
+    const now = snap.sections.find((s) => s.key === snap.sectionKey);
+    assert.equal(now.label, 'Verse 1');
+});
+
+test('forward from a custom range does nothing, rather than guessing', () => {
+    onVerse();
+    model.selectBarsAtPlayhead();
+    model.stepPart(1);
+    assert.equal(model.snapshot().mode, 'bars');
+});
+
 function span() {
     const sel = model.snapshot().selection;
     return [sel.start, sel.end];

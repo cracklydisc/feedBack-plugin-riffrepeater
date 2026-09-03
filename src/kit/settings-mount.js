@@ -1,5 +1,5 @@
 /*
- * kit 0.5.0 — the settings-panel retry dance.
+ * kit 0.6.0 — the settings-panel retry dance.
  *
  * This existed twice, identical line for line, in `tidy/settings.html:98` and
  * `riffrepeater/settings.html:231`. The problem it solves is real and not

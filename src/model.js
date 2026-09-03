@@ -188,6 +188,36 @@ function landOnWhole() {
 export function stepPart(delta) {
     const d = Number(delta) || 0;
     if (!d) return;
+
+    /*
+     * THE WAY OUT OF A CUSTOM RANGE.
+     *
+     * A drag on the timeline puts the selection in `bars` mode, and until now
+     * the only way back was the section chevrons — which the panel disabled
+     * nothing about, but nobody looks there for it, and a reader is entitled
+     * to expect the control that *shows* the grain to be the one that changes
+     * it. Reported as "with a custom range you can't go back", and it was a
+     * fair reading of a dead-ended walk: 0.6.0 removed the mode tabs on the
+     * argument that position zero of this stepper is the whole section, and
+     * that argument only holds if every state can reach position zero.
+     *
+     * So a step back from a custom range lands on the whole of the section
+     * the range STARTS in — not the previously selected one, which could be
+     * anywhere and would read as the panel losing your place.
+     */
+    if (state.mode === 'bars') {
+        if (d > 0) return;
+        const at = state.barsRange ? state.barsRange.start : host.time();
+        const home = state.sections.find((sc) => at >= sc.start && at < sc.end)
+            || state.sections[0];
+        state.barsRange = null;
+        if (home) state.sectionKey = home.key;
+        landOnWhole();
+        rebuildParts();
+        announce();
+        return;
+    }
+
     if (!state.parts.length) return;
 
     if (state.mode !== 'part') {
@@ -638,9 +668,38 @@ function eventsNow() {
     const at = host.difficultyPct();
     const barsKey = state.barsRange ? state.barsRange.key : null;
     if (state._events && state._eventsAt === at && state._eventsBars === barsKey) return state._events;
+
     const notes = host.notes();
     const chords = host.chords();
     const map = new Map();
+
+    /*
+     * ZERO OUT OF ZERO IS NOT EMPTY, IT IS UNKNOWN.
+     *
+     * `countEvents` cannot tell the difference between "this passage has no
+     * notes in it" and "the host is reporting no notes at all" — it returns 0
+     * either way. And the host reports nothing in more states than you would
+     * expect: between `song:loaded` and the chart arriving, after a song is
+     * closed while the panel still holds the last section table, and on an
+     * arrangement it has no note array for.
+     *
+     * 0.8.0 started *acting* on a count of 0 — hatching the block, dropping
+     * it from the hit table, refusing to drill it — so in any of those states
+     * the whole strip went hatched and nothing on it could be clicked. The
+     * panel had turned a missing input into twenty-one confident assertions.
+     *
+     * So the question is asked once, of the CHART: if it carries no events at
+     * all, every count stays `null` and null means unknown everywhere
+     * downstream. A passage is empty only when the chart has notes somewhere
+     * and none of them are here.
+     */
+    if (!notes.length && !chords.length) {
+        state._events = map;               // empty map -> every lookup is null
+        state._eventsAt = at;
+        state._eventsBars = barsKey;
+        return map;
+    }
+
     const all = [...state.sections, ...state.parts];
     if (state.barsRange) all.push(state.barsRange);
     for (const r of all) {

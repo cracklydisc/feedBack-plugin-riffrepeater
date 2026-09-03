@@ -1,5 +1,5 @@
 /*
- * kit 0.5.0 — the shared look.
+ * kit 0.6.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -196,6 +196,22 @@
     display: flex;
     align-items: center;
     gap: var(--fbk-s-3, 6px);
+    /*
+     * `width: 100%` and NO negative margins, and both halves of that were
+     * learned the hard way.
+     *
+     * A `<button>` shrink-to-fits even with `display: flex` — its `width:
+     * auto` is fit-content, not fill-available, because the UA treats it as
+     * an atomic box for intrinsic sizing. So `width: 100%` is not optional
+     * here; removing it collapsed the head to 264px of a 296px row.
+     *
+     * And a FIXED-width box with negative horizontal margins SHIFTS rather
+     * than widens: `margin: 0 -6px` put the head 6px left of its parent and
+     * 6px short on the right, which bled the hover surface out of one side
+     * only and left the summary 12px inside the alignment §18 moved it to
+     * join. The bleed was the nicer detail and the alignment is the one that
+     * was written down, so the bleed went.
+     */
     width: 100%;
     min-height: var(--fbk-h-sm, 26px);
     padding: 0;
@@ -223,29 +239,62 @@
  * the ellipsis because a summary is the one string here whose length the kit
  * cannot bound.
  */
+/*
+ * The value, in the body type rather than the heading's, and RIGHT-ALIGNED.
+ *
+ * Right, because every other value in a panel like this one lands on the
+ * body's right edge — a slider's readout, a meter's percentage — and a third
+ * ragged edge is one alignment too many. It is the flexible child between two
+ * fixed ones, which is what lets it ellipsize.
+ */
 .fbk-fold-summary {
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+    text-align: right;
     font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
     letter-spacing: var(--fbk-t-label-track, 0.01em);
     color: rgb(var(--fbk-text, 226 232 240));
 }
 
+/*
+ * The chevron: LEADING, and at the value's contrast rather than the label's.
+ *
+ * It was trailing and dim — the only signal that the row does anything, at
+ * the lowest contrast in the row, at the far end from the text. Refactoring
+ * UI's rule about weight and contrast cuts the other way here: this is a
+ * small, light glyph, so it needs MORE contrast than the heading beside it,
+ * not less.
+ */
 .fbk-fold-chev {
     flex: 0 0 auto;
+    width: 12px;
     font-size: 15px;
     line-height: 1;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    text-align: center;
+    color: rgb(var(--fbk-text, 226 232 240));
     transition: transform var(--fbk-motion, 120ms) ease;
 }
 
 .fbk-fold[data-open="true"] .fbk-fold-chev { transform: rotate(90deg); }
 
-.fbk-fold-head:hover .fbk-fold-title,
-.fbk-fold-head:hover .fbk-fold-chev { color: rgb(var(--fbk-text, 226 232 240)); }
+/*
+ * A hover surface on the WHOLE head.
+ *
+ * Covering the row exactly, because the row is the hit target (DESIGN.md §12)
+ * and a hover state narrower than the target teaches the wrong thing about
+ * where to click.
+ */
+.fbk-fold-head {
+    border-radius: var(--fbk-radius-sm, 8px);
+    transition: background var(--fbk-motion, 140ms) ease;
+}
+
+.fbk-fold-head:hover { background: rgb(var(--fbk-surface-2, 11 18 32)); }
+
+.fbk-fold-head:hover .fbk-fold-title { color: rgb(var(--fbk-text, 226 232 240)); }
 
 .fbk-fold-head:focus-visible {
     outline: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent, 14 165 233));
@@ -396,6 +445,17 @@
 }
 
 /* A slab of facts about whatever is selected. */
+/*
+ * TWO SIGNALS FOR ONE BOUNDARY, so one of them goes.
+ *
+ * The plate had a hairline border AND its own darker background, inside a
+ * panel that also has a border. Refactoring UI's advice is to pick one: a
+ * different background colour, a shadow, or extra space — a border on top of
+ * a background that already separates the box is the thing that makes a
+ * layout read as boxes inside boxes. Measured, this panel had 41 bordered
+ * elements; most are the four control families, where the border IS the
+ * control, and three were containers doing it twice. This is one of them.
+ */
 .fbk-plate {
     display: flex;
     flex-direction: column;
@@ -404,7 +464,6 @@
     padding: var(--fbk-s-3, 6px) var(--fbk-s-4, 10px);
     border-radius: var(--fbk-radius-sm, 8px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     box-shadow: var(--fbk-panel-inner, none);
 }
 

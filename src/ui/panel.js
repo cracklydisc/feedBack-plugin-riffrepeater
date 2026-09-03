@@ -75,8 +75,24 @@ export function createContent(outer, actions) {
     outer.appendChild(empty);
     outer.appendChild(body);
 
-    // ── what to loop ─────────────────────────────────────────────────────
-    body.appendChild(c.section('What to loop'));
+    /* ── what to loop ─────────────────────────────────────────────────────
+     *
+     * `Clear` sits on this heading, not under the primary.
+     *
+     * It used to share a row with `Loop only`, and the report was that the
+     * two looked placed at random — correctly, because they are not the same
+     * kind of thing and nothing said what either belonged to. `Loop only` is
+     * an ALTERNATIVE to `Start drill`; `Clear` drops the loop that A and B
+     * define three rows above. Grouping by proximity puts each next to what
+     * it acts on, which also gives the panel one pattern for a section-level
+     * action instead of a floating pair — `Practice weakest` already sits on
+     * its own heading the same way.
+     */
+    const loopHead = c.section('What to loop');
+    const clearBtn = c.button('fbk-btn fbk-btn-small fbk-btn-quiet', 'Clear',
+        'Drop the loop and play on', () => actions.clearLoop());
+    loopHead.appendChild(clearBtn);
+    body.appendChild(loopHead);
 
     /*
      * The timeline.
@@ -364,13 +380,21 @@ export function createContent(outer, actions) {
     endBtn.appendChild(c.kbd('D'));
     body.appendChild(endBtn);
 
+    /*
+     * The alternative to the primary, directly under it and quieter.
+     *
+     * One button, because `Clear` moved to the heading it belongs to. What is
+     * left is a real alternative — loop the passage with no goal and no ramp —
+     * and Refactoring UI's answer for that is to de-emphasise rather than to
+     * find it a louder home: it reads as "or just loop it", which is what it
+     * is. Centred, so it is plainly attached to the full-width button above
+     * rather than starting a new left-aligned column of its own.
+     */
     const acts = c.el('div', 'fbk-row fbk-row-tight rr-acts');
-    const loopBtn = c.button('fbk-btn fbk-btn-small', 'Loop only',
-        'Loop the passage with no goal and no ramp', () => actions.loopOnly());
-    const clearBtn = c.button('fbk-btn fbk-btn-small fbk-btn-quiet', 'Clear',
-        'Drop the loop and play on', () => actions.clearLoop());
+    const loopBtn = c.button('fbk-btn fbk-btn-small fbk-btn-quiet', 'Loop only',
+        'Loop the passage with no goal and no ramp — no drill, no speed ladder',
+        () => actions.loopOnly());
     acts.appendChild(loopBtn);
-    acts.appendChild(clearBtn);
     body.appendChild(acts);
 
     /*
@@ -828,7 +852,15 @@ export function createContent(outer, actions) {
         navPrev.disabled = at <= 0;
         navNext.disabled = at < 0 || at >= snap.sections.length - 1;
 
-        // whole section -> part 1 -> part 2 -> …, with zero being the whole
+        /*
+         * custom range -> whole section -> part 1 -> part 2 -> …
+         *
+         * One walk with no dead end in it, which is the condition the mode
+         * tabs' removal rests on. The back arrow's title changes with the
+         * position, because "the whole section" and "back to the sections"
+         * are different promises and a stepper that makes the wrong one is
+         * worse than a label.
+         */
         const custom = snap.mode === 'bars';
         if (custom) {
             partLabel.textContent = 'Custom range';
@@ -844,7 +876,10 @@ export function createContent(outer, actions) {
         // Back is dead on the whole section; forward is dead on the last
         // phrase, and on a custom range neither applies until you pick a
         // section again.
-        partPrev.disabled = custom || !snap.partCount || !snap.onPart;
+        partPrev.disabled = custom ? false : (!snap.partCount || !snap.onPart);
+        partPrev.title = custom
+            ? 'Back to whole sections'
+            : 'The whole section';
         partNext.disabled = custom || !snap.partCount
             || (snap.onPart && snap.partIndex >= snap.partCount - 1);
 
