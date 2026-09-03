@@ -1000,8 +1000,17 @@ export function rangeStrip(opts = {}) {
             const ok = Number.isFinite(t) && duration > 0 && seconds !== null && seconds !== undefined;
             head.hidden = !ok;
             if (!ok) return;
+            /*
+             * ONLY WHEN IT MOVES.
+             *
+             * This is called from a frame loop, so a paused song asked for the
+             * same `left` sixty times a second — each one a style write on an
+             * element inside the player, and each one work the compositor has
+             * to consider. A gauge that does not move should cost nothing.
+             */
             const at = Math.max(0, Math.min(1, t / duration));
-            head.style.left = (at * 100) + '%';
+            const next = (at * 100).toFixed(4) + '%';
+            if (head.style.left !== next) head.style.left = next;
         },
         disable(off) {
             handleA.disabled = !!off;

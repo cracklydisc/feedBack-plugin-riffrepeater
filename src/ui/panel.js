@@ -136,30 +136,18 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
      * explanation.
      */
     /*
-     * THE GRAIN, and it is the answer to "I want to drill bar 41".
+     * WHAT USED TO BE HERE: a `Bars 1 | 2 | 4 | 8` grain.
      *
-     * The strip's zones are phrases — several bars each — and the edge
-     * steppers move a bar at a time, so a single bar meant walking B down to A
-     * by hand once per bar. Reported as not being possible at all.
+     * It cut the loop to that many bars from A, and it was the answer to "I
+     * cannot test a single bar". Withdrawn on the reader's own call after
+     * seeing it: another control in the rack, in a panel whose whole history
+     * is taking controls OUT of it.
      *
-     * One press collapses the loop to that many bars from where it already
-     * starts; the A stepper then walks it with the bar number under your eye.
-     * It is a grain, not a mode: nothing to switch back out of, because
-     * tapping the strip picks a phrase again.
+     * So a single bar has no gesture again, which is worth saying plainly
+     * rather than pretending the report was closed. What did survive is the
+     * half that fixed a dead button: on a bar range — one you get by dragging
+     * across the strip — A slides the window instead of refusing to move.
      */
-    const grain = c.segmented(
-        [
-            { value: 1, label: '1', title: 'Loop one bar from A' },
-            { value: 2, label: '2', title: 'Loop two bars from A' },
-            { value: 4, label: '4', title: 'Loop four bars from A' },
-            { value: 8, label: '8', title: 'Loop eight bars from A' },
-        ],
-        (n) => actions.selectBars(n),
-        'How many bars to loop',
-    );
-    const grainRow = c.field({ label: 'Bars', tight: true });
-    grainRow.body.appendChild(grain.el);
-    loopRack.body.appendChild(grainRow.el);
 
     const edges = c.el('div', 'fbk-row fbk-row-nowrap rr-edges');
     const edgeA = edgeStepper('A', 'start', 'I');
@@ -600,8 +588,20 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
              * plugin disabled or broken. Hiding another plugin's only way out
              * and then failing would leave a drill with no exit at all.
              */
-            document.documentElement.dataset.rrLive =
-                (folded && panelApi.isOpen()) ? 'true' : 'false';
+            /*
+             * WRITTEN ONLY ON CHANGE.
+             *
+             * It is an attribute on the ROOT element, so every write
+             * invalidates style for the whole document — and it was being
+             * written on every render, two and a half times a second, almost
+             * always to the value it already had. A full style recalculation
+             * of a page that is also drawing a 3D highway and a notation view,
+             * for nothing.
+             */
+            const want = (folded && panelApi.isOpen()) ? 'true' : 'false';
+            if (document.documentElement.dataset.rrLive !== want) {
+                document.documentElement.dataset.rrLive = want;
+            }
 
             if (small) return;
         }
@@ -639,16 +639,6 @@ export function createContent(outer, actions, foot, foldedSlot, panelApi) {
         tenths = !bars;
         edgeBars = snap.edgeBars;
 
-        /*
-         * The grain shows a value only when the loop IS a bar range — after a
-         * tap on the strip it is a phrase, and lighting a number would claim
-         * the loop is something it is not.
-         */
-        grain.set(snap.selection && snap.selection.kind === 'bars'
-            ? snap.selection.barCount
-            : null);
-        grain.disable(!bars || snap.drill.active);
-        grainRow.el.hidden = !bars;
         for (const [e, edge] of [['start', edgeA], ['end', edgeB]]) {
             const t = sel ? (e === 'start' ? sel.start : sel.end) : null;
             edge.label.textContent = (e === 'start' ? 'A' : 'B')

@@ -510,47 +510,13 @@ export function selectWeakest() {
     return selection();
 }
 
-/**
- * Take `count` bars starting where the selection already starts.
+/*
+ * WITHDRAWN with the grain control it existed for: `selectBars(count)`.
  *
- * WHY: "I want to drill bar 41" had no gesture. The strip's zones are phrases,
- * several bars each, and the edge steppers move A and B a bar at a time — so
- * getting to one bar meant walking B down to A by hand, once per bar. Reported
- * as not being able to test a single bar at all, which was fair.
- *
- * Anchored on the selection's own start rather than the playhead, so the
- * sequence is: tap the strip near the passage, press 1, then walk A with its
- * stepper until the readout says the bar you want. Every step of that shows
- * you a bar number.
+ * `selectBarsAtPlayhead` already takes `settings.barCount` bars, which is the
+ * same job from the other anchor, and it is on the public API. Keeping a second
+ * one with no caller is how a module grows two ways to do one thing.
  */
-/**
- * The time of the bar `delta` bars along from the one containing `t`.
- *
- * Clamped to the ends of the chart rather than wrapping or refusing: at bar one
- * a step back should leave you at bar one, not somewhere else and not with a
- * button that quietly did nothing.
- */
-function shiftBars(bars, t, delta) {
-    const i = ranges.barIndexAt(bars, t);
-    if (i < 0) return t;
-    const j = Math.max(0, Math.min(bars.length - 1, i + delta));
-    return bars[j].time;
-}
-
-export function selectBars(count) {
-    const bars = ranges.barLines(host.beats());
-    if (!bars.length) return null;
-    const n = Math.max(1, Math.min(64, Math.round(Number(count) || 1)));
-    const sel = selection();
-    const from = sel ? sel.start : host.time();
-    const r = ranges.barsFrom(bars, from, n, host.duration());
-    if (!r) return null;
-    state.settings = store.setSettings({ barCount: n });
-    state.barsRange = r;
-    state.mode = 'bars';
-    announce();
-    return r;
-}
 
 export function setBarCount(n) {
     const count = Math.max(1, Math.min(64, Math.round(Number(n) || 1)));
@@ -572,6 +538,24 @@ export function setBarCount(n) {
  * guess. Sub-bar placement is the A/B handle's job: it snaps only when it is
  * near an edge, so a deliberate drag puts one wherever you like.
  */
+/**
+ * The time of the bar `delta` bars along from the one containing `t`.
+ *
+ * Clamped to the ends of the chart rather than wrapping or refusing: at bar one
+ * a step back should leave you at bar one, not somewhere else and not with a
+ * button that quietly did nothing.
+ *
+ * Lives next to `nudge`, its only caller. It was written beside the grain's
+ * `selectBars` and got taken out with it — the second time in this session
+ * that removing a function by pattern took its neighbour along.
+ */
+function shiftBars(bars, t, delta) {
+    const i = ranges.barIndexAt(bars, t);
+    if (i < 0) return t;
+    const j = Math.max(0, Math.min(bars.length - 1, i + delta));
+    return bars[j].time;
+}
+
 export function nudge(edge, direction) {
     const cur = selection();
     if (!cur) return;

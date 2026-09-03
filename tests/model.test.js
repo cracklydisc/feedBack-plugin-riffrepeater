@@ -311,32 +311,6 @@ test('nothing played in the run-up counts against the pass', () => {
     });
 });
 
-test('one bar is selectable, and says which bar it is', () => {
-    /*
-     * Reported: "I cannot test a single bar — even with + and - I cannot say I
-     * want bar 41." The strip's zones are phrases and the edge steppers move a
-     * bar at a time, so a single bar meant walking B down to A by hand.
-     */
-    model.refreshSong();
-    const sec = model.snapshot().sections.find((x) => x.label === 'Verse 1');
-    model.selectSection(sec.key);
-
-    const one = model.selectBars(1);
-    assert.ok(one, 'a bar range came back');
-    const snap = model.snapshot();
-    assert.equal(snap.selection.kind, 'bars');
-    assert.equal(snap.selection.barCount, 1);
-    assert.match(snap.selection.label, /^Bar \d+$/, 'and it names the bar');
-
-    /* It starts where the selection already started, not at the playhead. */
-    assert.equal(snap.selection.start, sec.start);
-
-    /* Two bars from the same place is the same first bar, a later last one. */
-    const two = model.selectBars(2);
-    assert.equal(two.start, one.start);
-    assert.ok(two.end > one.end);
-});
-
 test('A slides a bar window instead of doing nothing', () => {
     /*
      * A one-bar loop is a dead end for an edge nudge — A cannot advance past B,
@@ -346,9 +320,9 @@ test('A slides a bar window instead of doing nothing', () => {
      * With the grain already chosen, moving the start means moving the window.
      */
     model.refreshSong();
-    const verse = model.snapshot().sections.find((x) => x.label === 'Verse 1');
-    model.selectSection(verse.key);
-    const one = model.selectBars(1);
+    model.setBarCount(1);
+    const one = model.selectBarsAtPlayhead();
+    assert.ok(one, 'a one-bar window');
     const startedAt = one.firstMeasure;
 
     model.nudge('start', 1);
@@ -364,9 +338,8 @@ test('A slides a bar window instead of doing nothing', () => {
 test('B still resizes a bar window', () => {
     /* Widening a chosen window is a different intent from moving it. */
     model.refreshSong();
-    const verse = model.snapshot().sections.find((x) => x.label === 'Verse 1');
-    model.selectSection(verse.key);
-    const one = model.selectBars(1);
+    model.setBarCount(1);
+    const one = model.selectBarsAtPlayhead();
     model.nudge('end', 1);
     const wider = model.snapshot().selection;
     assert.equal(wider.start, one.start, 'A stayed put');

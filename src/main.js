@@ -19,7 +19,7 @@ import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.33.0';
+const VERSION = '0.34.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -170,14 +170,6 @@ const actions = {
      * The lesson is about the DELETION, not the action: removing a block by
      * pattern is safe for the pattern and blind to what sits beside it.
      */
-    /**
-     * Collapse the loop to `count` bars from where it already starts.
-     *
-     * The answer to "I want to drill bar 41": one press for the grain, then the
-     * A stepper walks a bar at a time with the bar number under your eye.
-     */
-    selectBars(count) { model.selectBars(count); newPass(); },
-
     stepBlock(delta) { model.stepBlock(delta); },
 
     /**
