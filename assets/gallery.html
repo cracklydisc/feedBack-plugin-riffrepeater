@@ -159,7 +159,7 @@ body {
 
 <!-- ── foundations ────────────────────────────────────────────────────── -->
 <section class="g-card">
-    <h2>Type — five steps</h2>
+    <h2>Type — eight steps</h2>
     <p class="g-why">No element may invent a sixth. Each step is a pair: the
     <code>font</code> shorthand and its tracking, because a shorthand cannot
     carry letter-spacing.</p>
@@ -188,9 +188,9 @@ body {
     </div>
     <div class="g-tag">heights</div>
     <div class="g-grid">
-        <button class="fbk-btn fbk-btn-small">h-sm · 26</button>
-        <button class="fbk-btn">h-md · 32</button>
-        <button class="fbk-btn fbk-btn-primary" style="width:auto;margin:0">h-lg · 44</button>
+        <button class="fbk-btn fbk-btn-small">h-sm · 24</button>
+        <button class="fbk-btn">h-md · 40</button>
+        <button class="fbk-btn fbk-btn-primary" style="width:auto;margin:0">h-lg · 56</button>
     </div>
 </section>
 
@@ -623,6 +623,29 @@ body {
 </section>
 
 </div>
+<script type="module">
+/*
+ * THE GALLERY HAS TO SHOW THE RECIPE, NOT THE FALLBACKS.
+ *
+ * Every rule in kit.css is `var(--fbk-h-md, 40px)`, so a page that never
+ * calls `follow()` renders the hand-written fallbacks instead of the real
+ * scale. That is how 63 stale fallbacks survived a palette change unnoticed:
+ * the gallery looked consistent because it was consistently showing the OLD
+ * numbers. There is a test pinning the two together now, and this makes the
+ * page honest as well.
+ */
+/*
+ * TWO PATHS, because this file is VENDORED.
+ *
+ * In the kit the modules are at `../src/`; in a consumer that copies them
+ * they land in `../src/kit/`. A static import can only name one, so it is
+ * tried and then retried — three lines instead of two divergent copies of
+ * this page, which is the whole reason the vendoring rule exists.
+ */
+const theme = await import('../src/theme.js')
+    .catch(() => import('../src/kit/theme.js'));
+theme.follow();
+</script>
 <script>
 /*
  * Every other card in here is static, because every other component's states

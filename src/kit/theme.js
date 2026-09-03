@@ -1,5 +1,5 @@
 /*
- * kit 0.8.0 — the token bridge.
+ * kit 0.9.0 — the token bridge.
  *
  * Reads the host's palette and writes it back as `--fbk-*` custom properties
  * that a stylesheet can use, then follows `theme:changed`. This existed three
@@ -33,22 +33,75 @@
 
 /** role -> the default `"r g b"`, mirroring the host's own `fb` palette. */
 const ROLES = {
-    bg: '15 23 42',
-    sidebar: '17 24 39',
-    surface: '30 41 59',          // host `card`
-    surface2: '11 18 32',         // host `cardMuted`
-    border: '51 65 85',
-    text: '248 250 252',
-    dim: '148 163 184',           // host `textDim`
-    accent: '14 165 233',         // host `primary` — the app's interactive blue
-    accentHi: '56 189 248',       // host `primaryHi`
-    alert: '239 68 68',           // host `accent` — destructive / support
-    good: '34 197 94',
-    mid: '234 179 8',
-    bad: '239 68 68',
+    /*
+     * ── THE RACK ─────────────────────────────────────────────────────────
+     *
+     *     well    #05070C   a slot cut INTO the chassis
+     *     chassis #0C0F16   the unit's own body
+     *     plate   #12141C   the footer plate
+     *     control #1E222C   the face of a thing you press
+     *     stroke  #2A2E3A   the 1px division between racks
+     *
+     * Two things changed from the palette this replaced, and both matter.
+     *
+     * NEUTRAL, not navy. The old ramp was slate-blue (15 23 42 and friends),
+     * which put a hue on every surface and left the one interactive blue
+     * competing with its own background. These are grey: the only chroma in
+     * the panel is the blue you can press and the three grades you cannot.
+     *
+     * WELLS, not cards. The old ramp got LIGHTER as it nested, on a
+     * cards-stacked-on-cards model. This is a rack unit: the chassis is the
+     * body, a well is cut into it and is therefore DARKER, and a control is
+     * raised off it and is lighter. Depth by lighting, one direction, and the
+     * radii follow it — a well is rounder (12) than the chassis (10), the way
+     * a routed slot is.
+     */
+    bg: '5 7 12',                 // well
+    surface: '12 15 22',          // chassis — host `card`
+    plate: '18 20 28',            // footer plate
+    surface2: '30 34 44',         // control — host `cardMuted`
+    border: '42 46 58',           // stroke
+    sidebar: '12 15 22',
+
+    text: '232 238 252',
+    dim: '138 160 200',           // host `textDim`
+    /*
+     * A real ink, not an opacity.
+     *
+     * `opacity: 0.38` multiplies down whatever is underneath, so a disabled
+     * accent button went pale blue and a disabled quiet one nearly vanished —
+     * two different amounts of "off". The spec is explicit that disabled is
+     * FLAT: no shadow, no glow, and the status line above says why.
+     */
+    disabled: '92 111 148',
+
+    /*
+     * ONE interactive colour, and the spec states its scope better than the
+     * kit did: blue means *pressable, selected, or the rung you are on*.
+     *
+     * `onAccent` is the WELL, not white — measured, not chosen: white on this
+     * blue is 2.22:1 and pure white 2.58:1, which fails every threshold there
+     * is, while the well is 7.43:1. A blue this light can only carry dark ink.
+     */
+    accent: '41 168 255',         // host `primary`
+    accentHi: '96 194 255',       // host `primaryHi`
+    focus: '41 168 255',          // host `focus-ring` — deliberately the same blue
+    onAccent: '5 7 12',
+
+    /*
+     * ── GRADES: read-only, and never on anything pressable ───────────────
+     *
+     * Splits at 40 and 70. Amber does double duty as the status slot's
+     * warning, which is why it has two stops — `mid` for a grade, `midHi` for
+     * the stroke of a blocked status well.
+     */
+    bad: '229 72 77',             // < 40      — host `low`
+    mid: '245 165 36',            // 40–69, and the warning stroke — host `mid`
+    midHi: '245 197 66',
+    good: '61 220 132',           // >= 70     — host `good`
+
+    alert: '229 72 77',           // host `accent`
     gold: '232 192 64',
-    onAccent: '248 250 252',
-    focus: '56 189 248',
 };
 
 /** Which host token each role reads from. */
@@ -69,6 +122,15 @@ const FROM_HOST = {
     gold: 'gold',
     onAccent: 'on-accent',
     focus: 'focus-ring',
+    /*
+     * `plate`, `disabled` and `midHi` have no host key.
+     *
+     * The host publishes two surface tones and this rack needs four, so the
+     * extra steps stay at the kit's defaults rather than being guessed per
+     * theme. `onAccent` DOES map — but see the note on it: a host that pairs
+     * a light primary with white ink is publishing a 2.2:1 combination, and
+     * `inkOn()` exists for exactly that.
+     */
 };
 
 /**
@@ -105,25 +167,75 @@ const RECIPES = {
      * (`fontFamily.display` in its tailwind.config.js); v3's Rubik is a
      * display face for headings and not what a panel of controls wants.
      */
-    font: '"Inter", system-ui, sans-serif',
+    /*
+     * ── FACES ────────────────────────────────────────────────────────────
+     *
+     * Rubik, because the app already uses it — measured: `document.fonts`
+     * lists it and it renders 4% wider than the sans fallback, and v3's own
+     * body and player HUD are `Rubik, system-ui, sans-serif`. Up to 0.8.0
+     * this said Inter, with a comment that Rubik is "a display face and not
+     * what a panel of controls wants". Wrong about this app: matching its
+     * furniture is §8, and its furniture is Rubik.
+     *
+     * The family is named rather than inherited because a `font` shorthand
+     * needs a real one — `font: 500 11px/1.45 inherit` is invalid and
+     * silently drops the whole declaration.
+     */
+    font: 'Rubik, system-ui, sans-serif',
 
-    /* The one big number in a panel. */
-    't-display': '800 22px/1.05 var(--fbk-font)',
-    't-display-track': '-0.01em',
-    /* An inline readout: a stepper's value, a meter's percentage. */
-    't-value': '800 16px/1.1 var(--fbk-font)',
-    't-value-track': '0',
-    /* Prose, and the title of a plate. */
-    't-body': '500 13px/1.45 var(--fbk-font)',
+    /*
+     * A second face for NUMBERS, and one rule decides which face anything
+     * gets: **what can change while you play is mono; what you can press is
+     * Rubik.**
+     *
+     * Not decoration. Every number in a practice HUD moves while you are
+     * reading it, and in a proportional face the digits have different widths
+     * — so `0:41.2` shifts sideways on every tick and `91%` jumps when it
+     * becomes `100%`. Mono makes that impossible.
+     *
+     * JetBrains Mono is named first because it is the design's choice, but it
+     * is NOT loaded by the app (measured: its width is identical to the
+     * system mono), so today this resolves to SF Mono or Consolas. That still
+     * satisfies the requirement, which is that digits do not move. Loading
+     * the face is a separate decision with a network cost.
+     */
+    'font-num': '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+
+    /* ── TYPE — eight steps, five Rubik and three mono ────────────────────
+     *
+     * Tracking is positive and generous on the small heavy steps: at 9–10px
+     * a 600–900 weight closes up, and the letter-spacing is what keeps an
+     * all-caps rack label legible instead of a smear.
+     */
+    't-display': '900 14px/1.15 var(--fbk-font)',   /* the chassis title */
+    't-display-track': '0.12em',
+    't-rack': '900 10px/1.2 var(--fbk-font)',       /* a rack's own label */
+    't-rack-track': '0.16em',
+    't-field': '600 9px/1.2 var(--fbk-font)',       /* a field label inside a rack */
+    't-field-track': '0.12em',
+    't-label': '700 13px/1.25 var(--fbk-font)',     /* a control's own words */
+    't-label-track': '0',
+    't-body': '500 11px/1.45 var(--fbk-font)',      /* status and helper copy */
     't-body-track': '0',
-    /* Control labels and button text. */
-    't-label': '700 11px/1.25 var(--fbk-font)',
-    't-label-track': '0.01em',
-    /* Section headings and key caps. Uppercase is applied by the component. */
-    't-micro': '800 10px/1.2 var(--fbk-font)',
-    't-micro-track': '0.1em',
 
-    /* ── space: a 2px base ────────────────────────────────────────────── */
+    /* The one big live number: a grade, a tempo. */
+    't-num-xl': '900 28px/1 var(--fbk-font-num)',
+    't-num-xl-track': '-0.01em',
+    /* The number a stepper sets — bigger than a readout, because you aim at it. */
+    't-num-md': '900 18px/1.1 var(--fbk-font-num)',
+    't-num-md-track': '0',
+    /* Every other quantity: clocks, counts, percentages in a line of text. */
+    't-num': '700 11px/1.2 var(--fbk-font-num)',
+    't-num-track': '0.02em',
+
+    /* Kept as the names a hundred existing rules reference. `t-value` has
+       always held a clock or a percentage, so it IS the readout step; `t-micro`
+       has always been the eyebrow, which is now `t-rack`. */
+    't-value': '700 11px/1.2 var(--fbk-font-num)',
+    't-value-track': '0.02em',
+    't-micro': '900 10px/1.2 var(--fbk-font)',
+    't-micro-track': '0.16em',
+
     's-1': '2px',
     's-2': '4px',
     's-3': '6px',
@@ -132,9 +244,27 @@ const RECIPES = {
     's-6': '20px',
 
     /* ── control heights: three, and no others ────────────────────────── */
-    'h-sm': '26px',   /* chip, small button, icon button */
-    'h-md': '32px',   /* segmented cell, stepper, standard button */
-    'h-lg': '44px',   /* the one primary */
+    /* ── HEIGHT — sized by WHEN you touch it, not by what it is ───────────
+     *
+     * This is the rule that replaced a flat 26/32/44, and it is a better
+     * question: not "how big is a stepper" but "is this pressed while the
+     * song is running?"
+     *
+     *   h-sm  24  setup-only — a unit switch, a mode set once, a slider thumb.
+     *             You are stopped when you touch it, so a mouse-sized target
+     *             is honest and the row stays short.
+     *   h-md  40  ANYTHING pressed during play. A stepper, a segmented cell,
+     *             a list row, the phrase timeline. 40 with >=6px of air is a
+     *             target you can hit with a guitar in your hands.
+     *   h-lg  56  the footswitch. It is called that on purpose: it is the one
+     *             control you hit without looking.
+     *
+     * The touch scale below still lifts all three, because a fingertip is a
+     * different problem again (see TOUCH_HEIGHTS).
+     */
+    'h-sm': '24px',
+    'h-md': '40px',
+    'h-lg': '56px',
 
     /*
      * The width every inline label shares.
@@ -171,9 +301,20 @@ const RECIPES = {
     'meter-fill': 'rgb(var(--fbk-good))',
 
     /* Shape. */
-    radius: '12px',
-    'radius-sm': '8px',
-    'radius-pill': '999px',
+    /* ── RADII — one per nesting level, softening inward ─────────────────
+     *
+     * header segmented 5 · control 8 · chassis and footswitch 10 · well 12.
+     *
+     * The well being ROUNDER than the chassis it sits in is the lighting
+     * model showing through: a routed slot has a tool radius, and a plate cut
+     * to fit inside it is sharper. It is also the cheapest cue that one is
+     * inside the other — shape says depth, so a stroke does not have to.
+     */
+    'radius-seg': '5px',
+    'radius-sm': '8px',           // a control: stepper, segmented cell, button
+    radius: '10px',               // the chassis, and the footswitch
+    'radius-well': '12px',
+    'radius-pill': '999px',       // a toggle's track, and only that
 
     /*
      * Disabled, as one recipe.
@@ -274,9 +415,16 @@ function write() {
  * panel is open.
  */
 const TOUCH_HEIGHTS = {
+    /*
+     * `h-md` is already 40 for a mouse, because the rack scale asks how a
+     * control is USED rather than what it is. A fingertip still wants more:
+     * 48 clears WCAG 2.5.5's 44 with room for the >=6px of air the spec asks
+     * between targets, and 32 lifts the setup-only row off a mouse-sized
+     * minimum without making a header taller than the row under it.
+     */
     'h-sm': '32px',
-    'h-md': '44px',
-    'h-lg': '52px',
+    'h-md': '48px',
+    'h-lg': '64px',
 };
 
 /** True when the primary pointer is a finger rather than a mouse. */
@@ -359,6 +507,31 @@ export function inkOn(role) {
 
 /** The role table, for a consumer that wants to enumerate them. */
 export const roles = Object.freeze(Object.keys(ROLES));
+
+/**
+ * The role table itself, as `"r g b"` triplets.
+ *
+ * Exposed because a consumer that wants to check a pairing needs the numbers,
+ * not the names — and checking a pairing is a thing this kit asks for by
+ * name (§16: a signal has to survive its own background). The kit's own tests
+ * use it to pin that the ink on the accent clears 4.5:1, which is the
+ * arithmetic that white-on-a-light-blue keeps failing.
+ *
+ * These are DEFAULTS. An equipped host theme overrides them at write time, so
+ * this answers "what does the kit ship", not "what is on screen".
+ */
+export const roleDefaults = Object.freeze({ ...ROLES });
+
+/**
+ * The recipe table, as shipped.
+ *
+ * Exposed for the same reason as `roleDefaults`, and for one more: every rule
+ * in kit.css carries a hand-written fallback (`var(--fbk-h-md, 40px)`) so a
+ * panel is still shaped if `follow()` never ran — which makes the stylesheet a
+ * second copy of this table. The kit's own test reads both and refuses to let
+ * them disagree, because a mirror nobody compares goes wrong quietly.
+ */
+export const recipeDefaults = Object.freeze({ ...RECIPES });
 
 /** The recipe slots, for the same reason. */
 export const slots = Object.freeze(Object.keys(RECIPES));

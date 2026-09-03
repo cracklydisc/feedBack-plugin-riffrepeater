@@ -1,5 +1,5 @@
 /*
- * kit 0.8.0 — the shared look.
+ * kit 0.9.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -81,7 +81,7 @@
     scrollbar-width: thin;
     box-sizing: border-box;
 
-    border-radius: var(--fbk-radius, 12px);
+    border-radius: var(--fbk-radius, 10px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     /* A stage-lit object: a real shadow plus a top inner light line. */
     background: linear-gradient(180deg,
@@ -90,7 +90,7 @@
     box-shadow: var(--fbk-panel-shadow, none), var(--fbk-panel-inner, none);
     color: rgb(var(--fbk-text, 248 250 252));
 
-    font: var(--fbk-t-body, 500 13px/1.45 sans-serif);
+    font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
     letter-spacing: var(--fbk-t-body-track, 0);
 }
 
@@ -112,23 +112,23 @@
     z-index: 2;
     background: rgb(var(--fbk-surface, 30 41 59));
     border-bottom: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
-    border-radius: var(--fbk-radius, 12px) var(--fbk-radius, 12px) 0 0;
+    border-radius: var(--fbk-radius, 10px) var(--fbk-radius, 10px) 0 0;
 }
 
 .fbk-title {
     flex: 0 0 auto;
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 13px;              /* the title is the label step, one size up */
-    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    letter-spacing: var(--fbk-t-label-track, 0);
 }
 
 .fbk-subtitle {
     flex: 1 1 auto;
     min-width: 0;
     color: rgb(var(--fbk-dim, 148 163 184));
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-weight: 500;
-    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    letter-spacing: var(--fbk-t-label-track, 0);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -156,7 +156,7 @@
     padding: var(--fbk-s-3, 6px) var(--fbk-s-5, 14px) var(--fbk-s-4, 10px);
     background: rgb(var(--fbk-bg, 15 23 42));
     border-top: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
-    border-radius: 0 0 var(--fbk-radius, 12px) var(--fbk-radius, 12px);
+    border-radius: 0 0 var(--fbk-radius, 10px) var(--fbk-radius, 10px);
 }
 
 .fbk-foot:empty {
@@ -217,8 +217,8 @@
 .fbk-section-title {
     flex: 0 0 auto;
     margin: 0;
-    font: var(--fbk-t-micro, 800 10px/1.2 sans-serif);
-    letter-spacing: var(--fbk-t-micro-track, 0.1em);
+    font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-micro-track, 0.16em);
     text-transform: uppercase;
     color: rgb(var(--fbk-dim, 148 163 184));
 }
@@ -272,7 +272,7 @@
      * was written down, so the bleed went.
      */
     width: 100%;
-    min-height: var(--fbk-h-sm, 26px);
+    min-height: var(--fbk-h-sm, 24px);
     padding: 0;
     background: none;
     border: 0;
@@ -284,8 +284,8 @@
 
 .fbk-fold-title {
     flex: 0 0 auto;
-    font: var(--fbk-t-micro, 800 10px/1.2 sans-serif);
-    letter-spacing: var(--fbk-t-micro-track, 0.1em);
+    font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-micro-track, 0.16em);
     text-transform: uppercase;
     color: rgb(var(--fbk-dim, 148 163 184));
 }
@@ -313,8 +313,8 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     text-align: right;
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
-    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
+    letter-spacing: var(--fbk-t-label-track, 0);
     color: rgb(var(--fbk-text, 226 232 240));
 }
 
@@ -334,7 +334,7 @@
     line-height: 1;
     text-align: center;
     color: rgb(var(--fbk-text, 226 232 240));
-    transition: transform var(--fbk-motion, 120ms) ease;
+    transition: transform var(--fbk-motion, 140ms ease);
 }
 
 .fbk-fold[data-open="true"] .fbk-fold-chev { transform: rotate(90deg); }
@@ -348,7 +348,7 @@
  */
 .fbk-fold-head {
     border-radius: var(--fbk-radius-sm, 8px);
-    transition: background var(--fbk-motion, 140ms) ease;
+    transition: background var(--fbk-motion, 140ms ease);
 }
 
 .fbk-fold-head:hover { background: rgb(var(--fbk-surface-2, 11 18 32)); }
@@ -378,7 +378,7 @@
     align-items: center;
     gap: var(--fbk-s-3, 6px);
     flex-wrap: wrap;
-    min-height: var(--fbk-h-md, 32px);
+    min-height: var(--fbk-h-md, 40px);
     margin: var(--fbk-s-2, 4px) 0;
 }
 
@@ -400,8 +400,8 @@
 .fbk-label {
     display: block;
     margin-bottom: var(--fbk-s-2, 4px);
-    font: var(--fbk-t-micro, 800 10px/1.2 sans-serif);
-    letter-spacing: var(--fbk-t-micro-track, 0.1em);
+    font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-micro-track, 0.16em);
     text-transform: uppercase;
     color: rgb(var(--fbk-dim, 148 163 184));
 }
@@ -446,7 +446,7 @@
 .fbk-note {
     margin: var(--fbk-s-3, 6px) 0 0;
     color: rgb(var(--fbk-dim, 148 163 184));
-    font: var(--fbk-t-body, 500 13px/1.45 sans-serif);
+    font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
     font-size: 11px;              /* the body step, one down: a footnote */
 }
 
@@ -480,21 +480,21 @@
 }
 
 .fbk-readout-value {
-    font: var(--fbk-t-value, 800 16px/1.1 sans-serif);
-    letter-spacing: var(--fbk-t-value-track, 0);
+    font: var(--fbk-t-value, 700 11px/1.2 monospace);
+    letter-spacing: var(--fbk-t-value-track, 0.02em);
     color: rgb(var(--fbk-text, 248 250 252));
 }
 
 .fbk-readout-unit {
-    font: var(--fbk-t-micro, 800 10px/1.2 sans-serif);
+    font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
     letter-spacing: 0.02em;
     color: rgb(var(--fbk-dim, 148 163 184));
 }
 
 /* The one big number in a panel, when there is one. */
 .fbk-readout-lg .fbk-readout-value {
-    font: var(--fbk-t-display, 800 22px/1.05 sans-serif);
-    letter-spacing: var(--fbk-t-display-track, -0.01em);
+    font: var(--fbk-t-display, 900 14px/1.15 sans-serif);
+    letter-spacing: var(--fbk-t-display-track, 0.12em);
 }
 
 /* A slab of facts about whatever is selected. */
@@ -521,16 +521,16 @@
 }
 
 .fbk-plate-title {
-    font: var(--fbk-t-body, 500 13px/1.45 sans-serif);
+    font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
     font-weight: 700;
     letter-spacing: var(--fbk-t-body-track, 0);
 }
 
 .fbk-plate-meta {
     color: rgb(var(--fbk-dim, 148 163 184));
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-weight: 500;
-    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    letter-spacing: var(--fbk-t-label-track, 0);
     font-variant-numeric: tabular-nums;
 }
 
@@ -546,7 +546,7 @@
     padding: var(--fbk-s-1, 2px);
     flex: 1 1 auto;
     box-sizing: border-box;
-    height: var(--fbk-h-md, 32px);
+    height: var(--fbk-h-md, 40px);
     border-radius: var(--fbk-radius-sm, 8px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
@@ -561,8 +561,8 @@
     padding: 0 var(--fbk-s-2, 4px);
     background: transparent;
     color: rgb(var(--fbk-dim, 148 163 184));
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
-    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
+    letter-spacing: var(--fbk-t-label-track, 0);
     font-variant-numeric: tabular-nums;
     cursor: pointer;
     transition: color var(--fbk-motion, 140ms ease),
@@ -633,14 +633,14 @@
     position: relative;
     z-index: 1;
     box-sizing: border-box;
-    height: var(--fbk-h-sm, 26px);
+    height: var(--fbk-h-sm, 24px);
     padding: 0 var(--fbk-s-4, 10px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     border-radius: var(--fbk-radius-pill, 999px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
     color: rgb(var(--fbk-dim, 148 163 184));
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
-    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
+    letter-spacing: var(--fbk-t-label-track, 0);
     font-variant-numeric: tabular-nums;
     cursor: pointer;
     transition: color var(--fbk-motion, 140ms ease),
@@ -650,7 +650,7 @@
 
 .fbk-chips-rail .fbk-chip {
     flex: 0 0 auto;
-    min-width: var(--fbk-h-md, 32px);
+    min-width: var(--fbk-h-md, 40px);
     padding: 0 var(--fbk-s-3, 6px);
 }
 
@@ -693,12 +693,12 @@
     display: inline-flex;
     align-items: center;
     gap: var(--fbk-s-3, 6px);
-    height: var(--fbk-h-sm, 26px);
+    height: var(--fbk-h-sm, 24px);
     cursor: pointer;
     color: rgb(var(--fbk-dim, 148 163 184));
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-weight: 600;
-    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    letter-spacing: var(--fbk-t-label-track, 0);
     user-select: none;
 }
 
@@ -768,7 +768,7 @@
     /* Tight, because − value + is ONE control. The row's gap is for the space
        between controls; using it here makes three parts read as three. */
     gap: var(--fbk-s-2, 4px);
-    height: var(--fbk-h-md, 32px);
+    height: var(--fbk-h-md, 40px);
 }
 
 /*
@@ -808,8 +808,8 @@
  */
 .fbk-step {
     flex: 0 0 auto;
-    min-width: var(--fbk-h-md, 32px);
-    height: var(--fbk-h-md, 32px);
+    min-width: var(--fbk-h-md, 40px);
+    height: var(--fbk-h-md, 40px);
     padding: 0 var(--fbk-s-2, 4px);
     display: inline-flex;
     align-items: center;
@@ -819,7 +819,7 @@
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     background: rgb(var(--fbk-surface-2, 11 18 32));
     color: rgb(var(--fbk-text, 248 250 252));
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 13px;               /* the glyphs − + ◀ ▶ need the extra size */
     letter-spacing: 0;
     cursor: pointer;
@@ -858,7 +858,7 @@
 .fbk-slider {
     flex: 1 1 auto;
     min-width: 80px;
-    height: var(--fbk-h-md, 32px);
+    height: var(--fbk-h-md, 40px);
     appearance: none;
     -webkit-appearance: none;
     background: transparent;
@@ -922,15 +922,15 @@
     justify-content: center;
     gap: var(--fbk-s-3, 6px);
     box-sizing: border-box;
-    height: var(--fbk-h-md, 32px);
+    height: var(--fbk-h-md, 40px);
     padding: 0 var(--fbk-s-5, 14px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     border-radius: var(--fbk-radius-sm, 8px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
     color: rgb(var(--fbk-text, 248 250 252));
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 12px;
-    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    letter-spacing: var(--fbk-t-label-track, 0);
     cursor: pointer;
     white-space: nowrap;
     transition: background var(--fbk-motion, 140ms ease),
@@ -964,7 +964,7 @@
 
 .fbk-btn-primary {
     width: 100%;
-    height: var(--fbk-h-lg, 44px);
+    height: var(--fbk-h-lg, 56px);
     margin: var(--fbk-s-4, 10px) 0 var(--fbk-s-2, 4px);
     padding: 0 var(--fbk-s-6, 20px);
     font-size: 14px;
@@ -981,7 +981,7 @@
 /* The inverse of the primary: same slot, same size, different hue. */
 .fbk-btn-stop {
     width: 100%;
-    height: var(--fbk-h-lg, 44px);
+    height: var(--fbk-h-lg, 56px);
     margin: var(--fbk-s-4, 10px) 0 var(--fbk-s-2, 4px);
     padding: 0 var(--fbk-s-6, 20px);
     font-size: 14px;
@@ -995,7 +995,7 @@
 .fbk-btn-stop:hover:not(:disabled) { background: rgb(var(--fbk-alert, 239 68 68) / 0.26); }
 
 .fbk-btn-small {
-    height: var(--fbk-h-sm, 26px);
+    height: var(--fbk-h-sm, 24px);
     padding: 0 var(--fbk-s-4, 10px);
     font-size: 11px;
     font-weight: 600;
@@ -1070,14 +1070,14 @@
     gap: var(--fbk-s-4, 10px);
     width: 100%;
     box-sizing: border-box;
-    height: var(--fbk-h-sm, 26px);
+    height: var(--fbk-h-sm, 24px);
     border: 0;
     border-radius: var(--fbk-radius-sm, 8px);
     background: transparent;
     color: inherit;
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-weight: 600;
-    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    letter-spacing: var(--fbk-t-label-track, 0);
     padding: 0 var(--fbk-s-3, 6px);
     cursor: pointer;
     text-align: left;
@@ -1113,7 +1113,7 @@
     width: 20px;
     height: 20px;
     border-radius: var(--fbk-radius-pill, 999px);
-    font: var(--fbk-t-micro, 800 10px/1.2 sans-serif);
+    font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
     font-size: 11px;
     letter-spacing: 0;
     cursor: help;
@@ -1162,8 +1162,8 @@
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     background: rgb(var(--fbk-bg, 15 23 42));
     color: rgb(var(--fbk-dim, 148 163 184));
-    font: var(--fbk-t-micro, 800 10px/1.2 sans-serif);
-    letter-spacing: var(--fbk-t-micro-track, 0.1em);
+    font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-micro-track, 0.16em);
     white-space: nowrap;
 }
 
@@ -1215,7 +1215,7 @@
     background: rgb(var(--fbk-mid, 234 179 8) / 0.12);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-mid, 234 179 8) / 0.4);
     color: rgb(var(--fbk-text, 248 250 252));
-    font: var(--fbk-t-body, 500 13px/1.45 sans-serif);
+    font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
     font-size: 11px;
 }
 
@@ -1223,7 +1223,7 @@
 .fbk-empty {
     margin: var(--fbk-s-4, 10px) 0;
     color: rgb(var(--fbk-dim, 148 163 184));
-    font: var(--fbk-t-body, 500 13px/1.45 sans-serif);
+    font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
     font-size: 12px;
 }
 
@@ -1234,15 +1234,15 @@
     align-items: center;
     gap: var(--fbk-s-3, 6px);
     box-sizing: border-box;
-    height: var(--fbk-h-sm, 26px);
+    height: var(--fbk-h-sm, 24px);
     padding: 0 var(--fbk-s-4, 10px);
     border-radius: var(--fbk-radius-sm, 8px);
     border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
     background: rgb(var(--fbk-surface-2, 11 18 32));
     color: rgb(var(--fbk-text, 248 250 252));
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 12px;
-    letter-spacing: var(--fbk-t-label-track, 0.01em);
+    letter-spacing: var(--fbk-t-label-track, 0);
     cursor: pointer;
     white-space: nowrap;
     transition: background var(--fbk-motion, 140ms ease),
@@ -1258,8 +1258,8 @@
 
 .fbk-x {
     flex: 0 0 auto;
-    width: var(--fbk-h-sm, 26px);
-    height: var(--fbk-h-sm, 26px);
+    width: var(--fbk-h-sm, 24px);
+    height: var(--fbk-h-sm, 24px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1267,7 +1267,7 @@
     border-radius: var(--fbk-radius-pill, 999px);
     background: transparent;
     color: rgb(var(--fbk-dim, 148 163 184));
-    font: var(--fbk-t-label, 700 11px/1.25 sans-serif);
+    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 13px;
     cursor: pointer;
     transition: background var(--fbk-motion, 140ms ease),
