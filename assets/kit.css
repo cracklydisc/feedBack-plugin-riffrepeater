@@ -1,5 +1,5 @@
 /*
- * kit 0.11.0 — the shared look.
+ * kit 0.12.0 — the shared look.
  *
  * Hand-written plain CSS, no Tailwind. A plugin's `styles` capability just
  * injects a <link>, so real CSS is allowed and is the better choice: this file
@@ -48,6 +48,7 @@
  *  19  the list row
  *  20  the range strip
  *  21  the folded strip
+ *  22  the field
  */
 
 /* ═══ 0. `hidden` has to actually hide ═══════════════════════════════════
@@ -80,7 +81,9 @@
     top: 64px;
     right: var(--fbk-s-5, 10px);
     z-index: 150;
-    width: 336px;
+    /* 360, per the rack spec. 336 was the old panel's width and it left every
+       field 24px short of the room its label and value actually need. */
+    width: 360px;
     max-width: calc(100vw - var(--fbk-s-6, 14px) * 2);
     max-height: 76vh;
     overflow-y: auto;
@@ -89,13 +92,13 @@
     box-sizing: border-box;
 
     border-radius: var(--fbk-radius, 10px);
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     /* A stage-lit object: a real shadow plus a top inner light line. */
     background: linear-gradient(180deg,
-        rgb(var(--fbk-surface, 30 41 59)),
-        rgb(var(--fbk-bg, 15 23 42)));
+        rgb(var(--fbk-surface, 12 15 22)),
+        rgb(var(--fbk-bg, 5 7 12)));
     box-shadow: var(--fbk-panel-shadow, none), var(--fbk-panel-inner, none);
-    color: rgb(var(--fbk-text, 248 250 252));
+    color: rgb(var(--fbk-text, 232 238 252));
 
     font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
     letter-spacing: var(--fbk-t-body-track, 0);
@@ -105,7 +108,7 @@
 .fbk-panel-open { /* state marker only */ }
 
 .fbk-panel *:focus-visible {
-    outline: 2px solid rgb(var(--fbk-focus, 56 189 248));
+    outline: 2px solid rgb(var(--fbk-focus, 41 168 255));
     outline-offset: 2px;
 }
 
@@ -113,36 +116,74 @@
     display: flex;
     align-items: center;
     gap: var(--fbk-s-3, 6px);
-    padding: var(--fbk-s-4, 8px) var(--fbk-s-5, 10px);
+    padding: var(--fbk-s-5, 10px) var(--fbk-s-6, 14px);
     position: sticky;
     top: 0;
     z-index: 2;
-    background: rgb(var(--fbk-surface, 30 41 59));
-    border-bottom: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    /*
+     * The chassis's top ear, hatched — and the hatch is not decoration for its
+     * own sake. It is the cue that the head and the footer are PART OF THE
+     * UNIT rather than content in it, which is what stops a 700px panel
+     * reading as a scrolling document with a title. The same texture at both
+     * ends brackets the racks between them.
+     */
+    background:
+        repeating-linear-gradient(135deg,
+            rgb(var(--fbk-border, 42 46 58) / 0.22) 0 2px,
+            rgb(var(--fbk-border, 42 46 58) / 0) 2px 7px),
+        rgb(var(--fbk-surface, 12 15 22));
+    border-bottom: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     border-radius: var(--fbk-radius, 10px) var(--fbk-radius, 10px) 0 0;
+}
+
+/* The unit's own indicator light, left of its name. */
+.fbk-head::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 7px;
+    height: 7px;
+    border-radius: var(--fbk-radius-pill, 999px);
+    background: rgb(var(--fbk-accent, 41 168 255));
+    box-shadow: var(--fbk-lit-halo, none);
+}
+
+/* The title and the song stack, so a long artist name cannot ellipsize the
+   thing you are looking at. */
+.fbk-head-stack {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .fbk-title {
     flex: 0 0 auto;
-    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
-    font-size: 13px;              /* the title is the label step, one size up */
-    letter-spacing: var(--fbk-t-label-track, 0);
+    /*
+     * Its own type step, not the label step one size up. `t-display` is 900/14
+     * with 0.12em of tracking — a stamped legend rather than a heading, which
+     * is the difference between a panel that looks like a device and one that
+     * looks like a dialog.
+     */
+    font: var(--fbk-t-display, 900 14px/1.15 sans-serif);
+    letter-spacing: var(--fbk-t-display-track, 0.12em);
+    text-transform: uppercase;
 }
 
 .fbk-subtitle {
     flex: 1 1 auto;
     min-width: 0;
-    color: rgb(var(--fbk-dim, 148 163 184));
-    font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
-    font-weight: 500;
-    letter-spacing: var(--fbk-t-label-track, 0);
+    color: rgb(var(--fbk-dim, 138 160 200));
+    font: var(--fbk-t-rack, 900 10px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-rack-track, 0.16em);
+    text-transform: uppercase;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .fbk-body {
-    padding: var(--fbk-s-4, 8px) var(--fbk-s-5, 10px) var(--fbk-s-5, 10px);
+    padding: 0 var(--fbk-s-6, 14px);
 }
 
 /*
@@ -160,9 +201,16 @@
     position: sticky;
     bottom: 0;
     z-index: 2;
-    padding: var(--fbk-s-3, 6px) var(--fbk-s-5, 10px) var(--fbk-s-4, 8px);
-    background: rgb(var(--fbk-bg, 15 23 42));
-    border-top: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    padding: var(--fbk-s-5, 10px) var(--fbk-s-6, 14px);
+    /* The chassis's bottom ear: the same hatch as the head, so the two bracket
+       the racks between them and the panel reads as a unit rather than as a
+       scrolling document with a title. */
+    background:
+        repeating-linear-gradient(135deg,
+            rgb(var(--fbk-border, 42 46 58) / 0.22) 0 2px,
+            rgb(var(--fbk-border, 42 46 58) / 0) 2px 7px),
+        rgb(var(--fbk-surface, 12 15 22));
+    border-top: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     border-radius: 0 0 var(--fbk-radius, 10px) var(--fbk-radius, 10px);
 }
 
@@ -188,6 +236,20 @@
  */
 .fbk-foot .fbk-btn-primary,
 .fbk-foot .fbk-btn-stop { padding: 0 var(--fbk-s-4, 8px); }
+
+/*
+ * The alternative beside the footswitch matches its case.
+ *
+ * Two buttons on one bar in two different cases reads as two different KINDS
+ * of thing, which is the opposite of what the pair is for: they are two ways
+ * to start. Same case, different tier — the glow still says which is which.
+ */
+.fbk-foot .fbk-btn {
+    height: var(--fbk-h-lg, 56px);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 800;
+}
 
 /*
  * And the cap itself is one step bigger on a primary.
@@ -227,7 +289,7 @@
     font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
     letter-spacing: var(--fbk-t-micro-track, 0.16em);
     text-transform: uppercase;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
 }
 
 /* Fills the rest of the heading's row, so a heading reads as a divider
@@ -236,8 +298,8 @@
     flex: 1 1 auto;
     height: var(--fbk-hairline, 1px);
     background: linear-gradient(90deg,
-        rgb(var(--fbk-border, 51 65 85)),
-        rgb(var(--fbk-border, 51 65 85) / 0));
+        rgb(var(--fbk-border, 42 46 58)),
+        rgb(var(--fbk-border, 42 46 58) / 0));
 }
 
 /*
@@ -294,7 +356,7 @@
     font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
     letter-spacing: var(--fbk-t-micro-track, 0.16em);
     text-transform: uppercase;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
 }
 
 /*
@@ -322,7 +384,7 @@
     text-align: right;
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     letter-spacing: var(--fbk-t-label-track, 0);
-    color: rgb(var(--fbk-text, 226 232 240));
+    color: rgb(var(--fbk-text, 232 238 252));
 }
 
 /*
@@ -340,7 +402,7 @@
     font-size: 15px;
     line-height: 1;
     text-align: center;
-    color: rgb(var(--fbk-text, 226 232 240));
+    color: rgb(var(--fbk-text, 232 238 252));
     transition: transform var(--fbk-motion, 140ms ease);
 }
 
@@ -360,16 +422,16 @@
 
 .fbk-fold-head:hover { background: rgb(var(--fbk-surface-2, 11 18 32)); }
 
-.fbk-fold-head:hover .fbk-fold-title { color: rgb(var(--fbk-text, 226 232 240)); }
+.fbk-fold-head:hover .fbk-fold-title { color: rgb(var(--fbk-text, 232 238 252)); }
 
 .fbk-fold-head:focus-visible {
-    outline: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent, 14 165 233));
+    outline: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent, 41 168 255));
     outline-offset: var(--fbk-s-2, 4px);
 }
 
 /* An open fold shows the heading's rule under it instead of a summary — the
    divider comes back once the summary is no longer doing that job. */
-.fbk-fold[data-open="true"] .fbk-fold-summary { color: rgb(var(--fbk-dim, 148 163 184) / 0.55); }
+.fbk-fold[data-open="true"] .fbk-fold-summary { color: rgb(var(--fbk-dim, 138 160 200) / 0.55); }
 
 .fbk-fold-body { padding-top: var(--fbk-s-2, 4px); }
 
@@ -410,7 +472,7 @@
     font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
     letter-spacing: var(--fbk-t-micro-track, 0.16em);
     text-transform: uppercase;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
 }
 
 /*
@@ -452,7 +514,7 @@
 
 .fbk-note {
     margin: var(--fbk-s-3, 6px) 0 0;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
     font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
     font-size: 11px;              /* the body step, one down: a footnote */
 }
@@ -489,13 +551,13 @@
 .fbk-readout-value {
     font: var(--fbk-t-value, 700 11px/1.2 monospace);
     letter-spacing: var(--fbk-t-value-track, 0.02em);
-    color: rgb(var(--fbk-text, 248 250 252));
+    color: rgb(var(--fbk-text, 232 238 252));
 }
 
 .fbk-readout-unit {
     font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
     letter-spacing: 0.02em;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
 }
 
 /* The one big number in a panel, when there is one. */
@@ -534,7 +596,7 @@
 }
 
 .fbk-plate-meta {
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-weight: 500;
     letter-spacing: var(--fbk-t-label-track, 0);
@@ -556,7 +618,7 @@
     height: var(--fbk-h-md, 40px);
     border-radius: var(--fbk-radius-sm, 8px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     box-shadow: var(--fbk-panel-inner, none);
 }
 
@@ -567,7 +629,7 @@
     border-radius: calc(var(--fbk-radius-sm, 8px) - var(--fbk-s-1, 2px));
     padding: 0 var(--fbk-s-2, 4px);
     background: transparent;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     letter-spacing: var(--fbk-t-label-track, 0);
     font-variant-numeric: tabular-nums;
@@ -577,8 +639,8 @@
 }
 
 .fbk-seg-btn:hover:not(:disabled):not(.fbk-on) {
-    color: rgb(var(--fbk-text, 248 250 252));
-    background: rgb(var(--fbk-border, 51 65 85) / 0.35);
+    color: rgb(var(--fbk-text, 232 238 252));
+    background: rgb(var(--fbk-border, 42 46 58) / 0.35);
 }
 
 /*
@@ -611,8 +673,8 @@
 /* A LIT cell, not a bordered box. The halo is a slot, so a glow-less skin
    gets the fill alone and still reads as selected. */
 .fbk-seg-btn.fbk-on {
-    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
-    color: var(--fbk-lit-on, rgb(var(--fbk-on-accent, 248 250 252)));
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 41 168 255)));
+    color: var(--fbk-lit-on, rgb(var(--fbk-on-accent, 5 7 12)));
     box-shadow: var(--fbk-lit-halo, none);
 }
 
@@ -660,7 +722,7 @@
     top: 50%;
     height: 2px;
     margin-top: -1px;
-    background: rgb(var(--fbk-border, 51 65 85));
+    background: rgb(var(--fbk-border, 42 46 58));
 }
 
 .fbk-chip {
@@ -669,10 +731,10 @@
     box-sizing: border-box;
     height: var(--fbk-h-sm, 24px);
     padding: 0 var(--fbk-s-4, 8px);
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     border-radius: var(--fbk-radius-pill, 999px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     letter-spacing: var(--fbk-t-label-track, 0);
     font-variant-numeric: tabular-nums;
@@ -689,30 +751,30 @@
 }
 
 .fbk-chip:hover:not(:disabled) {
-    color: rgb(var(--fbk-text, 248 250 252));
-    border-color: rgb(var(--fbk-dim, 148 163 184) / 0.6);
+    color: rgb(var(--fbk-text, 232 238 252));
+    border-color: rgb(var(--fbk-dim, 138 160 200) / 0.6);
 }
 
 /* In the set. */
 .fbk-chip.fbk-on {
-    border-color: rgb(var(--fbk-accent, 14 165 233));
-    background: rgb(var(--fbk-accent, 14 165 233) / 0.14);
-    color: rgb(var(--fbk-text, 248 250 252));
+    border-color: rgb(var(--fbk-accent, 41 168 255));
+    background: rgb(var(--fbk-accent, 41 168 255) / 0.14);
+    color: rgb(var(--fbk-text, 232 238 252));
 }
 
 /* Where we are NOW — the one filled chip, so the eye lands on it. */
 .fbk-chip.fbk-now {
-    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
-    border-color: rgb(var(--fbk-accent-hi, 56 189 248));
-    color: var(--fbk-lit-on, rgb(var(--fbk-on-accent, 248 250 252)));
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 41 168 255)));
+    border-color: rgb(var(--fbk-accent-hi, 96 194 255));
+    color: var(--fbk-lit-on, rgb(var(--fbk-on-accent, 5 7 12)));
     box-shadow: var(--fbk-lit-halo, none);
 }
 
 /* Cleared. Green is only ever this — DESIGN.md §3. */
 .fbk-chip.fbk-done {
-    border-color: rgb(var(--fbk-good, 34 197 94));
-    background: rgb(var(--fbk-good, 34 197 94) / 0.14);
-    color: rgb(var(--fbk-text, 248 250 252));
+    border-color: rgb(var(--fbk-good, 61 220 132));
+    background: rgb(var(--fbk-good, 61 220 132) / 0.14);
+    color: rgb(var(--fbk-text, 232 238 252));
 }
 
 /* ═══ 7. Family 3 — TOGGLE: a boolean ════════════════════════════════════
@@ -729,7 +791,7 @@
     gap: var(--fbk-s-3, 6px);
     height: var(--fbk-h-sm, 24px);
     cursor: pointer;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-weight: 600;
     letter-spacing: var(--fbk-t-label-track, 0);
@@ -752,7 +814,7 @@
     height: 19px;
     border-radius: var(--fbk-radius-pill, 999px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     box-shadow: var(--fbk-panel-inner, none);
     transition: background var(--fbk-motion, 140ms ease),
                 border-color var(--fbk-motion, 140ms ease);
@@ -766,28 +828,28 @@
     width: 13px;
     height: 13px;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: rgb(var(--fbk-dim, 148 163 184));
+    background: rgb(var(--fbk-dim, 138 160 200));
     transition: transform var(--fbk-motion, 140ms ease),
                 background var(--fbk-motion, 140ms ease);
 }
 
 .fbk-toggle input:checked + .fbk-toggle-track {
-    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
-    border-color: rgb(var(--fbk-accent-hi, 56 189 248));
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 41 168 255)));
+    border-color: rgb(var(--fbk-accent-hi, 96 194 255));
     box-shadow: var(--fbk-lit-halo, none);
 }
 
 .fbk-toggle input:checked + .fbk-toggle-track::after {
     transform: translateX(15px);
-    background: var(--fbk-lit-on, rgb(var(--fbk-on-accent, 248 250 252)));
+    background: var(--fbk-lit-on, rgb(var(--fbk-on-accent, 5 7 12)));
 }
 
 .fbk-toggle input:focus-visible + .fbk-toggle-track {
-    outline: 2px solid rgb(var(--fbk-focus, 56 189 248));
+    outline: 2px solid rgb(var(--fbk-focus, 41 168 255));
     outline-offset: 2px;
 }
 
-.fbk-toggle input:checked ~ .fbk-toggle-text { color: rgb(var(--fbk-text, 248 250 252)); }
+.fbk-toggle input:checked ~ .fbk-toggle-text { color: rgb(var(--fbk-text, 232 238 252)); }
 
 /* ═══ 8. Family 4 — STEPPER: a number you nudge ══════════════════════════
  *
@@ -890,9 +952,9 @@
     justify-content: center;
     box-sizing: border-box;
     border-radius: var(--fbk-radius-sm, 8px);
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    color: rgb(var(--fbk-text, 248 250 252));
+    color: rgb(var(--fbk-text, 232 238 252));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 13px;               /* the glyphs − + ◀ ▶ need the extra size */
     letter-spacing: 0;
@@ -903,12 +965,12 @@
 }
 
 .fbk-step:hover:not(:disabled) {
-    background: rgb(var(--fbk-accent, 14 165 233) / 0.16);
-    border-color: rgb(var(--fbk-accent, 14 165 233));
-    color: rgb(var(--fbk-text, 248 250 252));
+    background: rgb(var(--fbk-accent, 41 168 255) / 0.16);
+    border-color: rgb(var(--fbk-accent, 41 168 255));
+    color: rgb(var(--fbk-text, 232 238 252));
 }
 
-.fbk-step:active:not(:disabled) { background: rgb(var(--fbk-accent, 14 165 233) / 0.3); }
+.fbk-step:active:not(:disabled) { background: rgb(var(--fbk-accent, 41 168 255) / 0.3); }
 
 /* ═══ 9. Slider — a HUD gauge that is still an <input type="range"> ══════
  *
@@ -943,14 +1005,14 @@
     height: 6px;
     border-radius: var(--fbk-radius-pill, 999px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
 }
 
 .fbk-slider::-moz-range-track {
     height: 6px;
     border-radius: var(--fbk-radius-pill, 999px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
 }
 
 /* Firefox can paint the filled part; WebKit cannot, so it is the thumb's halo
@@ -958,7 +1020,7 @@
 .fbk-slider::-moz-range-progress {
     height: 6px;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 41 168 255)));
 }
 
 .fbk-slider::-webkit-slider-thumb {
@@ -968,8 +1030,8 @@
     margin-top: -5px;
     box-sizing: border-box;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent-hi, 56 189 248));
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 41 168 255)));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent-hi, 96 194 255));
     box-shadow: var(--fbk-lit-halo, none);
 }
 
@@ -978,8 +1040,8 @@
     height: 15px;
     box-sizing: border-box;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 14 165 233)));
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent-hi, 56 189 248));
+    background: var(--fbk-lit-fill, rgb(var(--fbk-accent, 41 168 255)));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-accent-hi, 96 194 255));
     box-shadow: var(--fbk-lit-halo, none);
 }
 
@@ -998,10 +1060,10 @@
     box-sizing: border-box;
     height: var(--fbk-h-md, 40px);
     padding: 0 var(--fbk-s-5, 10px);
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     border-radius: var(--fbk-radius-sm, 8px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    color: rgb(var(--fbk-text, 248 250 252));
+    color: rgb(var(--fbk-text, 232 238 252));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 12px;
     letter-spacing: var(--fbk-t-label-track, 0);
@@ -1012,8 +1074,8 @@
 }
 
 .fbk-btn:hover:not(:disabled) {
-    background: rgb(var(--fbk-surface, 30 41 59));
-    border-color: rgb(var(--fbk-dim, 148 163 184) / 0.5);
+    background: rgb(var(--fbk-surface, 12 15 22));
+    border-color: rgb(var(--fbk-dim, 138 160 200) / 0.5);
 }
 
 /*
@@ -1043,10 +1105,14 @@
     padding: 0 var(--fbk-s-6, 14px);
     font-size: 14px;
     font-weight: 800;
-    background: var(--fbk-emph-fill, rgb(var(--fbk-accent, 14 165 233)));
+    /* It is the one control you hit without looking, so it is the one that
+       shouts. Uppercase with real tracking reads as a legend on hardware. */
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--fbk-emph-fill, rgb(var(--fbk-accent, 41 168 255)));
     border: var(--fbk-emph-border, none);
     box-shadow: var(--fbk-emph-halo, none);
-    color: var(--fbk-emph-on, rgb(var(--fbk-on-accent, 248 250 252)));
+    color: var(--fbk-emph-on, rgb(var(--fbk-on-accent, 5 7 12)));
 }
 
 .fbk-btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
@@ -1060,13 +1126,17 @@
     padding: 0 var(--fbk-s-6, 14px);
     font-size: 14px;
     font-weight: 800;
-    background: rgb(var(--fbk-alert, 239 68 68) / 0.16);
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-alert, 239 68 68));
+    /* It is the one control you hit without looking, so it is the one that
+       shouts. Uppercase with real tracking reads as a legend on hardware. */
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: rgb(var(--fbk-alert, 229 72 77) / 0.16);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-alert, 229 72 77));
     box-shadow: none;
-    color: rgb(var(--fbk-text, 248 250 252));
+    color: rgb(var(--fbk-text, 232 238 252));
 }
 
-.fbk-btn-stop:hover:not(:disabled) { background: rgb(var(--fbk-alert, 239 68 68) / 0.26); }
+.fbk-btn-stop:hover:not(:disabled) { background: rgb(var(--fbk-alert, 229 72 77) / 0.26); }
 
 .fbk-btn-small {
     height: var(--fbk-h-sm, 24px);
@@ -1082,14 +1152,14 @@
 .fbk-btn-quiet {
     background: transparent;
     border-color: transparent;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
     font-weight: 600;
 }
 
 .fbk-btn-quiet:hover:not(:disabled) {
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    border-color: rgb(var(--fbk-border, 51 65 85));
-    color: rgb(var(--fbk-text, 248 250 252));
+    border-color: rgb(var(--fbk-border, 42 46 58));
+    color: rgb(var(--fbk-text, 232 238 252));
 }
 
 /*
@@ -1119,7 +1189,7 @@
     height: 8px;
     border-radius: var(--fbk-radius-pill, 999px);
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85) / 0.8);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58) / 0.8);
     overflow: hidden;
 }
 
@@ -1128,13 +1198,13 @@
     position: absolute;
     inset: 0 auto 0 0;
     width: var(--fbk-fill, 0%);
-    background: var(--fbk-meter-fill, rgb(var(--fbk-good, 34 197 94)));
+    background: var(--fbk-meter-fill, rgb(var(--fbk-good, 61 220 132)));
     transition: width var(--fbk-motion, 140ms ease);
 }
 
-.fbk-meter[data-band="good"]::after { background: rgb(var(--fbk-good, 34 197 94)); }
-.fbk-meter[data-band="mid"]::after { background: rgb(var(--fbk-mid, 234 179 8)); }
-.fbk-meter[data-band="bad"]::after { background: rgb(var(--fbk-bad, 239 68 68)); }
+.fbk-meter[data-band="good"]::after { background: rgb(var(--fbk-good, 61 220 132)); }
+.fbk-meter[data-band="mid"]::after { background: rgb(var(--fbk-mid, 245 165 36)); }
+.fbk-meter[data-band="bad"]::after { background: rgb(var(--fbk-bad, 229 72 77)); }
 
 /* A clickable row: name, meter, number. Three columns, and the number is
    tabular and right-aligned so a column of them lines up. */
@@ -1172,7 +1242,7 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
     font-weight: 800;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
 }
 
 /* ═══ 12. Small parts ════════════════════════════════════════════════════ */
@@ -1191,15 +1261,15 @@
     font-size: 11px;
     letter-spacing: 0;
     cursor: help;
-    background: rgb(var(--fbk-mid, 234 179 8) / 0.16);
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-mid, 234 179 8) / 0.5);
-    color: rgb(var(--fbk-mid, 234 179 8));
+    background: rgb(var(--fbk-mid, 245 165 36) / 0.16);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-mid, 245 165 36) / 0.5);
+    color: rgb(var(--fbk-mid, 245 165 36));
 }
 
 .fbk-badge-bad {
-    background: rgb(var(--fbk-bad, 239 68 68) / 0.16);
-    border-color: rgb(var(--fbk-bad, 239 68 68) / 0.5);
-    color: rgb(var(--fbk-bad, 239 68 68));
+    background: rgb(var(--fbk-bad, 229 72 77) / 0.16);
+    border-color: rgb(var(--fbk-bad, 229 72 77) / 0.5);
+    color: rgb(var(--fbk-bad, 229 72 77));
 }
 
 /* The state of an input, on the control that needs it. */
@@ -1208,16 +1278,16 @@
     width: 8px;
     height: 8px;
     border-radius: var(--fbk-radius-pill, 999px);
-    background: rgb(var(--fbk-dim, 148 163 184));
+    background: rgb(var(--fbk-dim, 138 160 200));
 }
 
 .fbk-dot[data-state="ready"] {
-    background: rgb(var(--fbk-good, 34 197 94));
-    box-shadow: 0 0 8px rgb(var(--fbk-good, 34 197 94) / 0.8);
+    background: rgb(var(--fbk-good, 61 220 132));
+    box-shadow: 0 0 8px rgb(var(--fbk-good, 61 220 132) / 0.8);
 }
 
-.fbk-dot[data-state="warn"] { background: rgb(var(--fbk-mid, 234 179 8)); }
-.fbk-dot[data-state="off"] { background: rgb(var(--fbk-dim, 148 163 184) / 0.6); }
+.fbk-dot[data-state="warn"] { background: rgb(var(--fbk-mid, 245 165 36)); }
+.fbk-dot[data-state="off"] { background: rgb(var(--fbk-dim, 138 160 200) / 0.6); }
 
 /*
  * A key cap. A shortcut nobody can see is a shortcut nobody uses.
@@ -1233,9 +1303,9 @@
     height: 18px;
     padding: 0 var(--fbk-s-3, 6px);
     border-radius: var(--fbk-s-2, 4px);
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
-    background: rgb(var(--fbk-bg, 15 23 42));
-    color: rgb(var(--fbk-dim, 148 163 184));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+    background: rgb(var(--fbk-bg, 5 7 12));
+    color: rgb(var(--fbk-dim, 138 160 200));
     font: var(--fbk-t-micro, 900 10px/1.2 sans-serif);
     letter-spacing: var(--fbk-t-micro-track, 0.16em);
     white-space: nowrap;
@@ -1258,9 +1328,9 @@
  */
 .fbk-btn-primary .fbk-kbd,
 .fbk-btn-stop .fbk-kbd {
-    border-color: rgb(var(--fbk-bg, 15 23 42) / 0.5);
-    background: rgb(var(--fbk-on-accent, 248 250 252));
-    color: rgb(var(--fbk-bg, 15 23 42));
+    border-color: rgb(var(--fbk-bg, 5 7 12) / 0.5);
+    background: rgb(var(--fbk-on-accent, 5 7 12));
+    color: rgb(var(--fbk-bg, 5 7 12));
 }
 
 /*
@@ -1274,7 +1344,7 @@
  */
 .fbk-btn-primary .fbk-dot,
 .fbk-btn-stop .fbk-dot {
-    box-shadow: 0 0 0 var(--fbk-hairline, 1px) rgb(var(--fbk-bg, 15 23 42) / 0.6);
+    box-shadow: 0 0 0 var(--fbk-hairline, 1px) rgb(var(--fbk-bg, 5 7 12) / 0.6);
 }
 
 /*
@@ -1286,9 +1356,9 @@
     margin: var(--fbk-s-4, 8px) 0 0;
     padding: var(--fbk-s-3, 6px) var(--fbk-s-4, 8px);
     border-radius: var(--fbk-radius-sm, 8px);
-    background: rgb(var(--fbk-mid, 234 179 8) / 0.12);
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-mid, 234 179 8) / 0.4);
-    color: rgb(var(--fbk-text, 248 250 252));
+    background: rgb(var(--fbk-mid, 245 165 36) / 0.12);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-mid, 245 165 36) / 0.4);
+    color: rgb(var(--fbk-text, 232 238 252));
     font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
     font-size: 11px;
 }
@@ -1296,7 +1366,7 @@
 /* Nothing to show yet. Not an error, so it is quiet. */
 .fbk-empty {
     margin: var(--fbk-s-4, 8px) 0;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
     font: var(--fbk-t-body, 500 11px/1.45 sans-serif);
     font-size: 12px;
 }
@@ -1311,9 +1381,9 @@
     height: var(--fbk-h-sm, 24px);
     padding: 0 var(--fbk-s-4, 8px);
     border-radius: var(--fbk-radius-sm, 8px);
-    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 51 65 85));
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
     background: rgb(var(--fbk-surface-2, 11 18 32));
-    color: rgb(var(--fbk-text, 248 250 252));
+    color: rgb(var(--fbk-text, 232 238 252));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 12px;
     letter-spacing: var(--fbk-t-label-track, 0);
@@ -1323,11 +1393,11 @@
                 border-color var(--fbk-motion, 140ms ease);
 }
 
-.fbk-open-btn:hover { background: rgb(var(--fbk-surface, 30 41 59)); }
+.fbk-open-btn:hover { background: rgb(var(--fbk-surface, 12 15 22)); }
 
 .fbk-open-btn.fbk-on {
-    border-color: rgb(var(--fbk-accent, 14 165 233));
-    background: rgb(var(--fbk-accent, 14 165 233) / 0.16);
+    border-color: rgb(var(--fbk-accent, 41 168 255));
+    background: rgb(var(--fbk-accent, 41 168 255) / 0.16);
 }
 
 .fbk-x {
@@ -1340,7 +1410,7 @@
     border: 0;
     border-radius: var(--fbk-radius-pill, 999px);
     background: transparent;
-    color: rgb(var(--fbk-dim, 148 163 184));
+    color: rgb(var(--fbk-dim, 138 160 200));
     font: var(--fbk-t-label, 700 13px/1.25 sans-serif);
     font-size: 13px;
     cursor: pointer;
@@ -1349,7 +1419,7 @@
 }
 
 .fbk-x:hover {
-    color: rgb(var(--fbk-text, 248 250 252));
+    color: rgb(var(--fbk-text, 232 238 252));
     background: rgb(var(--fbk-surface-2, 11 18 32));
 }
 
@@ -1412,6 +1482,11 @@
  * because it is a readout sitting next to a legend — if it read at the label's
  * weight the row would have two headings.
  */
+/* `data-tone="value"` paints the amber the design gives a measured number in
+   a legend — the same amber as a mid grade, because that is what it usually
+   is. Grade colour on a READOUT is fine; §3 forbids it on controls. */
+.fbk-rack-aside[data-tone="value"] { color: rgb(var(--fbk-mid, 245 165 36)); }
+
 .fbk-rack-aside {
     flex: 1 1 auto;
     min-width: 0;
@@ -1549,7 +1624,7 @@
 .fbk-led-cell {
     flex: 1 1 0;
     min-width: 0;
-    border-radius: 1px;
+    border-radius: 2px;
     background: rgb(var(--fbk-border, 42 46 58) / 0.55);
 }
 
@@ -1778,8 +1853,20 @@
     right: -8px;
 }
 
-.fbk-strip-handle[data-edge="start"] { left: -2px; }
-.fbk-strip-handle[data-edge="end"] { right: -2px; }
+/*
+ * OUTSIDE the selection, not inside it.
+ *
+ * They were inset (`left: -2px` / `right: -2px`), which is fine until the
+ * selection is narrower than two handles — and then they overlap and B renders
+ * to the LEFT of A, which is a picture of a backwards loop. A one-bar phrase on
+ * a five-minute song is a few pixels wide, so this is the common case, not the
+ * edge one.
+ *
+ * Hanging them off the outside edges means the pair always reads left-to-right
+ * and the selection outline stays visible between them however thin it is.
+ */
+.fbk-strip-handle[data-edge="start"] { right: 100%; margin-right: -2px; }
+.fbk-strip-handle[data-edge="end"] { left: 100%; margin-left: -2px; }
 
 .fbk-strip-handle:hover:not(:disabled) { background: rgb(var(--fbk-accent-hi, 96 194 255)); }
 
@@ -1877,6 +1964,111 @@
 .fbk-live-unit {
     font: var(--fbk-t-num, 700 11px/1.2 monospace);
     letter-spacing: var(--fbk-t-num-track, 0.02em);
+}
+
+/* ═══ 22. The field — a labelled well, the rack's actual building block ══
+ *
+ * Getting this wrong is what made a first attempt at the rack design look
+ * nothing like it. The rows had the right controls in the right order and sat
+ * on FLAT ground: label outside on the left, control to its right, no boundary
+ * anywhere. What the design does is put **every control group in a well with
+ * its own label inside** — so a rack reads as four objects bolted to a chassis
+ * rather than four lines of a form.
+ *
+ * The label goes inside for a reason beyond looks: a label in an external
+ * column shares one fixed width with every other label in the panel, so
+ * `DIFFICULTY` forces `STEP` to start 40px further right than it needs to.
+ * Inside its own well each label takes the room it needs, and the wells still
+ * line up — because the WELLS are the thing being aligned.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.fbk-field {
+    display: flex;
+    align-items: center;
+    gap: var(--fbk-s-4, 8px);
+    box-sizing: border-box;
+    min-height: var(--fbk-h-md, 40px);
+    padding: var(--fbk-s-1, 2px) var(--fbk-s-5, 10px);
+    border-radius: var(--fbk-radius-well, 12px);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+    background: rgb(var(--fbk-bg, 5 7 12));
+}
+
+/* A field holding a control that brings its own height — a segmented row —
+   gives up its padding so the control's own 40px is the row's height. */
+.fbk-field-tight { padding: var(--fbk-s-1, 2px); }
+
+.fbk-field-label {
+    flex: 0 0 auto;
+    font: var(--fbk-t-field, 600 9px/1.2 sans-serif);
+    letter-spacing: var(--fbk-t-field-track, 0.12em);
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: rgb(var(--fbk-dim, 138 160 200));
+    padding-left: var(--fbk-s-3, 6px);
+}
+
+.fbk-field-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--fbk-s-4, 8px);
+}
+
+/*
+ * ONE SIGNAL PER BOUNDARY (§18), enforced downward.
+ *
+ * A segmented control has its own track and border; inside a field that is a
+ * boundary drawn twice, and two nested strokes 2px apart is exactly what makes
+ * a layout read as boxes in boxes. The field is the boundary now, so the
+ * things it contains give theirs up.
+ */
+.fbk-field .fbk-seg,
+.fbk-field .fbk-stepper {
+    border: 0;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+/*
+ * A STEPPER IS ITSELF A WELL.
+ *
+ * Not wrapped in one — it IS one. The design draws `− START 80% +` as a single
+ * bordered object with the buttons inside it, and that is also what it is:
+ * three parts of one control. Wrapping it would have put a stroke around a
+ * stroke.
+ */
+.fbk-stepper {
+    box-sizing: border-box;
+    padding: var(--fbk-s-1, 2px);
+    border-radius: var(--fbk-radius-well, 12px);
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+    background: rgb(var(--fbk-bg, 5 7 12));
+    height: auto;
+    min-height: var(--fbk-h-md, 40px);
+}
+
+/* The strip gets the same treatment, for the same reason: it is one object. */
+.fbk-strip {
+    box-sizing: border-box;
+    border: var(--fbk-hairline, 1px) solid rgb(var(--fbk-border, 42 46 58));
+    border-radius: var(--fbk-radius-well, 12px);
+    height: calc(var(--fbk-h-md, 40px) + var(--fbk-s-2, 4px));
+}
+
+/* A ghost that is an invitation rather than an afterthought: accent stroke,
+   accent ink, no fill. The design's third button tier. */
+.fbk-btn-accent {
+    border-color: rgb(var(--fbk-accent, 41 168 255));
+    background: none;
+    color: rgb(var(--fbk-accent, 41 168 255));
+}
+
+.fbk-btn-accent:hover:not(:disabled) {
+    background: rgb(var(--fbk-accent, 41 168 255) / 0.14);
+    color: rgb(var(--fbk-accent-hi, 96 194 255));
 }
 
 /* ═══ 14. Narrow windows, and the motion gate's belt-and-braces ══════════ */

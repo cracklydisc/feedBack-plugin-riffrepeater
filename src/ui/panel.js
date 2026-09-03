@@ -68,6 +68,17 @@ export function createContent(outer, actions, foot) {
     outer.appendChild(empty);
     outer.appendChild(body);
 
+    /*
+     * Whether the edge readouts print tenths, read by their formatter.
+     *
+     * Declared UP HERE and not beside `edgeStepper`, because `let` has a
+     * temporal dead zone and the formatter runs during construction: a
+     * declaration next to the function it serves sat after the call site, and
+     * the whole plugin failed to load with "Cannot access 'tenths' before
+     * initialization" — a module-level throw, so nothing mounted at all.
+     */
+    let tenths = false;
+
     // ── RACK 1: the loop ─────────────────────────────────────────────────
     const loopRack = c.rack({ label: 'Loop' });
     body.appendChild(loopRack.el);
@@ -122,26 +133,42 @@ export function createContent(outer, actions, foot) {
     edges.appendChild(edgeB.el);
     loopRack.body.appendChild(edges);
 
+
+    /*
+     * An edge, as a kit stepper.
+     *
+     * It used to be a hand-rolled `.rr-edge` — a flat row of two buttons and a
+     * readout — which is exactly the mistake that made the whole panel look
+     * unlike the design: the parts were right and the OBJECT was missing. A
+     * kit stepper is itself a well, its label sits inside it over the value,
+     * and `A · ±1 bar` says both what the control is and what one press does.
+     */
     function edgeStepper(letter, edge, key) {
-        const wrap = c.el('div', 'rr-edge');
-        const down = c.button('fbk-step', '−', 'One unit earlier', () => actions.nudge(edge, -1));
-        const mid = c.el('div', 'rr-edge-mid');
-        const cap = c.el('span', 'rr-edge-cap');
-        const time = c.el('span', 'rr-edge-time');
-        mid.appendChild(cap);
-        mid.appendChild(time);
-        const up = c.button('fbk-step', '+', 'One unit later', () => actions.nudge(edge, 1));
+        const st = c.stepper({
+            label: `${letter} · ±1 bar`,
+            value: 0,
+            step: 1,
+            unit: '',
+            /*
+             * The value is a TIME, so the readout formats it — and the format
+             * changes with the unit switch, hence the closure over `tenths`
+             * rather than a constant. Without this the readout would print
+             * `3` for three seconds.
+             */
+            format: (v) => (tenths ? clock(v, 1) : clock(v)),
+            downTitle: 'One unit earlier',
+            upTitle: 'One unit later',
+        });
         /*
-         * Tapping the readout puts the edge at the playhead — the gesture the
-         * `I` and `O` keys already do. It is discoverable through the tooltip
-         * and the key cap rather than by a third button in a row that has two.
+         * The stepper's own `bump` walks a number; these edges are times the
+         * model owns, so the buttons are rewired to the action and the readout
+         * is written from the snapshot. `onChange` above is deliberately inert.
          */
-        mid.addEventListener('click', () => actions.markEdge(edge));
-        mid.title = `Put ${letter} at the playhead — the ${key} key`;
-        wrap.appendChild(down);
-        wrap.appendChild(mid);
-        wrap.appendChild(up);
-        return { el: wrap, cap, time, down, up, mid };
+        st.down.onclick = () => actions.nudge(edge, -1);
+        st.up.onclick = () => actions.nudge(edge, 1);
+        st.el.classList.add('rr-edge');
+        st.el.title = `Put ${letter} at the playhead — the ${key} key`;
+        return st;
     }
 
     // ── RACK 2: the drill ────────────────────────────────────────────────
@@ -204,15 +231,14 @@ export function createContent(outer, actions, foot) {
     drillRack.body.appendChild(setRow);
 
     /* How big a jump each cleared rung buys. Three values, so a segmented. */
-    const stepRow = c.el('div', 'fbk-row fbk-row-nowrap rr-steprow');
-    stepRow.appendChild(c.el('span', 'fbk-label fbk-label-inline', 'Step'));
+    const stepField = c.field({ label: 'Step', tight: true });
     const stepSeg = c.segmented(
         STEPS.map((v) => ({ value: v, label: '+' + v, title: `Each cleared rung moves up ${v}%` })),
         (v) => actions.setStep(v),
         'Ladder step',
     );
-    stepRow.appendChild(stepSeg.el);
-    drillRack.body.appendChild(stepRow);
+    stepField.body.appendChild(stepSeg.el);
+    drillRack.body.appendChild(stepField.el);
 
     /*
      * The rail, in a well because it takes no input.
@@ -235,8 +261,8 @@ export function createContent(outer, actions, foot) {
 
     /* Master difficulty — the host's own slider is two clicks away behind a
        rail popover, which is what earns this duplicate its place. */
+    const diffField = c.field({ label: 'Difficulty' });
     const difficulty = c.slider({
-        label: 'Chart',
         min: 0,
         max: 100,
         step: 5,
@@ -244,9 +270,10 @@ export function createContent(outer, actions, foot) {
         ariaLabel: 'Master difficulty',
         onInput: (v) => actions.setDifficulty(v),
     });
-    difficulty.el.title = 'Master difficulty. Lower thins the chart to the easier tiers the '
+    diffField.el.title = 'Master difficulty. Lower thins the chart to the easier tiers the '
         + 'pack was authored with; 100% is the full arrangement.';
-    drillRack.body.appendChild(difficulty.el);
+    diffField.body.appendChild(difficulty.el);
+    drillRack.body.appendChild(diffField.el);
 
     const diffNote = c.el('p', 'fbk-note');
     drillRack.body.appendChild(diffNote);
@@ -258,7 +285,7 @@ export function createContent(outer, actions, foot) {
     weakRack.body.appendChild(weak);
 
     const weakActs = c.el('div', 'fbk-row fbk-row-tight fbk-row-nowrap rr-weakacts');
-    const weakestBtn = c.button('fbk-btn rr-weakest', 'Loop weakest ›',
+    const weakestBtn = c.button('fbk-btn fbk-btn-accent rr-weakest', 'Loop weakest ›',
         'Select the passage you play worst and arm a drill on it',
         () => actions.practiceWeakest());
     const moreBtn = c.button('fbk-btn fbk-btn-quiet rr-more', 'All 5 ⌄',
@@ -284,12 +311,12 @@ export function createContent(outer, actions, foot) {
     const actionRow = c.el('div', 'fbk-row fbk-row-tight fbk-row-nowrap rr-actions');
     const startBtn = c.button('fbk-btn fbk-btn-primary rr-primary', null, null,
         () => actions.startDrill());
-    startBtn.appendChild(c.el('span', 'fbk-btn-label', '▶ Start drill'));
+    startBtn.appendChild(c.el('span', 'fbk-btn-label', 'Start drill'));
     startBtn.appendChild(c.kbd('D'));
 
     const endBtn = c.button('fbk-btn fbk-btn-stop rr-primary', null,
         'Stop the drill and restore your speed', () => actions.endDrill());
-    endBtn.appendChild(c.el('span', 'fbk-btn-label', '✕ End drill'));
+    endBtn.appendChild(c.el('span', 'fbk-btn-label', 'End drill'));
     endBtn.appendChild(c.kbd('D'));
 
     const loopBtn = c.button('fbk-btn rr-alt', 'Free loop',
@@ -332,12 +359,11 @@ export function createContent(outer, actions, foot) {
          * The rack's legend carries the selection's identity, so the strip
          * does not need a label under it and the panel names the passage once.
          */
+        const best = c.num(sel && sel.best);
         loopRack.setAside(sel
-            ? [
-                (sel.label || '').toUpperCase(),
-                c.num(sel.best) === null ? null : 'BEST ' + pct(sel.best),
-            ].filter(Boolean).join(' · ')
+            ? (sel.label || '').toUpperCase() + (best === null ? '' : ' · BEST ' + pct(sel.best))
             : 'nothing selected');
+        loopRack.el.querySelector('.fbk-rack-aside').dataset.tone = best === null ? '' : 'value';
 
         strip.set(snap.blocks, snap.duration, sel);
         strip.mark(blockAt(snap));
@@ -347,10 +373,11 @@ export function createContent(outer, actions, foot) {
         unit.disable(snap.drill.active);
 
         const bars = snap.settings.unit !== 'time';
+        tenths = !bars;
         for (const [e, edge] of [['start', edgeA], ['end', edgeB]]) {
             const t = sel ? (e === 'start' ? sel.start : sel.end) : null;
-            edge.cap.textContent = (e === 'start' ? 'A' : 'B') + ' · ±1 ' + (bars ? 'bar' : 's');
-            edge.time.textContent = t === null ? '–' : (bars ? clock(t) : clock(t, 1));
+            edge.label.textContent = (e === 'start' ? 'A' : 'B') + ' · ±1 ' + (bars ? 'bar' : 's');
+            edge.set(t === null ? 0 : t);
             const dead = snap.drill.active || (!sel && e === 'end');
             edge.down.disabled = dead;
             edge.up.disabled = dead;
@@ -419,9 +446,11 @@ export function createContent(outer, actions, foot) {
 
     function renderWeak(snap) {
         const rows = showAll ? snap.weakest : snap.weakest.slice(0, 3);
-        weakRack.setAside(c.num(snap.run.accuracy) !== null
+        const judged = c.num(snap.run.accuracy) !== null;
+        weakRack.setAside(judged
             ? `RUN ${pct(snap.run.accuracy)} · ${snap.run.hits + snap.run.misses} NOTES`
             : 'nothing judged yet');
+        weakRack.el.querySelector('.fbk-rack-aside').dataset.tone = judged ? 'value' : '';
 
         weak.textContent = '';
         if (!snap.weakest.length) {

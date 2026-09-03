@@ -1,5 +1,5 @@
 /*
- * kit 0.11.0 — the four control families, as builders.
+ * kit 0.12.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -247,6 +247,44 @@ export function well(tone = null) {
     const n = el('div', 'fbk-well');
     if (tone) n.dataset.tone = tone;
     return n;
+}
+
+/**
+ * A FIELD — a labelled well with controls in it.
+ *
+ *     ┌──────────────────────────────────────────┐
+ *     │  STEP        +2  │ +5 │  +10             │
+ *     └──────────────────────────────────────────┘
+ *
+ * This is the unit the rack is actually built from, and getting it wrong is
+ * what made a first attempt at this design look nothing like it. The rows had
+ * the right controls in the right order and sat on FLAT ground: label outside
+ * on the left, control to its right, no boundary anywhere. What the design
+ * does instead is put **every control group in a well with its own label
+ * inside it** — so a rack reads as four objects bolted to a chassis rather
+ * than as four lines of a form.
+ *
+ * The label goes inside for a reason beyond looks: a label in an external
+ * column has to share a fixed width with every other label in the panel, so
+ * `DIFFICULTY` forces `STEP` to start 40px further right than it needs to.
+ * Inside its own well each label takes the room it needs and the wells still
+ * line up, because the WELLS are what is aligned.
+ */
+export function field(opts = {}) {
+    const { label = '', tone = null, tight = false } = opts;
+    const wrap = el('div', tight ? 'fbk-field fbk-field-tight' : 'fbk-field');
+    if (tone) wrap.dataset.tone = tone;
+    const legend = label ? el('span', 'fbk-field-label', label) : null;
+    if (legend) wrap.appendChild(legend);
+    const body = el('div', 'fbk-field-body');
+    wrap.appendChild(body);
+    return {
+        el: wrap,
+        /** Append the controls here. */
+        body,
+        label: legend,
+        setLabel(text) { if (legend) legend.textContent = text === null || text === undefined ? '' : String(text); },
+    };
 }
 
 /**
@@ -828,8 +866,16 @@ export function toggle(label, title, onChange) {
     input.type = 'checkbox';
     input.addEventListener('change', () => onChange(input.checked));
     wrap.appendChild(input);
-    wrap.appendChild(el('span', 'fbk-toggle-track'));
+    /*
+     * TEXT FIRST, then the switch.
+     *
+     * It read switch-then-text, which is the form convention and the wrong one
+     * here: these live in a rack's header, right-aligned against the panel's
+     * edge, so the switch has to be the thing nearest that edge or the row
+     * ends in a word and the control floats in the middle of it.
+     */
     wrap.appendChild(el('span', 'fbk-toggle-text', label));
+    wrap.appendChild(el('span', 'fbk-toggle-track'));
     return {
         el: wrap,
         input,
@@ -853,6 +899,15 @@ export function stepper(opts = {}) {
         onChange = () => {},
         downTitle = 'Less',
         upTitle = 'More',
+        /**
+         * How the value is printed, when it is not just a number.
+         *
+         * A clock, a bar number, a ratio. Without it a stepper can only hold
+         * an integer with a unit, which covers most of them and not the ones
+         * that matter most — a loop edge reads `0:03.0`, and formatting that
+         * in the caller would mean the caller also owning the readout.
+         */
+        format = null,
     } = opts;
 
     const wrap = el('div', opts.wide ? 'fbk-stepper fbk-stepper-wide' : 'fbk-stepper');
@@ -894,7 +949,7 @@ export function stepper(opts = {}) {
         const next = Math.max(min, Math.min(max, value + by));
         if (next === value) return;
         value = next;
-        out.set(value);
+        out.set(format ? format(value) : value);
         sync();
         onChange(value);
     }
@@ -904,19 +959,30 @@ export function stepper(opts = {}) {
         up.disabled = wrap.dataset.off === '1' || value >= max;
     }
 
-    out.set(value);
+    out.set(format ? format(value) : value);
     sync();
 
     return {
         el: wrap,
         /** The legend above the value, for a caller that renames the unit. */
         label: legend,
+        /**
+         * The two buttons, so a caller can rewire them.
+         *
+         * A stepper usually owns its number: press, clamp, report. Some do
+         * not — a loop edge is a TIME the model owns, and the buttons ask it
+         * to move rather than changing anything here. Exposing them beats a
+         * second half-stepper component whose only difference is who holds
+         * the value.
+         */
+        down,
+        up,
         get() { return value; },
         set(v) {
             const n = num(v);
             if (n === null) return;
             value = Math.max(min, Math.min(max, n));
-            out.set(value);
+            out.set(format ? format(value) : value);
             sync();
         },
         disable(off) {

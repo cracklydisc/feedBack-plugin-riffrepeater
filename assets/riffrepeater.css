@@ -23,60 +23,14 @@
 /*
  * The two edge steppers, side by side.
  *
- * They used to be two rows, one per edge, at a time when they were the only
- * way to move an edge at all. The strip does the coarse work now, so these do
- * the one job a pointer is bad at — exactly one unit — and two of them fit on
- * a line.
+ * They are kit steppers now, not a hand-rolled row — which was the whole
+ * reason this panel looked unlike its design. The parts were right and the
+ * OBJECT was missing: a flat row of two buttons and a readout, where the
+ * design draws one bordered well with the buttons inside it and the label
+ * stacked over the value. Nothing here but the sharing of the line.
  */
 .rr-edges { gap: var(--fbk-s-3, 6px); }
-
-.rr-edge {
-    display: flex;
-    align-items: center;
-    gap: var(--fbk-s-2, 4px);
-    flex: 1 1 0;
-    min-width: 0;
-    box-sizing: border-box;
-    padding: var(--fbk-s-1, 2px);
-    border-radius: var(--fbk-radius-sm, 8px);
-    background: rgb(var(--fbk-bg, 5 7 12));
-}
-
-/*
- * The readout between the two buttons, and it is also a button.
- *
- * Tapping it puts the edge at the playhead — the `I` and `O` gesture. It is
- * the readout rather than a third button because the row already has two and a
- * third would make the pair read as a group of three unrelated things; the
- * tooltip and the key cap carry the discovery.
- */
-.rr-edge-mid {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    cursor: pointer;
-    border-radius: var(--fbk-radius-seg, 5px);
-}
-
-.rr-edge-mid:hover { background: rgb(var(--fbk-surface-2, 30 34 44) / 0.7); }
-
-/* The unit is named in the label, so no separate legend has to say it. */
-.rr-edge-cap {
-    font: var(--fbk-t-field, 600 9px/1.2 sans-serif);
-    letter-spacing: var(--fbk-t-field-track, 0.12em);
-    text-transform: uppercase;
-    color: rgb(var(--fbk-dim, 138 160 200));
-}
-
-.rr-edge-time {
-    font: var(--fbk-t-num-md, 900 18px/1.1 monospace);
-    letter-spacing: var(--fbk-t-num-md-track, 0);
-    color: rgb(var(--fbk-text, 232 238 252));
-}
+.rr-edge { flex: 1 1 0; min-width: 0; }
 
 /* ── the drill rack ────────────────────────────────────────────────────── */
 
@@ -84,8 +38,6 @@
    because you set both once and then live with them. */
 .rr-set { gap: var(--fbk-s-3, 6px); }
 .rr-set .fbk-stepper { flex: 1 1 0; min-width: 0; }
-
-.rr-steprow .fbk-seg { flex: 1 1 auto; }
 
 /*
  * The climb well's own heading, which is a rack legend one level down.

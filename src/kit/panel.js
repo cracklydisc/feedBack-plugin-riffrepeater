@@ -1,5 +1,5 @@
 /*
- * kit 0.11.0 — the parked panel, and the button in the player that opens it.
+ * kit 0.12.0 — the parked panel, and the button in the player that opens it.
  *
  * Two plugins wrote this before it lived here: Riff Repeater (155 lines) and
  * Live Tab (~410 lines across `mountControls`, `panelCSS` and
@@ -61,8 +61,19 @@ export function createPanel(o) {
     close.className = 'fbk-x';
     close.textContent = '✕';
     close.title = 'Close (Esc)';
-    head.appendChild(title);
-    head.appendChild(subtitle);
+    /*
+     * The title and the song STACKED, not side by side.
+     *
+     * The song is what the unit is loaded with, so it reads as a second line
+     * of the chassis legend rather than a sibling of it — and side by side
+     * they competed for one row's width, which is why a long artist name used
+     * to ellipsize the thing you were looking at.
+     */
+    const stack = document.createElement('div');
+    stack.className = 'fbk-head-stack';
+    stack.appendChild(title);
+    stack.appendChild(subtitle);
+    head.appendChild(stack);
     head.appendChild(close);
     root.appendChild(head);
 

@@ -19,7 +19,7 @@ import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.13.0';
+const VERSION = '0.15.1';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -624,7 +624,14 @@ function boot() {
     kit.install({ id: ID, version: VERSION });
     panel = kit.createPanel({
         id: ID,
-        label: '⏱ Riff Repeater',
+        /*
+         * No glyph in the legend.
+         *
+         * The design system's own rule — "icons on buttons are shapes, never
+         * text glyphs" — and the chassis has a real indicator light left of its
+         * name now, which is the shape that emoji was standing in for.
+         */
+        label: 'Riff Repeater',
         title: 'Riff Repeater — drill a passage',
     });
     content = createContent(panel.body, actions, panel.foot);
