@@ -217,6 +217,50 @@ export const host = {
      * `window.feedBack.seek` emette `song:seek`, che gli altri plugin
      * ascoltano — percio' non va aggirato scrivendo su `audio.currentTime`.
      */
+    /*
+     * ── FERMARE E RIPRENDERE ─────────────────────────────────────────────
+     *
+     * `window.togglePlay` e' globale: l'app la mette su `window` in
+     * `Object.assign(window, {...})` per i propri handler inline, ed e' la
+     * funzione che chiama il tasto play. E' un TOGGLE, quindi va chiamata solo
+     * quando lo stato e' quello che si vuole cambiare.
+     *
+     * E lo stato lo legge `#audio.paused`, non `feedBack.isPlaying`. Quel
+     * flag MENTE: nel ramo HTML5 di `togglePlay` l'app scrive `S.isPlaying =
+     * false` e non aggiorna `window.feedBack.isPlaying`, che resta `true`
+     * dopo una pausa. Ci ho creduto per un giro e la ripresa non e' partita:
+     * `resume()` vedeva "sta gia' suonando" e non faceva niente.
+     *
+     * `#audio.paused` invece e' vero in entrambe le modalita': fuori da JUCE
+     * e' lo stato dell'elemento, e dentro JUCE e' uno shim il cui getter
+     * restituisce `!S.isPlaying`, cioe' lo stato che il trasporto conosce.
+     *
+     * `await`, e non e' un dettaglio: nel ramo JUCE `togglePlay` attende
+     * `stopBacking()`, quindi al ritorno il motore nativo e' fermo davvero.
+     */
+    _stopped() {
+        const el = document.getElementById('audio');
+        return !el || el.paused === true;
+    },
+
+    async _flip() {
+        if (typeof window.togglePlay !== 'function') return false;
+        try { await window.togglePlay(); return true; }
+        catch (_) { return false; }
+    },
+
+    /** Ferma la riproduzione; dice se l'ha fermata davvero lei. */
+    async pause() {
+        if (this._stopped()) return false;
+        return this._flip();
+    },
+
+    /** Riprendi; il gemello di `pause()`, e con la stessa verita' di stato. */
+    async resume() {
+        if (!this._stopped()) return false;
+        return this._flip();
+    },
+
     seek(seconds) {
         const fb = window.feedBack;
         const t = Number(seconds);

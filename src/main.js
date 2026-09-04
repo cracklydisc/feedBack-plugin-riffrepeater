@@ -20,7 +20,7 @@ import { buildSettingsPage } from './ui/settings-page.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.36.1';
+const VERSION = '0.36.2';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -246,6 +246,35 @@ const actions = {
         const snap = model.snapshot();
         const range = snap.selection;
         if (!range) return;
+
+        /*
+         * IL DRILL PARTE DA FERMO, e questo evita il doppio audio.
+         *
+         * Sul desktop il brano lo suona JUCE, e `#audio` e' uno SHIM: il suo
+         * `play()` inoltra a `jucePlayer.play()`, che chiama
+         * `startBacking()` senza nessuna guardia sul fatto che stia gia'
+         * suonando. Il rilevatore chiude `startDrill` proprio con
+         * `audio.play()`, sempre — percio' avviare un drill mentre la canzone
+         * suona chiede al motore nativo di avviare il brano una SECONDA
+         * volta. Due voci: quella governata dal loop e quella che se ne va
+         * fino alla fine del file, con la schermata di fine brano in premio.
+         *
+         * La correzione pulita sta nell'app (un `play()` idempotente) e nel
+         * rilevatore, e non sono nostri da rilasciare. Ma il difetto compare
+         * SOLO se il trasporto sta gia' suonando quando il drill parte,
+         * quindi si evita da qui: si consegna al drill un trasporto fermo, e
+         * il suo `audio.play()` diventa l'unico avvio.
+         *
+         * Non e' un ripiego contro il progetto del drill, e' il suo
+         * progetto: arma il loop, poi avvia la riproduzione perche' la
+         * rincorsa si senta. Si aspetta di essere lui a farla partire.
+         *
+         * Fuori da JUCE non cambia nulla — un elemento HTML5 messo in pausa e
+         * riavviato da `audio.play()` e' dove era — quindi non c'e' un ramo
+         * per modalita': una riga sola, che nel caso in cui il difetto non
+         * esiste non costa niente.
+         */
+        const fermata = await host.pause();
         /* A fresh run reads a hundred, not whatever the last one ended on. */
         model.resetPass(range.start, range.end);
         const s = snap.settings;
@@ -259,6 +288,16 @@ const actions = {
             model.setPaused(true);
             retick();
         } else {
+            /*
+             * Se il drill non parte, la pausa va disfatta.
+             *
+             * Fermare il trasporto e poi rifiutare — detection spenta, range
+             * troppo corto, `setLoop` fallito — lascerebbe la canzone muta
+             * senza che sia successo niente: l'utente ha premuto una cosa e
+             * gliene e' stata tolta un'altra. La pausa era un preparativo,
+             * quindi se il seguito non c'e' si torna come si stava.
+             */
+            if (fermata) await host.resume();
             note(explain(res.reason));
         }
         model.announce();
@@ -698,6 +737,10 @@ const api = {
     /** Arm a drill on the selection, or on an explicit `{ start, end, label }`. */
     async startDrill(range) {
         if (range && Number.isFinite(Number(range.start))) {
+            /* Anche da qui: la ragione sta in `actions.startDrill`, e questa
+               e' la seconda porta per la stessa stanza. Due porte con una
+               regola sola sono due porte che divergono al primo ritocco. */
+            const fermata = await host.pause();
             const s = model.getSettings();
             const r = {
                 start: Number(range.start),
@@ -707,6 +750,7 @@ const api = {
             };
             const res = await drill.start(r, { goalPct: s.goalPct, ladder: ladderNow(s), widen: s.widen });
             if (res.ok) activeDrill = { ...r, mine: true, scored: 0 };
+            else if (fermata) await host.resume();
             return res;
         }
         await actions.startDrill();
