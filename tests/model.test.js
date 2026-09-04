@@ -413,3 +413,24 @@ function pos() {
     const s = model.snapshot();
     return { onPart: s.onPart, index: s.partIndex };
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// SELECTING TAKES THE SONG THERE — except during a drill.
+//
+// The drill starts from whatever is selected, and selecting used to be silent:
+// you picked a block on the strip and only heard which piece you had taken
+// once the drill ran, which turns choosing into guessing. So a selection moves
+// the transport to its start.
+//
+// Never while a drill is running: there the position belongs to the detector's
+// loop, and moving it would mean two owners for one cursor.
+test('a selection says where to take the song, unless a drill owns it', () => {
+    assert.equal(model.seekTarget(false, { start: 12.5, end: 20 }), 12.5);
+    assert.equal(model.seekTarget(true, { start: 12.5, end: 20 }), null,
+        'a running drill owns the position');
+    assert.equal(model.seekTarget(false, null), null);
+    assert.equal(model.seekTarget(false, {}), null);
+    assert.equal(model.seekTarget(false, { start: NaN }), null);
+    // Zero is a real time — the first section starts there.
+    assert.equal(model.seekTarget(false, { start: 0, end: 4 }), 0);
+});

@@ -208,6 +208,23 @@ export const host = {
         } catch (_) { return { loopA: null, loopB: null }; }
     },
 
+    /**
+     * Porta la riproduzione a un istante del brano.
+     *
+     * Non mette in play e non mette in pausa: sposta soltanto la posizione,
+     * quindi da fermo si sente dove si e' andati alla ripresa e in
+     * riproduzione si sente subito. E' lo stesso imbuto che usa il player —
+     * `window.feedBack.seek` emette `song:seek`, che gli altri plugin
+     * ascoltano — percio' non va aggirato scrivendo su `audio.currentTime`.
+     */
+    seek(seconds) {
+        const fb = window.feedBack;
+        const t = Number(seconds);
+        if (!fb || typeof fb.seek !== 'function' || !isFinite(t)) return false;
+        try { fb.seek(Math.max(0, t), 'riffrepeater-select'); return true; }
+        catch (_) { return false; }
+    },
+
     /** Arm the A-B loop. Async in the host (it is seek-gated), so await it. */
     async setLoop(a, b) {
         const fb = window.feedBack;

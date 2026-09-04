@@ -19,7 +19,7 @@ import { createContent } from './ui/panel.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.34.0';
+const VERSION = '0.35.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -71,12 +71,46 @@ function ladderNow(settings) {
     return buildLadder(settings.startPct, settings.stepPct, host.speedBounds());
 }
 
+/**
+ * Porta la riproduzione all'inizio di quello che e' selezionato adesso.
+ *
+ * In un posto solo perche' i modi di cambiare selezione sono cinque — la
+ * striscia, i pulsanti delle sezioni, le due frecce, il trascinamento — e
+ * cinque copie della stessa regola sono cinque posti da cui puo' sparire.
+ *
+ * `selectAtTime` non la usa: quella nasce da un punto del brano che il
+ * chiamante ha giа' in mano, quindi ci si e' giа'.
+ */
+function seekToSelection() {
+    const t = model.seekTarget(drill.isDrilling(), model.snapshot().selection);
+    if (t !== null) host.seek(t);
+}
+
 const actions = {
     close() { setOpen(false); },
 
+    /*
+     * SELEZIONARE PORTA LA CANZONE LI'.
+     *
+     * Il drill parte da quello che hai selezionato, e prima la selezione era
+     * muta: sceglievi un blocco sulla striscia, premevi, e sentivi quale
+     * pezzo avevi preso soltanto dal drill. Chiesto perche' cosi' diventa
+     * tutto un tentativo — ed e' vero: la striscia dice dove sei nel brano,
+     * non che cosa suona quel punto.
+     *
+     * Quindi la selezione sposta la posizione al suo inizio. Non fa partire
+     * niente e non ferma niente: da fermo lo senti alla ripresa, in
+     * riproduzione lo senti subito.
+     *
+     * MAI durante un drill: la' la posizione appartiene al loop del
+     * rilevatore, e spostarla vorrebbe dire due padroni per lo stesso
+     * cursore. Chi cambia sezione mentre un drill gira lo sta per rifare su
+     * un altro pezzo, e il drill successivo ci arriva da se'.
+     */
     selectSection(key) {
         model.selectSection(key);
         if (model.snapshot().mode === 'bars') model.setMode('section');
+        seekToSelection();
     },
 
     /**
@@ -86,10 +120,10 @@ const actions = {
      * are handing over different things: a button names a section, and a tap
      * on the strip names whichever block is under the finger.
      */
-    selectBlock(key) { model.selectBlock(key); },
-    stepPart(d) { model.stepPart(d); },
-    stepSection(d) { model.stepSection(d); },
-    selectDrag(a, b) { model.selectDrag(a, b); },
+    selectBlock(key) { model.selectBlock(key); seekToSelection(); },
+    stepPart(d) { model.stepPart(d); seekToSelection(); },
+    stepSection(d) { model.stepSection(d); seekToSelection(); },
+    selectDrag(a, b) { model.selectDrag(a, b); seekToSelection(); },
     selectAtTime(t) { model.selectAtTime(t); },
     nudge(edge, dir) { model.nudge(edge, dir); },
 

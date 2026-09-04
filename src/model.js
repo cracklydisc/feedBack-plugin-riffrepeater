@@ -179,6 +179,22 @@ export function setMode(mode) {
     announce();
 }
 
+/**
+ * L'istante a cui portare la riproduzione per una selezione, o `null` se non
+ * va toccata.
+ *
+ * La decisione sta qui, separata dal suo effetto, per due ragioni. La prima e'
+ * che cosi' si prova senza un finto trasporto. La seconda e' la regola stessa:
+ * durante un drill la posizione appartiene al loop del rilevatore, e due
+ * padroni per lo stesso cursore e' un difetto che si vede solo suonando —
+ * esattamente il genere di cosa che un test deve poter fissare.
+ */
+export function seekTarget(drilling, selection) {
+    if (drilling) return null;
+    if (!selection || !isFinite(Number(selection.start))) return null;
+    return Number(selection.start);
+}
+
 export function selectSection(key) {
     const found = state.sections.find((s) => s.key === key);
     if (!found) return;
