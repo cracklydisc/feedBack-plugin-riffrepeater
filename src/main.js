@@ -16,10 +16,11 @@ import * as ranges from './ranges.js';
 import * as kit from './kit/index.js';
 import { buildLadder, clampStartPct, clampStepPct, STEPS } from './ladder.js';
 import { createContent } from './ui/panel.js';
+import { buildSettingsPage } from './ui/settings-page.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.35.0';
+const VERSION = '0.36.0';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -744,6 +745,34 @@ const api = {
         return done;
     },
     usage() { return store.usage(); },
+
+    /**
+     * Costruisci la pagina delle impostazioni dentro `root`.
+     *
+     * Sta qui e non in `settings.html` perche' quella pagina e' uno script
+     * CLASSICO e non puo' importare niente: nessun kit, nessuna costante
+     * della scala. Finche' la costruiva lei, era scritta nelle classi di
+     * utilita' dell'app — l'ultima superficie dei due plugin rimasta fuori dal
+     * kit — e ripeteva a mano l'aritmetica dei pioli. Ora `settings.html` e'
+     * solo il caricatore e questo modulo e' il solo posto in cui la pagina
+     * esiste.
+     */
+    mountSettings(root) {
+        if (!root) return null;
+        /*
+         * Il foglio di stile va installato ANCHE qui.
+         *
+         * `boot()` lo installa quando il player monta, e torna subito se il
+         * plugin e' spento — ma la schermata delle impostazioni puo' essere la
+         * prima cosa che si apre, a freddo, senza avere mai aperto una
+         * canzone, e nel caso "spento" e' proprio la pagina da cui lo riaccendi.
+         * In tutti quei casi `boot()` non e' passato e la pagina sarebbe uscita
+         * senza stile. `install` e' idempotente e indicizzato sull'id del
+         * plugin, quindi chiamarlo due volte non aggiunge niente.
+         */
+        kit.install({ id: ID, version: VERSION });
+        return buildSettingsPage(api, root);
+    },
 
     isDisabled: store.isDisabled,
     disable() { store.setDisabled(true); teardown(); announceApi(); },
