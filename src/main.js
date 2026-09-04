@@ -20,7 +20,7 @@ import { buildSettingsPage } from './ui/settings-page.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.36.0';
+const VERSION = '0.36.1';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -806,6 +806,20 @@ function boot() {
          */
         label: 'Riff Repeater',
         title: 'Riff Repeater — drill a passage',
+        /*
+         * MENTRE UN DRILL GIRA IL PANNELLO NON SI CONGEDA.
+         *
+         * Non e' un popover in quel momento: e' il quadrante del drill, con la
+         * percentuale che scende e il piolo corrente. Un clic andato per
+         * sbaglio sullo sfondo lo faceva sparire, e per riaverlo davanti
+         * bisognava riaprirlo dalla rastrelliera, fermare il drill e
+         * ricominciare — cioe' un clic distratto costava la sessione.
+         *
+         * Il gate copre i soli gesti accidentali, il clic fuori e l'Escape.
+         * Fermare con lo stop e uscire dalla canzone chiudono ancora, che sono
+         * le due strade che l'utente ha chiesto di lasciare.
+         */
+        canDismiss: () => !drill.isDrilling(),
     });
     content = createContent(panel.body, actions, panel.foot, panel.folded, panel);
     panel.onToggle(onPanelToggle);
