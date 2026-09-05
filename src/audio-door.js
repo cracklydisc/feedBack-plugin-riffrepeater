@@ -141,12 +141,26 @@ export function installAudioDoor(opts = {}) {
         return undefined;
     };
 
+    /*
+     * La riga di avvio dice com'era la pila all'istante zero, e quell'istante
+     * non e' quello che conta: `stems` installa i suoi shim quando il suo
+     * script viene valutato, che puo' essere dopo di noi. Se ci copre e poi
+     * torniamo in cima, senza questa riga non lo saprebbe nessuno — e la volta
+     * scorsa un log intero non ha saputo dirmi se una correzione fosse viva.
+     * Si stampa una volta sola: e' un cambio di configurazione, non un evento.
+     */
+    let saidForeign = false;
+
     function place() {
         const live = audioEl();
         if (!live) return false;
         if (live.play === ourPlay && live.pause === ourPause) return true;
         under = { play: live.play, pause: live.pause };
         try { live.play = ourPlay; live.pause = ourPause; } catch (_) { return false; }
+        if (!saidForeign && foreignShim(under.play)) {
+            saidForeign = true;
+            console.log('[riffrepeater] porta #audio: sopra lo shim dell app se n e messo un altro, la porta e ora REINDIRIZZATA');
+        }
         return live.play === ourPlay;
     }
 
