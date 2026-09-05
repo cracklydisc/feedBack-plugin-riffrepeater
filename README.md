@@ -301,6 +301,14 @@ to add a convenience.
   at three and takes no option for it: `startDrill` accepts `label`, `focus`,
   `goal`, `speedLadder`, `expandContext` and `maxExpansions`, and nothing else.
   A control the engine ignores is worse than no control.
+- **No control over the auto-slowdown either.** Miss the goal three passes in
+  a row and the engine drops the speed by 15 points, down to a floor of 40%.
+  All three numbers are constants inside the engine — the streak length, the
+  step and the floor — and `startDrill` takes none of them. So a player who
+  wants "give me five tries before you slow me down" cannot have it, and the
+  panel does not pretend otherwise. It is a fair default; it is simply not
+  ours to move. Changing that needs a change in Note Detection, and this
+  plugin's request for one is written down at the end of this file.
 - **No second scoring system.** Timing and pitch verdicts, the clean-hit
   windows, the miss diagnostics on the highway — all of that is Note
   Detection's, and this reads it rather than reimplementing it.
@@ -312,6 +320,25 @@ to add a convenience.
 - **No drill result from a drill you abandoned.** Ending one before a single
   pass has been graded reports `best = 0`, and storing that would stamp 0% onto
   a passage nobody played.
+
+---
+
+## The look comes from a kit
+
+Every control here — the racks, the wells, the steppers, the segmented rails,
+the footswitch — comes from the [fee[dB]ack plugin
+kit](https://github.com/cracklydisc/feedBack-plugin-kit), a small design system
+with its own tests and its own [DESIGN.md](https://github.com/cracklydisc/feedBack-plugin-kit/blob/main/DESIGN.md).
+
+The kit is **vendored, not imported**: it is copied into `src/kit/` and
+`assets/kit.css` rather than fetched from another plugin at runtime. Any plugin
+can be disabled, and there is no load order to rely on — a panel that fails to
+draw because somebody turned off a dependency is a panel that fails at the
+worst possible moment.
+
+[Live Tab](https://github.com/cracklydisc/feedBack-plugin-livetab) draws its
+own panel and settings screen from the same kit, which is why the two plugins
+look like one object rather than two things that resemble each other.
 
 ---
 

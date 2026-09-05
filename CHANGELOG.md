@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.36.10 — first release
+
+The first version anyone else can install. Everything below this line was
+development in the open on an unreleased branch: the numbers between 0.1.0 and
+0.36.9 were working markers between commits, not releases, and treating them as
+such would imply thirty-five versions nobody could ever install.
+
+### What it is
+
+A way into the drill engine fee[dB]ack already has. Note Detection ships a
+complete riff repeater — lead-in, per-pass accuracy goal, a speed ladder it
+climbs as you clear it, auto-slowdown, loop widening, coaching — and no way to
+start it. Its own source says the button was meant to live in a coaching plugin
+that was never written. This is the missing caller: it picks the passage, hands
+the engine a ladder and a goal, reads the engine's state back, and remembers
+what happened.
+
+### What it adds
+
+- **A passage picker on the player's rail.** Sections, phrases ("part 3 of 6"),
+  or a range you drag on a strip of the whole song. Two arrows walk part by
+  part, two more section by section, and the edges nudge by a bar.
+- **Selecting takes the song there.** The strip tells you where you are in the
+  song, not what that point sounds like — so choosing a block moves the
+  playhead to its start. It neither starts nor stops playback.
+- **A ladder from three numbers.** A start, a step, and a top that is always
+  full tempo: `80 · +5` becomes 80, 85, 90, 95, 100. The rungs below 80 exist
+  only if you ask for them.
+- **A per-passage memory.** What you have played, how well, and when — kept per
+  song, so the panel can point at the passage you are worst at and drill it in
+  one press.
+- **A HUD while a drill runs.** The current rung, the goal, the pass you are
+  on, and the score of the last one — read from the engine, not invented here.
+
+### What it deliberately does not do
+
+The engine's limits are the plugin's limits, and the panel does not pretend
+otherwise: the three full-speed repetitions, the three-strike auto-slowdown and
+its 15-point step are constants inside Note Detection that `startDrill` takes
+no options for. A control the engine ignores is worse than no control. The
+README lists what a change upstream would unlock.
+
+### Built on the plugin kit
+
+Every control comes from the [fee[dB]ack plugin
+kit](https://github.com/cracklydisc/feedBack-plugin-kit), vendored rather than
+imported so that no plugin can be turned off and take this one's panel with it.
+
+### Known limits at release
+
+- The desktop build plays songs through a native engine, and a single-stem pack
+  can end up with two transports at once. The plugin puts the `#audio` door
+  back on the app's transport when that happens; the underlying fix belongs in
+  the app.
+- Verdicts scored while a drill runs are left out of the per-passage map on
+  purpose — a drill plays the same fifteen seconds ten times, and folding that
+  in would make every drilled passage report its last iterations.
+
+---
+
 ## 0.13.0 — the rack
 
 The panel is a rack unit now: three racks, wells cut into them, and a
