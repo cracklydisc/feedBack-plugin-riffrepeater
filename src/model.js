@@ -891,7 +891,18 @@ export function snapshot() {
                 const i = ranges.barIndexAt(bars, t);
                 return i < 0 ? null : bars[i].measure;
             };
-            return { start: at(sel.start), end: at(sel.end) };
+            /*
+             * Il bordo B si legge un capello PRIMA di dove sta.
+             *
+             * `barIndexAt` torna l'ultima battuta che comincia entro `t`, e un B
+             * che cade esattamente su una stanghetta e' l'INIZIO della battuta
+             * dopo: un intervallo che la striscia chiama "battute 5-8" faceva
+             * dire allo stepper "battuta 9". Due numeri diversi per lo stesso
+             * bordo, nello stesso pannello. Il millesimo e' lo stesso che usa
+             * gia' `rangeFromDrag` per la stessa ragione.
+             */
+            const endT = (sel.end > sel.start) ? sel.end - 0.001 : sel.end;
+            return { start: at(sel.start), end: at(endT) };
         })(),
 
         loopArmed: (() => {
