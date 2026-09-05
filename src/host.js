@@ -21,6 +21,8 @@
  * caller surfaces it.
  */
 
+import { backingIsRunning } from './backing-guard.js';
+
 function bus() {
     const fb = window.feedBack;
     return (fb && typeof fb.on === 'function') ? fb : null;
@@ -239,6 +241,21 @@ export const host = {
      * `stopBacking()`, quindi al ritorno il motore nativo e' fermo davvero.
      */
     _stopped() {
+        /*
+         * E `#audio.paused` a sua volta mente, ma solo in JUCE e solo per due
+         * secondi alla volta: il conteggio del ritorno del loop ferma il motore
+         * e NON aggiorna `S.isPlaying`, quindi mentre conta i quattro battiti
+         * l'app dice "sto suonando" sopra un motore fermo. Una pausa chiesta in
+         * quella finestra spegne uno stato gia' spento e lascia il flag a
+         * mentire dall'altra parte.
+         *
+         * La guardia sull'avvio vede passare le IPC, quindi sa la verita': se
+         * c'e', si crede a lei. Se non c'e' — fuori da JUCE, o su un host che
+         * non si e' lasciata toccare — resta `#audio.paused`, che fuori da JUCE
+         * e' esatto.
+         */
+        const motore = backingIsRunning();
+        if (motore !== null) return !motore;
         const el = document.getElementById('audio');
         return !el || el.paused === true;
     },

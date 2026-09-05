@@ -14,13 +14,14 @@ import * as drill from './drill.js';
 import * as store from './store.js';
 import * as ranges from './ranges.js';
 import * as kit from './kit/index.js';
+import { installBackingGuard } from './backing-guard.js';
 import { buildLadder, clampStartPct, clampStepPct, STEPS } from './ladder.js';
 import { createContent } from './ui/panel.js';
 import { buildSettingsPage } from './ui/settings-page.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.36.2';
+const VERSION = '0.36.3';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -838,6 +839,30 @@ let booted = false;
 function boot() {
     if (booted || store.isDisabled()) return;
     booted = true;
+    /*
+     * Prima di ogni altra cosa: una voce sola.
+     *
+     * Il perche' sta per intero in `backing-guard.js`. In due righe: sul
+     * desktop `startBacking()` non e' idempotente e ha tre richiedenti che non
+     * si parlano — il tasto play, lo shim di `#audio.play()` che usa il drill, e
+     * il conteggio del ritorno del loop. Chiesta due volte, la canzone parte due
+     * volte.
+     *
+     * Sta in `boot()` e non nel modulo perche' una toppa su un globale
+     * dell'ospite va messa solo da un plugin acceso: se Riff Repeater e' spento
+     * non tocchiamo il trasporto di nessuno.
+     *
+     * L'esito si scrive in console sempre, anche quando non si installa. Una
+     * protezione silenziosa e' una protezione di cui poi si dara' per scontata
+     * l'esistenza.
+     */
+    const guardia = installBackingGuard();
+    if (guardia.installed && !guardia.already) {
+        console.log('[' + ID + '] guardia sul doppio avvio del backing attiva (' + guardia.mode + ')');
+    } else if (!guardia.installed && guardia.mode !== 'niente-ponte') {
+        console.warn('[' + ID + '] guardia sul doppio avvio NON installata (' + guardia.mode
+            + '): su questo host il doppio audio puo ancora capitare');
+    }
     kit.install({ id: ID, version: VERSION });
     panel = kit.createPanel({
         id: ID,
