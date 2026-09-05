@@ -1,78 +1,126 @@
 /*
  * La guardia sull'avvio del motore nativo.
  *
- * Ogni prova qui e' scritta per FALLIRE se la guardia viene tolta: la prima
- * conta le IPC vere, e senza guardia ne conta due. E' il modo in cui questa
- * correzione e' stata verificata a mano sull'app — due `startBacking()` senza
- * un `stopBacking()` in mezzo — trasferito in un posto che non dipende dal
- * fatto che io mi ricordi di rifarlo.
+ * Il finto ospite imita i due fatti che decidono se questa correzione funziona
+ * o no sull'app vera:
  *
- * Il finto ospite imita l'unica cosa che conta di quello vero: `transport.js`
- * risolve `window.feedBackDesktop.audio.startBacking` A OGNI CHIAMATA. Se lo
- * catturasse all'avvio, le modalita' di ripiego 2 e 3 non coprirebbero niente,
- * quindi il finto ospite chiama sempre passando dal globale.
+ *   1. `window.jucePlayer` e' LO STESSO oggetto che i moduli importano, e tutti
+ *      lo chiamano come `jucePlayer.play()` — cioe' risolvendo la proprieta' al
+ *      momento della chiamata. Percio' qui i chiamanti passano sempre da
+ *      `window.jucePlayer.play()`, mai da un riferimento catturato.
+ *   2. l'oggetto del `contextBridge` puo' essere CONGELATO, ed e' il caso
+ *      dell'app di oggi: `guardia doppio-avvio NO (oggetto-sigillato)`. La prova
+ *      che conta e' quella che mette insieme le due cose — ponte sigillato e
+ *      `jucePlayer` disponibile — perche' e' la macchina dell'utente.
+ *
+ * Ogni prova e' scritta per fallire se la guardia viene tolta: si contano gli
+ * avvii arrivati DAVVERO al motore, che e' il numero che decide se si sente una
+ * voce o due.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-let seq = 0;
+const mod = await import('../src/backing-guard.js');
 
 /**
- * Un motore finto. `hard` conta le chiamate arrivate DAVVERO al motore, che e'
- * il numero che decide se si sente una voce o due.
+ * @param freeze  congela l'oggetto del ponte (il caso reale)
+ * @param player  esponi `window.jucePlayer` (il caso reale)
  */
-function makeHost({ freeze = false, playing = false, juce = true } = {}) {
+function makeHost({ freeze = false, playing = false, player = true } = {}) {
     const log = { hard: 0, stops: 0 };
     let pos = 0;
-    let running = playing;
     let advancing = playing;
 
     const audio = {
-        async startBacking() { log.hard++; running = true; advancing = true; return true; },
-        async stopBacking() { log.stops++; running = false; advancing = false; },
+        async startBacking() { log.hard++; advancing = true; return true; },
+        async stopBacking() { log.stops++; advancing = false; },
         async seekBacking(s) { pos = s; },
         async getBackingPosition() { if (advancing) pos += 0.05; return pos; },
         async loadBackingTrack() { return true; },
     };
     if (freeze) Object.freeze(audio);
 
-    globalThis.window = {
-        _juceMode: juce,
-        feedBackDesktop: { audio },
-        // Il motore che si ferma da solo senza passare da stopBacking: e' il
-        // caso in cui la guardia si sbaglia, e deve accorgersene.
-        _stallEngine() { advancing = false; running = false; },
-        _engineRunning: () => running,
+    const jucePlayer = {
+        _polling: playing,
+        async play() {
+            const ok = await window.feedBackDesktop.audio.startBacking();
+            if (ok === false) return false;
+            this._polling = true;
+            return true;
+        },
+        async pause() {
+            this._polling = false;
+            await window.feedBackDesktop.audio.stopBacking();
+        },
+        _startPolling() { this._polling = true; },
     };
+
+    globalThis.window = {};
+    if (freeze) {
+        // Come `contextBridge.exposeInMainWorld`: l'oggetto e' congelato E la
+        // proprieta' su `window` non e' ne' scrivibile ne' riconfigurabile.
+        // Congelare solo l'oggetto interno lascerebbe passare la copia, e la
+        // prova direbbe "protetto" dove l'app dice `oggetto-sigillato`.
+        Object.defineProperty(window, 'feedBackDesktop', {
+            value: Object.freeze({ audio }),
+            writable: false,
+            configurable: false,
+            enumerable: true,
+        });
+    } else {
+        window.feedBackDesktop = { audio };
+    }
+    if (player) window.jucePlayer = jucePlayer;
     globalThis.document = {
         getElementById: (id) => (id === 'audio' ? { paused: !playing } : null),
     };
-    return { log, audio };
+    // Il motore che si ferma da solo senza passare dall'arresto: e' il caso in
+    // cui la guardia si sbaglia, e deve accorgersene.
+    globalThis.stallEngine = () => { advancing = false; };
+    return { log, audio, jucePlayer };
 }
 
-/** Un'istanza nuova del modulo: tiene stato in chiusura e su `window`. */
-function freshModule() {
-    return import('../src/backing-guard.js?n=' + (++seq));
+function install() {
+    mod._resetBackingGuard();
+    return mod.installBackingGuard();
 }
 
-/** Come la chiama l'app: dal globale, ogni volta. */
-function callStart() {
-    return window.feedBackDesktop.audio.startBacking();
-}
-function callStop() {
-    return window.feedBackDesktop.audio.stopBacking();
-}
+/** Come lo chiamano togglePlay, lo shim e il conteggio: dal globale, ogni volta. */
+const viaPlayer = () => window.jucePlayer.play();
+const viaPlayerStop = () => window.jucePlayer.pause();
+/** Come ci arriva `jucePlayer` stesso, quando la guardia sta sul ponte. */
+const viaBridge = () => window.feedBackDesktop.audio.startBacking();
+const viaBridgeStop = () => window.feedBackDesktop.audio.stopBacking();
+
+// ── dove si monta ────────────────────────────────────────────────────────
+
+test('si monta su jucePlayer, che e limbuto che il conteggio attraversa', () => {
+    makeHost();
+    assert.equal(install().mode, 'jucePlayer');
+});
+
+test('senza jucePlayer ripiega sul ponte', () => {
+    makeHost({ player: false });
+    assert.equal(install().mode, 'ponte');
+});
+
+test('ponte sigillato e nessun jucePlayer: non si installa, e lo dice', () => {
+    makeHost({ freeze: true, player: false });
+    const report = install();
+    assert.equal(report.installed, false);
+    assert.equal(report.mode, 'oggetto-sigillato');
+    assert.equal(mod.backingIsRunning(), null);
+});
 
 // ── il difetto ───────────────────────────────────────────────────────────
 
 test('due avvii senza un arresto in mezzo arrivano al motore una volta sola', async () => {
     const { log } = makeHost();
-    const mod = await freshModule();
-    assert.equal(mod.installBackingGuard().installed, true);
+    install();
 
-    await callStart();          // il drill, o il tasto play
-    await callStart();          // il conteggio del loop che atterra sopra
+    await viaPlayer();          // il drill, o il tasto play
+    await viaPlayer();          // il conteggio del loop che atterra sopra
 
     assert.equal(log.hard, 1, 'il motore deve essere stato avviato una volta sola');
     assert.deepEqual(mod.backingGuardStats(), { dropped: 1, rescued: 0 });
@@ -80,17 +128,40 @@ test('due avvii senza un arresto in mezzo arrivano al motore una volta sola', as
 
 test('senza la guardia lo stesso ospite ne fa due (la prova vale qualcosa)', async () => {
     const { log } = makeHost();
-    await callStart();
-    await callStart();
+    await viaPlayer();
+    await viaPlayer();
     assert.equal(log.hard, 2);
+});
+
+/*
+ * La macchina dell'utente: il ponte non si lascia toccare, e la protezione deve
+ * arrivare comunque. E' la prova per cui la guardia e' stata riscritta.
+ */
+test('col ponte sigillato protegge lo stesso, da jucePlayer', async () => {
+    const { log } = makeHost({ freeze: true });
+    assert.equal(install().mode, 'jucePlayer');
+
+    await viaPlayer();
+    await viaPlayer();
+
+    assert.equal(log.hard, 1);
+});
+
+test('sul ponte, quando ci si arriva, vale la stessa regola', async () => {
+    const { log } = makeHost({ player: false });
+    install();
+
+    await viaBridge();
+    await viaBridge();
+
+    assert.equal(log.hard, 1);
 });
 
 test('due avvii nella stessa raffica, senza attendere, restano uno', async () => {
     const { log } = makeHost();
-    const mod = await freshModule();
-    mod.installBackingGuard();
+    install();
 
-    await Promise.all([callStart(), callStart(), callStart()]);
+    await Promise.all([viaPlayer(), viaPlayer(), viaPlayer()]);
 
     assert.equal(log.hard, 1);
 });
@@ -99,130 +170,95 @@ test('due avvii nella stessa raffica, senza attendere, restano uno', async () =>
 
 test('dopo un arresto un avvio passa: non si sopprime mai una ripresa', async () => {
     const { log } = makeHost();
-    const mod = await freshModule();
-    mod.installBackingGuard();
+    install();
 
-    await callStart();
-    await callStop();
-    await callStart();
+    await viaPlayer();
+    await viaPlayerStop();
+    await viaPlayer();
 
     assert.equal(log.hard, 2);
     assert.equal(mod.backingIsRunning(), true);
 });
 
 test('caricare unaltra traccia azzera quello che la guardia crede di sapere', async () => {
-    const { log } = makeHost();
-    const mod = await freshModule();
-    mod.installBackingGuard();
+    const { log } = makeHost({ player: false });
+    install();
 
-    await callStart();
+    await viaBridge();
     await window.feedBackDesktop.audio.loadBackingTrack('altra.ogg');
-    await callStart();
+    await viaBridge();
 
     assert.equal(log.hard, 2);
+});
+
+test('sopprimere lavvio non spegne il campionamento della posizione', async () => {
+    const { jucePlayer } = makeHost();
+    install();
+
+    await viaPlayer();
+    jucePlayer._polling = false;    // come se il conteggio lo avesse fermato
+    await viaPlayer();
+
+    assert.equal(jucePlayer._polling, true, 'lautostrada non deve restare ferma');
+});
+
+test('sul ponte sigillato il resto delle IPC resta raggiungibile', async () => {
+    makeHost({ freeze: true });
+    install();
+
+    await window.feedBackDesktop.audio.seekBacking(12);
+    assert.equal(await window.feedBackDesktop.audio.getBackingPosition(), 12);
 });
 
 // ── la rete di sicurezza ─────────────────────────────────────────────────
 
 test('se sopprime a torto se ne accorge e avvia lei', async () => {
     const { log } = makeHost();
-    const mod = await freshModule();
-    mod.installBackingGuard();
+    install();
 
-    await callStart();
+    await viaPlayer();
     assert.equal(log.hard, 1);
 
-    // Il motore si spegne senza passare da stopBacking: la guardia continua a
+    // Il motore si spegne senza passare dall'arresto: la guardia continua a
     // crederlo in moto, ed e' esattamente il caso che lascerebbe muta la
     // canzone se la verifica non esistesse.
-    window._stallEngine();
-    await callStart();
+    stallEngine();
+    await viaPlayer();
     assert.equal(log.hard, 1, 'sul momento sopprime, perche' + "' crede di saperlo in moto");
 
     await new Promise((r) => setTimeout(r, 400));
 
     assert.equal(log.hard, 2, 'ma entro pochi decimi rimedia da sola');
-    assert.equal(window._engineRunning(), true);
     assert.equal(mod.backingGuardStats().rescued, 1);
 });
 
-// ── dove riesce a mettersi ───────────────────────────────────────────────
+// ── contorno ─────────────────────────────────────────────────────────────
 
-test('in posto quando loggetto e scrivibile', async () => {
-    makeHost();
-    const mod = await freshModule();
-    assert.equal(mod.installBackingGuard().mode, 'in-posto');
-});
-
-test('su un oggetto congelato ripiega, e protegge lo stesso', async () => {
-    const { log } = makeHost({ freeze: true });
-    const mod = await freshModule();
-
-    const report = mod.installBackingGuard();
-    assert.equal(report.installed, true);
-    assert.notEqual(report.mode, 'in-posto');
-
-    await callStart();
-    await callStart();
-    assert.equal(log.hard, 1);
-});
-
-test('sul congelato la copia porta con se il resto delle IPC', async () => {
-    makeHost({ freeze: true });
-    const mod = await freshModule();
-    mod.installBackingGuard();
-
-    await window.feedBackDesktop.audio.seekBacking(12);
-    assert.equal(await window.feedBackDesktop.audio.getBackingPosition(), 12);
-});
-
-// ── quando non serve ─────────────────────────────────────────────────────
-
-test('senza il ponte desktop non si installa', async () => {
+test('senza ponte e senza player non si installa', async () => {
     makeHost();
     delete window.feedBackDesktop;
-    const mod = await freshModule();
-    const report = mod.installBackingGuard();
+    delete window.jucePlayer;
+    const report = install();
     assert.equal(report.installed, false);
-    assert.equal(report.mode, 'niente-ponte');
-    assert.equal(mod.backingIsRunning(), null);
-});
-
-/*
- * La versione precedente si installava solo con `window._juceMode` acceso, e
- * sarebbe stato un buco silenzioso: quel flag si accende al caricamento della
- * canzone, dopo l'avvio dei plugin. Questa prova tiene ferma la condizione
- * giusta — c'e' il ponte, si installa; il resto lo decide chi chiama le IPC.
- */
-test('col ponte desktop si installa anche prima che JUCE si accenda', async () => {
-    const { log } = makeHost({ juce: false });
-    const mod = await freshModule();
-    assert.equal(mod.installBackingGuard().installed, true);
-
-    window._juceMode = true;    // la canzone arriva adesso
-    await callStart();
-    await callStart();
-    assert.equal(log.hard, 1);
+    assert.equal(report.mode, 'oggetto-sigillato');
 });
 
 test('installarla due volte non la impila', async () => {
     const { log } = makeHost();
-    const mod = await freshModule();
-    mod.installBackingGuard();
+    install();
     const second = mod.installBackingGuard();
     assert.equal(second.already, true);
 
-    await callStart();
-    await callStart();
+    await viaPlayer();
+    await viaPlayer();
     assert.equal(log.hard, 1);
 });
 
 test('parte sapendo che sta suonando, se sta suonando', async () => {
     const { log } = makeHost({ playing: true });
-    const mod = await freshModule();
-    mod.installBackingGuard();
+    install();
 
     assert.equal(mod.backingIsRunning(), true);
-    await callStart();
+    await viaPlayer();
     assert.equal(log.hard, 0, 'un avvio su un motore gia in moto non arriva al motore');
 });
