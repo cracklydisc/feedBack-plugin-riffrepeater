@@ -7,7 +7,7 @@ The Note Detection plugin ships a complete riff repeater: a five-second audible
 lead-in with a beat-locked click, an accuracy goal per pass of the loop, a
 speed ladder it climbs as you clear it, an auto-slowdown after three sub-goal
 passes, loop widening once the passage is clean, and a coaching line. It is
-covered by its own tests. What it has never had is a way in — its source says
+covered by its own tests. What it has never had is a way in, its source says
 so:
 
 > `// NOTE: no standalone "Drill here" button here on purpose. The drill`
@@ -17,7 +17,7 @@ so:
 
 That coaching plugin was never written. Nothing in the ecosystem calls
 `startDrill`, so the only thing that ever starts a drill is the auto-drill
-trigger — a setting that defaults to `0` (off) and lives three screens away on
+trigger, a setting that defaults to `0` (off) and lives three screens away on
 the Note Detection settings page. A complete, tested feature that a player has
 no way to reach.
 
@@ -25,10 +25,10 @@ Riff Repeater is the missing caller. It adds no state machine of its own: it
 picks the passage, hands the engine a ladder and a goal, reads the engine's
 state back, and remembers what happened.
 
-![Il pannello di Riff Repeater sul player](docs/panel.png)
+![The Riff Repeater panel in the player](docs/panel.png)
 
-*Il pannello, fermo: la sezione scelta sulla striscia, A e B, la scala di
-velocita' e i due verbi in fondo.*
+*At rest: the section you picked on the strip, A and B, the speed ladder, and
+the two verbs at the bottom.*
 
 **Status: alpha.** Built and verified against a local library of about forty
 converted charts.
@@ -44,7 +44,7 @@ Your fee[dB]ack plugins directory is:
 | Windows | `…\Feedback\resources\slopsmith\plugins\` |
 | Linux / macOS | the `resources/slopsmith/plugins/` folder inside your install |
 
-### With git — recommended
+### With git (recommended)
 
 ```
 cd …/plugins
@@ -52,7 +52,7 @@ git clone https://github.com/cracklydisc/feedBack-plugin-riffrepeater.git riffre
 ```
 
 Restart fee[dB]ack, open a song, and the player's **Plugins** rail button has a
-**⏱ Riff Repeater** in it. The panel opens parked at the top-right corner — the
+**⏱ Riff Repeater** in it. The panel opens parked at the top-right corner, the
 same place the 3D Highway keeps its settings pane and Live Tab its panel, so it
 never sits over the notes and never moves when a control changes.
 
@@ -69,7 +69,7 @@ folder to `riffrepeater` inside your plugins directory. You should end up with
 
 The drill engine lives in the `note_detect` plugin, and a drill is graded from
 what you actually play. Without it the panel still picks passages, loops them,
-and remembers your speed — but the **Start drill** button stays disabled and
+and remembers your speed, but the **Start drill** button stays disabled and
 says why.
 
 ---
@@ -78,13 +78,13 @@ says why.
 
 ### Picks the passage
 
-You pick it on a **timeline** — a strip proportional to the song, one block per
+You pick it on a **timeline**: a strip proportional to the song, one block per
 section, coloured by how well you play it. Accuracy is the block's *hue*, not
 the reason it is visible: until 0.7.0 a never-played section sat at 1.33:1
 against the strip's own track, so on a ten-section song the picker rendered as
 two coloured smears with eight invisible gaps, and only became a map once you
-had already practised everything. A passage with **no notes** in it — a
-Noguitar marker — is drawn (the strip has to stay proportional or it is not a
+had already practised everything. A passage with **no notes** in it, a
+Noguitar marker, is drawn (the strip has to stay proportional or it is not a
 map) but hatched and left out of the hit table, so its pixels fall to the
 nearest real section and you cannot land on a range nothing can be done with. Click a block for its section, or
 drag across it for a custom range snapped to bar lines. Sweeping it names
@@ -103,7 +103,7 @@ so a keyboard or a controller still steps sections and the host's own help
 panel still lists it.
 
 There is no waveform. Drawing one means fetching and decoding a stem, which is
-expensive, duplicates work the player already did, and adds nothing — the
+expensive, duplicates work the player already did, and adds nothing, the
 useful signal here is not amplitude, it is where the sections are and how well
 you play them.
 
@@ -112,7 +112,7 @@ the same way (consecutive same-name markers collapse, repeats get counted). A
 block here is the same seconds as a chip there; that agreement is checked by
 [`tests/ranges.test.js`](tests/ranges.test.js).
 
-Inside a section there are its **phrases** — the app's "Part *n* of *m*" — and
+Inside a section there are its **phrases**: the app's "Part *n* of *m*", and
 one stepper walks both:
 
 ```
@@ -120,7 +120,7 @@ one stepper walks both:
    ◀        Part 1 of 2           ▶
 ```
 
-Position zero is the whole section, so a step left from part 1 hands it back —
+Position zero is the whole section, so a step left from part 1 hands it back,
 and from a **custom range** a step left hands back the whole of the section
 that range starts in. That completeness is the condition the design rests on:
 version 0.6.0 removed three mode tabs on the argument that this stepper's
@@ -135,7 +135,7 @@ moves **whole bars**; the engine's own trim moves the loop edges by two seconds,
 two seconds is a different amount of music in every song. A loop boundary off
 the grid turns a count-in into a guess.
 
-**A and B, from the playhead** — the way you actually mark a passage. Press
+**A and B, from the playhead**: the way you actually mark a passage. Press
 **A** (or `I`), let the song run to the end of the phrase, press **B** (or
 `O`). Both snap to the bar grid. One row per edge:
 
@@ -145,7 +145,7 @@ B                              −   0:22   +
 ```
 
 The letter sets that edge at the playhead, the stepper moves it a bar. It was
-one row of nine controls until 0.8.0, and it fitted — but at 26px those are
+one row of nine controls until 0.8.0, and it fitted, but at 26px those are
 not touch targets, and at the touch scale the same nine need more width than
 the panel has. Splitting costs one row and buys 18px on each of eight
 targets. Pressing A with nothing selected gives you
@@ -155,39 +155,39 @@ silently swapped.
 
 The readout tells you what you have picked and what it costs: `Verse 1 · 1:24 →
 1:39 · 15.3s · 95 notes`. The note count comes from the *filtered* chart, so it
-follows the difficulty slider — at 60% a passage genuinely has fewer notes in
+follows the difficulty slider, at 60% a passage genuinely has fewer notes in
 it.
 
 ### Drives the drill
 
-![Il quadrante del drill mentre gira](docs/drill-hud.png)
+![The drill HUD while a drill runs](docs/drill-hud.png)
 
-*Mentre il drill gira il pannello si ripiega in questo: velocita' corrente,
-quanto manca all'obiettivo, il passaggio in corso e le note mancate. I numeri
-sono del motore, non nostri.*
+*While a drill runs the panel folds down to this: the current speed, what is
+left to clear the goal, the passage in hand, and the notes missed. The numbers
+are the engine's, not ours.*
 
-The ladder and the goal live in a **fold** — `HOW YOU DRILL  80→90→100 · goal
-85%` — because they are policy rather than part of the passage. That was a bug,
+The ladder and the goal live in a **fold**: `HOW YOU DRILL  80→90→100 · goal
+85%`: because they are policy rather than part of the passage. That was a bug,
 not a tidying: they write straight to `localStorage`, so from two rows under
 the passage you had just picked they looked per-passage while changing every
 passage of every song. The summary keeps the value on screen and the heading
 says whose it is. The kit's [DESIGN.md §15](https://github.com/cracklydisc/feedBack-plugin-kit)
-generalises it — *follow the write* — and 0.7.0's changelog has the four other
+generalises it, *follow the write*: and 0.7.0's changelog has the four other
 places the same question found something.
 
 **Widen when clean** is the third setting in there: once you clear the goal at
 full speed the loop grows by one bar each side (up to two), so you play the
 passage back into the music around it before the drill lets go. It was
-labelled just "Widen" until 0.10.0 — a verb with no object, explained only by
-a tooltip — and "what is that button for?" was the report that fixed it. The
+labelled just "Widen" until 0.10.0, a verb with no object, explained only by
+a tooltip, and "what is that button for?" was the report that fixed it. The
 object stayed; the paragraph that came with it did not. That sentence is on a
 `?` badge now, because a fold makes prose *cheap* and that is not the same as
 making it *wanted*.
 
-Pick the ladder as rungs — **50 · 65 · 80 · 90 · 100** — and a goal, which
+Pick the ladder as rungs, **50 · 65 · 80 · 90 · 100**: and a goal, which
 defaults to **100%**: every judged note clean before the ladder steps up. That
-is stricter than the engine's own 0.85 and deliberately so — a goal that
-graduates you at 85% teaches a passage you can *nearly* play — and the cost is
+is stricter than the engine's own 0.85 and deliberately so, a goal that
+graduates you at 85% teaches a passage you can *nearly* play, and the cost is
 a slower climb, so the stepper reaches down to 50 for a passage where clean is
 too much to ask. The engine's default ladder is `[80, 90, 100]` and its floor of 80% is a judgement
 about time-stretch artefacts, which is reasonable about the sound and not
@@ -197,8 +197,8 @@ slower rungs exist and the panel says what they cost.
 100% is always the last rung. A ladder that tops out at 90% never asks you to
 perform the passage, which is the point of the exercise.
 
-While a drill runs, the panel shows the engine's own numbers — rung, goal,
-best-so-far, its coaching line — plus every graded pass as a row of
+While a drill runs, the panel shows the engine's own numbers, rung, goal,
+best-so-far, its coaching line, plus every graded pass as a row of
 percentages, so you can see whether you are improving or just repeating. And it
 says what has to happen next, which changes at the top of the ladder: below it,
 *clear the goal to speed up*; at it, *clear it three times at full tempo to
@@ -206,29 +206,29 @@ finish*.
 
 ### Remembers
 
-![La mappa dei passaggi, con il peggiore in cima](docs/weak-spots.png)
+![The passage map, weakest first](docs/weak-spots.png)
 
-*Quello che hai suonato e quanto bene, per canzone. "Loop weakest" prende il
-passaggio piu' debole e lo arma senza farti cercare.*
+*What you have played and how well, per song. "Loop weakest" takes the worst
+passage and arms it without making you look for it.*
 
 **Your practice speed, per song.** The app resets playback to 100% on every
 song load, which is right as a default and wrong for a chart you are three
 sessions into at 80%.
 
 **Your best, per passage.** The timeline blocks are coloured by it, and a
-**Where you struggle** list puts the worst first — from this run while you are
+**Where you struggle** list puts the worst first, from this run while you are
 playing, from the store when you are not. Click a row to select that passage,
 or press **Practice weakest** to select the worst one *and* arm a drill on it
 in one press.
 
-**Optionally the difficulty, per song** — off by default, and worth
+**Optionally the difficulty, per song**: off by default, and worth
 understanding before turning on: the app stores master difficulty as *one
 global setting*, not per song, so restoring a per-song value also moves the
 global one. The settings panel says so.
 
 ### Brings the controls together
 
-Loop, speed and difficulty are three controls in three different places today —
+Loop, speed and difficulty are three controls in three different places today,
 the sections in the Practice rail pill, the loop and the difficulty in the
 *Advanced settings* popover, the speed in the transport. They are the three
 knobs of one activity, so the panel carries all three next to the passage they
@@ -239,8 +239,8 @@ apply to.
 The panel's look and its controls come from
 **[feedBack-plugin-kit](https://github.com/cracklydisc/feedBack-plugin-kit)**,
 vendored into `src/kit/` and `assets/kit.css`. Its `DESIGN.md` carries the
-rules — each one with the Riff Repeater version number of the bug that taught
-it — and its Layer 2 implements the device recipes the app's own
+rules, each one with the Riff Repeater version number of the bug that taught
+it, and its Layer 2 implements the device recipes the app's own
 `docs/host-theme-contract.md` proposes but has not yet shipped, so the glow on
 the primary is a slot a glow-less shop skin can neutralise rather than a
 literal `box-shadow`.
@@ -248,46 +248,46 @@ literal `box-shadow`.
 Four of those rules, because they are the ones this panel is shaped by:
 
 **One control family per meaning, and the families must not collide.** A
-segmented control is "pick one of a small fixed set" — the **Play at** speed
-row. A chip group is "pick a subset" — the **Climb** ladder.
+segmented control is "pick one of a small fixed set", the **Play at** speed
+row. A chip group is "pick a subset", the **Climb** ladder.
 A toggle pill is a boolean. Version 0.2 drew the ladder and the speed as the
 same rail of pills with the same five numbers, which is two different things
 wearing one costume; they are different shapes and different words now.
 
 **One lit primary, in a sticky footer, with one alternative beside it.**
 Nothing else in the panel is accent-filled, so there is never a question about
-what to press. It sat mid-panel until 0.10.0 — after the passage picker,
-before the speed row — which meant you configured and then hunted, and the
+what to press. It sat mid-panel until 0.10.0, after the passage picker,
+before the speed row, which meant you configured and then hunted, and the
 groups below it read as though they came *after* pressing. It is pinned to the
 bottom now, with `Loop` next to it rather than under it: a quieter button
 underneath a primary reads as a caption, not as a choice.
 
 Nothing else rides on it. It carried a status dot until 0.8.0, and the dot was
-always `ready` whenever the button was enabled — because a blocked engine is
+always `ready` whenever the button was enabled, because a blocked engine is
 what disables it. A signal visible exactly when it said nothing. The reason a
 drill cannot start is a sentence directly above the button instead.
 
 **Every size comes from the scale, so touch is one change.** Under
 `(pointer: coarse)` the kit swaps the height scale to 32 · 44 · 52 and all
-four control families grow together — a stepper is 32px under a mouse and
+four control families grow together, a stepper is 32px under a mouse and
 44 × 44 under a thumb, which is WCAG 2.5.5. Growing the control that was
 complained about instead is how a row ends up with a 44px stepper beside a
 26px chip and no shared band left.
 
 **A data signal never looks like a selection signal.** Accuracy is the
 timeline block's fill and the weak list's bar; selection is a white bracket.
-One signal per channel — 0.2 had accuracy as a coloured underline on the same
+One signal per channel, 0.2 had accuracy as a coloured underline on the same
 chips whose border meant "selected", and a reviewer read the amber as a second
 kind of selected.
 
 **No paragraph of explanation, and no box drawn to hold one.** A warning is a
 badge with its sentence in the tooltip. A blocked action explains itself on the
 control it blocks, and carries a status dot for the input. Values a stepper
-cannot reach live on the settings page — a form belongs there, not in the
+cannot reach live on the settings page, a form belongs there, not in the
 player.
 
 The clearest instance of all four is the ladder, which does double duty: idle
-it is the setting, and while a drill runs it *is* the progress display — the
+it is the setting, and while a drill runs it *is* the progress display, the
 rung being played is filled, cleared rungs go green, the rest wait.
 
 ### Keyboard
@@ -305,7 +305,7 @@ instead of two handlers quietly both firing.
 
 Which keys was a question for the registry rather than for taste. In the
 `player` scope the app already owns **Space** (play/pause), **← →** (seek),
-**Escape**, **[** and **]** (A/V offset) and **+ −** (volume) — so the obvious
+**Escape**, **[** and **]** (A/V offset) and **+ −** (volume), so the obvious
 guitarist bindings are all taken, and rebinding them would break the transport
 to add a convenience.
 
@@ -319,57 +319,58 @@ to add a convenience.
   A control the engine ignores is worse than no control.
 - **No control over the auto-slowdown either.** Miss the goal three passes in
   a row and the engine drops the speed by 15 points, down to a floor of 40%.
-  All three numbers are constants inside the engine — the streak length, the
-  step and the floor — and `startDrill` takes none of them. So a player who
+  All three numbers are constants inside the engine, the streak length, the
+  step and the floor, and `startDrill` takes none of them. So a player who
   wants "give me five tries before you slow me down" cannot have it, and the
   panel does not pretend otherwise. It is a fair default; it is simply not
   ours to move. Changing that needs a change in Note Detection, and this
   plugin's request for one is written down at the end of this file.
 - **No second scoring system.** Timing and pitch verdicts, the clean-hit
-  windows, the miss diagnostics on the highway — all of that is Note
+  windows, the miss diagnostics on the highway, all of that is Note
   Detection's, and this reads it rather than reimplementing it.
 - **No verdicts counted twice.** Verdicts scored *while a drill runs* are left
   out of the per-passage map. A drill plays the same fifteen seconds ten times,
   slowed; folding that in would make every drilled passage report whatever its
   last iterations looked like. The engine measures drill iterations properly and
-  reports a best when the drill ends — that arrives separately.
+  reports a best when the drill ends, that arrives separately.
 - **No drill result from a drill you abandoned.** Ending one before a single
   pass has been graded reports `best = 0`, and storing that would stamp 0% onto
   a passage nobody played.
 
 ---
 
-## Meglio insieme a Live Tab
+## Better with Live Tab
 
-I due plugin sono fatti per stare accesi insieme, e non solo perche' si
-somigliano.
+The two plugins are meant to be on together, and not only because they look
+alike.
 
-Riff Repeater sceglie il passaggio e arma il drill; [Live
-Tab](https://github.com/cracklydisc/feedBack-plugin-livetab) e' dove quel drill
-diventa leggibile. La zona giudicata prende il verde, la rincorsa resta
-tratteggiata, e le note fuori dal giro perdono il colore: sai quali battute
-contano guardando la tab, non il pannello.
+Riff Repeater picks the passage and arms the drill. [Live
+Tab](https://github.com/cracklydisc/feedBack-plugin-livetab) is where that
+drill becomes readable: the judged window takes the green, the run-in stays
+hatched, and the notes outside this pass lose their colour. You can see which
+bars count by looking at the tab rather than at the panel.
 
-![Un drill armato qui, letto sulla tab di Live Tab](https://raw.githubusercontent.com/cracklydisc/feedBack-plugin-livetab/main/docs/drill-loop.png)
+![A drill armed here, read on the Live Tab staff](https://raw.githubusercontent.com/cracklydisc/feedBack-plugin-livetab/main/docs/drill-loop.png)
 
-*Un drill armato da Riff Repeater, visto da Live Tab: verde la parte che conta,
-tratteggiata la rincorsa, grigie le note che in questo giro non tocca suonare.*
+*A drill armed by Riff Repeater, seen from Live Tab: green is the part that
+counts, the hatch is the run-in, and grey are the notes this pass does not ask
+you to play.*
 
-Uno arma, l'altro mostra. Presi da soli funzionano; presi insieme il ciclo si
-chiude senza che tu debba tenere a mente dove finisce il pezzo.
+One arms, the other shows. Either works alone; together you stop having to
+remember where the passage ends.
 
 ---
 
 ## The look comes from a kit
 
-Every control here — the racks, the wells, the steppers, the segmented rails,
-the footswitch — comes from the [fee[dB]ack plugin
+Every control here, the racks, the wells, the steppers, the segmented rails,
+the footswitch, comes from the [fee[dB]ack plugin
 kit](https://github.com/cracklydisc/feedBack-plugin-kit), a small design system
 with its own tests and its own [DESIGN.md](https://github.com/cracklydisc/feedBack-plugin-kit/blob/main/DESIGN.md).
 
 The kit is **vendored, not imported**: it is copied into `src/kit/` and
 `assets/kit.css` rather than fetched from another plugin at runtime. Any plugin
-can be disabled, and there is no load order to rely on — a panel that fails to
+can be disabled, and there is no load order to rely on, a panel that fails to
 draw because somebody turned off a dependency is a panel that fails at the
 worst possible moment.
 
@@ -387,7 +388,7 @@ specific passage lives in the panel, next to the passage.
 
 Per-passage bests are kept in this browser's `localStorage` only, keyed by the
 pack's filename (which carries its content hash) plus the arrangement. A pack
-that gets re-converted starts a fresh history — inheriting a best earned
+that gets re-converted starts a fresh history, inheriting a best earned
 against different notes would be the dishonest option even though it keeps
 more.
 
@@ -423,8 +424,8 @@ This repository is shaped for that, because a floating panel launched from the
 plugins rail is not where these controls belong. In core they belong in a
 **third row of the Section Practice popover**, next to the chips the user
 already clicks. The reason they are not there now is that the popover has no
-sanctioned extension point for a plugin — core's `docs/plugin-v3-ui.md`
-documents exactly one, `feedBack.ui.playerControlSlot()` — and injecting would
+sanctioned extension point for a plugin, core's `docs/plugin-v3-ui.md`
+documents exactly one, `feedBack.ui.playerControlSlot()`: and injecting would
 mean winning on specificity and re-injecting after every re-render, the way
 Tidy has to.
 
@@ -438,8 +439,8 @@ So the split is by directory:
 | `tests/*.test.js` | move with `src/`. |
 
 Nothing in `src/` outside `src/ui/` touches a DOM node of its own, and none of
-those files import anything from `src/ui/`. The panel reads exactly one thing —
-`model.snapshot()` — and writes through exactly one thing, the `actions` object
+those files import anything from `src/ui/`. The panel reads exactly one thing,
+`model.snapshot()`: and writes through exactly one thing, the `actions` object
 in `src/main.js`. Re-mounting it is a matter of building the same rows inside
 `_sectionPracticeBarInnerHtml()` and pointing them at the same actions.
 
@@ -449,7 +450,7 @@ Two things learned from the DOM, in case that PR is written by somebody else:
   rewrites only `#section-practice-scroll`, and `_ensureSectionPracticeDom()`
   patches in place rather than rebuilding. The one hazard is
   `_migrateSectionPracticeDomLayout()`, which does `bar.replaceChildren(...)`
-  and would drop an unknown child — but it is guarded by
+  and would drop an unknown child, but it is guarded by
   `if (bar.querySelector('.section-practice-controls-row')) return`, so on
   current markup it never runs.
 - `src/ui/` lives under `src/` because `/api/plugins/<id>/src/<path>` and
@@ -460,7 +461,7 @@ Two things learned from the DOM, in case that PR is written by somebody else:
 
 1. **`window.setSpeed` does not write the speed slider.** It moves the rate, the
    label and the preset highlight, but leaves `#speed-slider.value` at its old
-   number — so while a drill runs the slider reads 100 and the song plays at
+   number, so while a drill runs the slider reads 100 and the song plays at
    0.8. `applySpeedPreset` does it correctly. `src/host.js` splits the two
    readings (`speedPct` = what is playing, `chosenSpeedPct` = what the user
    picked) rather than trusting either alone.
@@ -484,16 +485,16 @@ node --test tests/*.test.js
 
 120 tests, no dependencies, no build step.
 
-`src/kit/` and `assets/kit.css` are **vendored** — edit them in
+`src/kit/` and `assets/kit.css` are **vendored**: edit them in
 [feedBack-plugin-kit](https://github.com/cracklydisc/feedBack-plugin-kit) and
 copy them back, never here. There is no shared-library mechanism in this host
 (no import maps, no guaranteed plugin load order, and a plugin can be
 disabled), so a runtime dependency on another plugin would break every consumer
-when one is switched off. Four suites cover the pure modules — the range table,
+when one is switched off. Four suites cover the pure modules, the range table,
 the ladder, the per-passage statistics, and the store. A fifth covers the
 **selection walk**, with the host's globals stubbed, because since 0.6.0 that
 walk is the only way to get from a phrase back to the section it lives in, so a
-regression there is silent — the panel goes on looking right while one grain
+regression there is silent, the panel goes on looking right while one grain
 becomes unreachable. It earned its keep immediately: it caught a section change
 carrying "part 2 of 2" onto the next section. The rest of the host seam and the
 panel are verified in the running app instead; they are the parts a unit test
@@ -506,7 +507,7 @@ directory of symlinks:
 FEEDBACK_PLUGINS_DIR=/path/to/dev-plugins
 ```
 
-Bump `version` in `plugin.json` whenever `assets/riffrepeater.css` changes —
+Bump `version` in `plugin.json` whenever `assets/riffrepeater.css` changes,
 the stylesheet is cache-busted with `?v=<version>`.
 
 ---
