@@ -32,8 +32,14 @@ function makeHost({ freeze = false, playing = false, player = true } = {}) {
     let pos = 0;
     let advancing = playing;
 
+    const lento = { rilascia: null };
     const audio = {
-        async startBacking() { log.hard++; advancing = true; return true; },
+        async startBacking() {
+            // Con `lento.rilascia` armato l'avvio resta appeso: serve a mettere
+            // un arresto DENTRO un avvio ancora in volo.
+            if (lento.rilascia) await new Promise((r) => { lento.rilascia = r; });
+            log.hard++; advancing = true; return true;
+        },
         async stopBacking() { log.stops++; advancing = false; },
         async seekBacking(s) { pos = s; },
         async getBackingPosition() { if (advancing) pos += 0.05; return pos; },
@@ -72,18 +78,26 @@ function makeHost({ freeze = false, playing = false, player = true } = {}) {
         window.feedBackDesktop = { audio };
     }
     if (player) window.jucePlayer = jucePlayer;
+    /*
+     * `#audio.paused` e' lo stato che l'APP dichiara, e non e' lo stato del
+     * motore: i chiamanti lo scrivono dopo che `play()` e' tornato, e il
+     * conteggio non lo scrive affatto. Qui e' mutabile apposta, perche' e' la
+     * leva che separa "il motore e' fermo" da "l'utente vuole silenzio".
+     */
+    let appPlaying = playing;
+    globalThis.setAppPlaying = (v) => { appPlaying = v; };
     globalThis.document = {
-        getElementById: (id) => (id === 'audio' ? { paused: !playing } : null),
+        getElementById: (id) => (id === 'audio' ? { get paused() { return !appPlaying; } } : null),
     };
     // Il motore che si ferma da solo senza passare dall'arresto: e' il caso in
     // cui la guardia si sbaglia, e deve accorgersene.
     globalThis.stallEngine = () => { advancing = false; };
-    return { log, audio, jucePlayer };
+    return { log, audio, jucePlayer, lento };
 }
 
-function install() {
+function install(opts) {
     mod._resetBackingGuard();
-    return mod.installBackingGuard();
+    return mod.installBackingGuard(opts);
 }
 
 /** Come lo chiamano togglePlay, lo shim e il conteggio: dal globale, ogni volta. */
@@ -217,6 +231,7 @@ test('se sopprime a torto se ne accorge e avvia lei', async () => {
     install();
 
     await viaPlayer();
+    setAppPlaying(true);       // come fa chi ha chiesto l'avvio, appena torna
     assert.equal(log.hard, 1);
 
     // Il motore si spegne senza passare dall'arresto: la guardia continua a
@@ -261,4 +276,69 @@ test('parte sapendo che sta suonando, se sta suonando', async () => {
     assert.equal(mod.backingIsRunning(), true);
     await viaPlayer();
     assert.equal(log.hard, 0, 'un avvio su un motore gia in moto non arriva al motore');
+});
+
+// ── il veto ──────────────────────────────────────────────────────────────
+
+/*
+ * La guardia da sola sa solo deduplicare: distingue due avvii, non un avvio
+ * voluto da uno che nessuno ha chiesto. Quella distinzione la porta `silence.js`,
+ * e la guardia la consulta un istante prima di partire.
+ */
+test('col veto alzato lavvio non arriva al motore', async () => {
+    const { log } = makeHost();
+    install({ veto: () => true });
+
+    const esito = await viaPlayer();
+
+    assert.equal(log.hard, 0);
+    assert.equal(esito, false, 'false e lesito che i chiamanti gia gestiscono');
+    assert.equal(mod.backingIsRunning(), false);
+});
+
+test('col veto abbassato lavvio passa', async () => {
+    const { log } = makeHost();
+    install({ veto: () => false });
+
+    await viaPlayer();
+
+    assert.equal(log.hard, 1);
+});
+
+test('la rete di sicurezza non contraddice una pausa dichiarata', async () => {
+    // Trasporto in pausa (`#audio.paused` true), guardia convinta che suoni:
+    // la verifica troverebbe la posizione ferma, ma riavviare qui vorrebbe dire
+    // suonare contro chi ha appena messo in pausa.
+    const { log } = makeHost({ playing: false });
+    install();
+
+    await viaPlayer();
+    assert.equal(log.hard, 1);
+    stallEngine();
+    await viaPlayer();
+    await new Promise((r) => setTimeout(r, 400));
+
+    assert.equal(log.hard, 1, 'niente rimedio contro la pausa');
+    assert.equal(mod.backingGuardStats().rescued, 0);
+});
+
+// ── un avvio sorpassato da un arresto ────────────────────────────────────
+
+test('se un arresto passa mentre lavvio e in volo, la guardia non resta convinta', async () => {
+    const h = makeHost();
+    install();
+
+    h.lento.rilascia = true;              // il prossimo avvio resta appeso
+    const inVolo = viaPlayer();
+    await new Promise((r) => setTimeout(r, 0));
+    await viaPlayerStop();                // arresto mentre l'avvio non e' tornato
+    h.lento.rilascia();                   // ora l'avvio si risolve
+    await inVolo;
+
+    assert.equal(mod.backingIsRunning(), false,
+        'un avvio vecchio non deve dire "sta suonando" sopra un motore fermo');
+
+    h.lento.rilascia = null;
+    await viaPlayer();
+    assert.equal(h.log.hard, 2, 'e il prossimo avvio non viene soppresso a torto');
 });

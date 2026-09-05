@@ -15,14 +15,14 @@ import * as store from './store.js';
 import * as ranges from './ranges.js';
 import * as kit from './kit/index.js';
 import { installBackingGuard } from './backing-guard.js';
-import { installPauseKeeper } from './pause-keeper.js';
+import { installSilence } from './silence.js';
 import { buildLadder, clampStartPct, clampStepPct, STEPS } from './ladder.js';
 import { createContent } from './ui/panel.js';
 import { buildSettingsPage } from './ui/settings-page.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.36.5';
+const VERSION = '0.36.6';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -857,17 +857,17 @@ function boot() {
      * protezione silenziosa e' una protezione di cui poi si dara' per scontata
      * l'esistenza.
      */
-    const guardia = installBackingGuard();
     /*
-     * Il custode e' l'altra meta', e cura un difetto diverso: non due voci
-     * insieme, ma una voce che riparte da sola dopo la pausa. Il perche' sta in
-     * `pause-keeper.js`. Vive solo dove puo' esserci un conteggio, cioe' con un
-     * loop armato.
+     * L'ORDINE CONTA: prima chi sa, poi chi agisce.
+     *
+     * `installSilence` non ferma niente — risponde a una domanda sola, "l'utente
+     * vuole silenzio adesso?", e la guardia gliela fa un istante prima di
+     * avviare il motore. Percio' va costruito per primo: la guardia lo riceve
+     * come veto e senza di lui saprebbe solo deduplicare, cioe' distinguere due
+     * avvii ma non un avvio voluto da uno che nessuno ha chiesto.
      */
-    const custode = installPauseKeeper({
-        on: host.on.bind(host),
-        loopArmed: () => host.loop().loopA !== null,
-    });
+    const silenzio = installSilence({ on: host.on.bind(host) });
+    const guardia = installBackingGuard({ veto: silenzio.wantsSilence });
     /*
      * Questa riga si stampa SEMPRE, e porta la versione.
      *
@@ -878,8 +878,7 @@ function boot() {
      */
     console.log('[' + ID + ' ' + VERSION + '] trasporto: guardia doppio-avvio '
         + (guardia.installed ? 'attiva (' + guardia.mode + ')' : 'NO (' + guardia.mode + ')')
-        + ' · custode della pausa '
-        + (custode.installed ? 'attivo [' + custode.doors.join(', ') + ']' : 'NO (' + custode.reason + ')'));
+        + ' · veto sul silenzio attivo, porte [' + silenzio.doors.join(', ') + ']');
     kit.install({ id: ID, version: VERSION });
     panel = kit.createPanel({
         id: ID,

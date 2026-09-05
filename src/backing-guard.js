@@ -84,6 +84,11 @@ function seemsPlaying() {
     return !!(el && el.paused === false);
 }
 
+/** Lo stesso, girato: l'app dichiara di essere in pausa? */
+function enginePaused() {
+    return !seemsPlaying();
+}
+
 function wait(ms) {
     return new Promise((done) => setTimeout(done, ms));
 }
@@ -106,7 +111,7 @@ let guard = null;
  * regola e' la stessa e due copie della stessa regola sono due posti da cui
  * puo' divergere.
  */
-function makeGate({ start, stop, onSuppress }) {
+function makeGate({ start, stop, onSuppress, veto }) {
     const state = {
         running: seemsPlaying(),
         inFlight: null,
@@ -134,7 +139,12 @@ function makeGate({ start, stop, onSuppress }) {
             const b = Number(await enginePosition());
             const fermo = Number.isFinite(a) && Number.isFinite(b)
                 && Math.abs(b - a) < VERIFY_EPS;
-            if (fermo && state.running && !state.inFlight) {
+            // Non si rimedia contro la volonta' di chi ascolta: se il
+            // trasporto dichiara pausa, il motore fermo e' quello che deve
+            // essere. Senza questa riga la rete di sicurezza diventerebbe un
+            // terzo avviatore, cioe' il difetto che stiamo curando.
+            if (fermo && state.running && !state.inFlight && !enginePaused()
+                && !(veto && veto())) {
                 state.rescued++;
                 state.running = false;
                 console.warn('[riffrepeater] avevo soppresso un avvio ma il motore era fermo: avvio io');
@@ -150,6 +160,21 @@ function makeGate({ start, stop, onSuppress }) {
     const gate = {
         state,
         start(...args) {
+            /*
+             * PRIMA DI TUTTO: qualcuno vuole silenzio?
+             *
+             * `false` non e' un ripiego, e' l'esito di contratto di
+             * `jucePlayer.play()` quando il motore non parte, e ogni chiamante
+             * lo gestisce lasciando lo stato dov'e' — `count-in.js:287`,
+             * `transport.js:320`, `juce-audio.js:1003`. Percio' negare qui e'
+             * pulito: nessun suono e nessuna bugia di stato. Rincorrere l'avvio
+             * dopo, invece, e' una gara contro un motore nativo che da JS non
+             * si legge.
+             */
+            if (veto && veto()) {
+                console.warn('[riffrepeater] avvio del backing negato: il trasporto e in pausa e nessuno lo ha chiesto');
+                return Promise.resolve(false);
+            }
             // Due chiamate nella stessa raffica: una sola partenza, e la seconda
             // aspetta l'esito della prima invece di aprire una seconda voce.
             if (state.inFlight) return state.inFlight;
@@ -162,7 +187,12 @@ function makeGate({ start, stop, onSuppress }) {
                 return Promise.resolve(true);
             }
             const p = Promise.resolve(start(...args)).then(
-                (r) => { if (r !== false) state.running = true; return r; },
+                // `state.inFlight === p` e non solo `r !== false`: se nel
+                // frattempo e' passato un arresto, `stop()` ha gia' azzerato
+                // tutto e questo avvio e' vecchio. Scrivere `running = true`
+                // qui direbbe "sta suonando" sopra un motore appena fermato, e
+                // il prossimo avvio verrebbe soppresso a torto.
+                (r) => { if (r !== false && state.inFlight === p) state.running = true; return r; },
                 (err) => { state.running = false; throw err; },
             );
             state.inFlight = p;
@@ -187,11 +217,12 @@ function makeGate({ start, stop, onSuppress }) {
  * in mezzo lo DICE nel rapporto, cosi' chi la chiama lo scrive in console
  * invece di credere a una protezione che non c'e'.
  */
-export function installBackingGuard() {
+export function installBackingGuard(opts = {}) {
     const prev = guard || window[MARK];
     if (prev) return { installed: true, mode: prev.mode, already: true };
 
-    const built = onPlayer() || onBridge();
+    const veto = typeof opts.veto === 'function' ? opts.veto : null;
+    const built = onPlayer(veto) || onBridge(veto);
     if (!built) return { installed: false, mode: 'oggetto-sigillato' };
 
     guard = {
@@ -210,7 +241,7 @@ export function installBackingGuard() {
  * pubblica di playback E il conteggio del loop, che e' il solo che non passa da
  * nessun'altra parte. E' un oggetto letterale del modulo, non congelato.
  */
-function onPlayer() {
+function onPlayer(veto) {
     const p = window.jucePlayer;
     if (!p || typeof p.play !== 'function' || typeof p.pause !== 'function') return null;
 
@@ -218,6 +249,7 @@ function onPlayer() {
     const realPause = p.pause.bind(p);
 
     const gate = makeGate({
+        veto,
         start: () => realPlay(),
         stop: () => realPause(),
         /*
@@ -250,7 +282,7 @@ function onPlayer() {
  * `transport.js` risolve `window.feedBackDesktop.audio` a ogni chiamata invece
  * di catturarlo all'avvio.
  */
-function onBridge() {
+function onBridge(veto) {
     const api = desktopAudio();
     if (!api || typeof api.startBacking !== 'function' || typeof api.stopBacking !== 'function') {
         return null;
@@ -262,7 +294,7 @@ function onBridge() {
         ? api.loadBackingTrack.bind(api)
         : null;
 
-    const gate = makeGate({ start: (...a) => realStart(...a), stop: (...a) => realStop(...a) });
+    const gate = makeGate({ veto, start: (...a) => realStart(...a), stop: (...a) => realStop(...a) });
 
     const patch = {
         startBacking: (...a) => gate.start(...a),
