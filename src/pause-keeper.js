@@ -25,12 +25,21 @@
  *
  * COME DISTINGUE UNA RIPRESA VOLUTA DA QUELLA DEL CONTEGGIO. Non guardando
  * chi chiama — guardando chi si e' annunciato. Le riprese legittime passano
- * tutte per una di tre porte: `window.togglePlay` (il pulsante, la barra
- * spaziatrice, noi), `#audio.play()` (la porta dei plugin, quella con cui il
- * rilevatore fa partire un drill) e `feedBack.playback.resume()` (l'API
- * pubblica). Le avvolgiamo e ci teniamo un timbro. Il conteggio non passa da
- * nessuna delle tre: chiama `jucePlayer.play()` per conto suo. Una ripresa
- * senza timbro, entro pochi secondi da una pausa, e' lui.
+ * per `window.togglePlay` (il pulsante, la barra spaziatrice, noi) o per
+ * `#audio.play()` (la porta dei plugin, quella con cui il rilevatore fa
+ * partire un drill). Le avvolgiamo e ci teniamo un timbro. Il conteggio non
+ * passa da nessuna delle due: chiama `jucePlayer.play()` per conto suo. Una
+ * ripresa senza timbro, entro pochi secondi da una pausa, e' lui.
+ *
+ * C'e' una terza porta che timbriamo se la troviamo, `feedBack.playback.resume`,
+ * e sull'app di oggi NON c'e': quel `playback` e' un registro di adattatori di
+ * trasporto, non un trasporto, e il `resume()` che ho letto vive dentro
+ * l'adattatore che l'app registra — irraggiungibile da fuori. Il rapporto
+ * elenca le porte che ha davvero timbrato, cosi' la console dice quante sono e
+ * non quante speravo. Resta un bordo aperto: una ripresa chiesta da lassu',
+ * entro pochi secondi da una pausa e con un loop armato, la rimetteremmo in
+ * pausa. Nessuno nell'app e nei plugin la chiama, e il costo sarebbe un play in
+ * piu' — quindi resta annotato, non risolto.
  *
  * QUANTO COSTA SBAGLIARE. Se rimettessimo in pausa una ripresa che l'utente
  * voleva, l'utente ripreme play. E' il tetto del danno, ed e' il motivo per
