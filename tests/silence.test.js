@@ -164,7 +164,7 @@ test('se lutente preme play, passa', () => {
     assert.equal(s.wantsSilence(), false);
 });
 
-test('un drill avviato dalla porta dei plugin passa', async () => {
+test('un avvio annunciato dalla porta passa', () => {
     const h = makeHost({ playing: true });
     const s = install(h);
 
@@ -173,13 +173,18 @@ test('un drill avviato dalla porta dei plugin passa', async () => {
     h.userPauses();
     clock += 1600;
 
-    // `#audio.play()` e' timbrato: il rilevatore sta avviando un drill, e la
-    // guardia consulta il veto mentre quella chiamata e' ancora aperta.
-    let dentro = null;
-    h.probe.fn = () => { dentro = s.wantsSilence(); };
-    await document.getElementById('audio').play();
+    /*
+     * `stampAround` e' come la porta `#audio` annuncia una delega allo shim
+     * dell'app: il rilevatore sta avviando un drill, e dentro quella chiamata il
+     * veto deve tacere. Senza questo, il drill che parte subito dopo la nostra
+     * pausa verrebbe zittito — il modo piu' facile di sbagliare tutto.
+     */
+    const dentro = mod.stampAround(() => s.wantsSilence());
 
     assert.equal(dentro, false, 'il drill non deve essere zittito');
+    // E il timbro si abbassa: fuori dalla chiamata la regola torna a valere.
+    clock += 500;
+    assert.equal(s.wantsSilence(), true);
 });
 
 test('un conteggio chiesto a mano, da fermo, passa', () => {
@@ -233,7 +238,7 @@ test('un song:play chiude il conteggio', () => {
 test('timbra le porte che trova', () => {
     const h = makeHost();
     const report = install(h);
-    assert.deepEqual(report.doors, ['audio.play', 'togglePlay']);
+    assert.deepEqual(report.doors, ['togglePlay']);
 });
 
 test('installarlo due volte non lo impila', () => {

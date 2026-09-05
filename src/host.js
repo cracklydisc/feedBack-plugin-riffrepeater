@@ -22,6 +22,7 @@
  */
 
 import { backingIsRunning } from './backing-guard.js';
+import { appSaysPaused } from './transport-truth.js';
 
 function bus() {
     const fb = window.feedBack;
@@ -256,8 +257,7 @@ export const host = {
          */
         const motore = backingIsRunning();
         if (motore !== null) return !motore;
-        const el = document.getElementById('audio');
-        return !el || el.paused === true;
+        return appSaysPaused();
     },
 
     async _flip() {

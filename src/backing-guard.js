@@ -55,6 +55,8 @@
  * `<audio>.play()` e' gia' idempotente per contratto.
  */
 
+import { appSaysPaused } from './transport-truth.js';
+
 const MARK = '__rrBackingGuard';
 
 /** Quanto passa tra i due campioni di posizione della verifica. */
@@ -80,13 +82,12 @@ function enginePosition() {
 
 /** Lo stato del trasporto secondo l'app, al momento dell'installazione. */
 function seemsPlaying() {
-    const el = document.getElementById('audio');
-    return !!(el && el.paused === false);
+    return !appSaysPaused();
 }
 
 /** Lo stesso, girato: l'app dichiara di essere in pausa? */
 function enginePaused() {
-    return !seemsPlaying();
+    return appSaysPaused();
 }
 
 function wait(ms) {

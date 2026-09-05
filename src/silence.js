@@ -70,6 +70,8 @@
  * conteggio.
  */
 
+import { appSaysPaused } from './transport-truth.js';
+
 /** Oltre questo un `loop:restart` non e' piu' un conteggio in volo. */
 const COUNTIN_MAX_MS = 12000;
 
@@ -78,6 +80,24 @@ const GESTURE_MS = 400;
 
 /** Un conteggio cosi' vicino a un gesto e' un conteggio che e' stato chiesto. */
 const ASKED_MS = 2000;
+
+/**
+ * Alza il timbro attorno a una chiamata qualunque.
+ *
+ * Serve alla porta `#audio` (`audio-door.js`): quando delega allo shim
+ * dell'app, quella chiamata E' un avvio annunciato, e senza timbro il veto la
+ * scambierebbe per il riavvio del conteggio. Prima il timbro lo mettevamo
+ * avvolgendo la proprieta' `play` dell'elemento, ma li' sopra ci si impila gia'
+ * in due (lo shim JUCE e quello di stems): un terzo strato rendeva impossibile
+ * alla porta riconoscere che cosa avesse sotto. Un timbro chiesto e' piu'
+ * onesto di un timbro rubato.
+ *
+ * Senza il modulo installato non fa niente di male: esegue e basta.
+ */
+export function stampAround(fn) {
+    if (!oracle || typeof oracle.mark !== 'function') return fn();
+    return oracle.mark(fn);
+}
 
 /**
  * Avvolge `owner[name]` per lasciare un timbro attorno alla chiamata, e dice se
@@ -143,13 +163,10 @@ export function installSilence(opts = {}) {
     ];
 
     const doors = [];
-    if (stamp(doc.getElementById('audio'), 'play', marks)) doors.push('audio.play');
     if (stamp(window, 'togglePlay', marks)) doors.push('togglePlay');
 
-    const paused = () => {
-        const el = doc.getElementById('audio');
-        return !el || el.paused === true;
-    };
+    // Il pulsante, non `#audio.paused`: il perche' sta in `transport-truth.js`.
+    const paused = appSaysPaused;
     const stamped = () => marks.depth > 0 || (now() - marks.end) < GESTURE_MS;
 
     function wantsSilence() {
@@ -165,8 +182,19 @@ export function installSilence(opts = {}) {
         return true;
     }
 
+    function mark(fn) {
+        marks.depth++;
+        const close = () => { marks.depth = Math.max(0, marks.depth - 1); marks.end = now(); };
+        let out;
+        try { out = fn(); } catch (err) { close(); throw err; }
+        if (out && typeof out.then === 'function') out.then(close, close);
+        else close();
+        return out;
+    }
+
     oracle = {
         doors,
+        mark,
         wantsSilence,
         stats: () => ({ vetoed: st.vetoed }),
         stop() {

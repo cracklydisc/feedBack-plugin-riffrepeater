@@ -16,13 +16,14 @@ import * as ranges from './ranges.js';
 import * as kit from './kit/index.js';
 import { installBackingGuard } from './backing-guard.js';
 import { installSilence } from './silence.js';
+import { installAudioDoor } from './audio-door.js';
 import { buildLadder, clampStartPct, clampStepPct, STEPS } from './ladder.js';
 import { createContent } from './ui/panel.js';
 import { buildSettingsPage } from './ui/settings-page.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.36.6';
+const VERSION = '0.36.7';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -867,6 +868,14 @@ function boot() {
      * avvii ma non un avvio voluto da uno che nessuno ha chiesto.
      */
     const silenzio = installSilence({ on: host.on.bind(host) });
+    /*
+     * E la porta `#audio`, che e' la correzione del difetto grosso: su un
+     * feedpak a stem singolo lo stesso brano ha due trasporti, e il drill
+     * avviava quello sbagliato. Va dopo il silenzio, cosi' quando delega puo'
+     * annunciare la chiamata, e prima della guardia, perche' quello che
+     * reindirizza deve passare dal cancello come tutti.
+     */
+    const porta = installAudioDoor({ on: host.on.bind(host) });
     const guardia = installBackingGuard({ veto: silenzio.wantsSilence });
     /*
      * Questa riga si stampa SEMPRE, e porta la versione.
@@ -878,7 +887,10 @@ function boot() {
      */
     console.log('[' + ID + ' ' + VERSION + '] trasporto: guardia doppio-avvio '
         + (guardia.installed ? 'attiva (' + guardia.mode + ')' : 'NO (' + guardia.mode + ')')
-        + ' · veto sul silenzio attivo, porte [' + silenzio.doors.join(', ') + ']');
+        + ' · veto ' + (silenzio.installed ? 'su [' + silenzio.doors.join(', ') + ']' : 'NO')
+        + ' · porta #audio ' + (porta.installed
+            ? (porta.foreign ? 'REINDIRIZZATA (sopra lo shim dell app ce n e un altro)' : 'in ascolto')
+            : 'NO (' + porta.reason + ')'));
     kit.install({ id: ID, version: VERSION });
     panel = kit.createPanel({
         id: ID,
