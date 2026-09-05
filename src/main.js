@@ -15,13 +15,14 @@ import * as store from './store.js';
 import * as ranges from './ranges.js';
 import * as kit from './kit/index.js';
 import { installBackingGuard } from './backing-guard.js';
+import { installPauseKeeper } from './pause-keeper.js';
 import { buildLadder, clampStartPct, clampStepPct, STEPS } from './ladder.js';
 import { createContent } from './ui/panel.js';
 import { buildSettingsPage } from './ui/settings-page.js';
 
 const ID = 'riffrepeater';
 /** Kept in step with plugin.json — it cache-busts both stylesheets. */
-const VERSION = '0.36.3';
+const VERSION = '0.36.4';
 const HOOKS_KEY = '__feedBackRiffRepeaterHooks';
 
 /** Panel open: fast enough that a loop wrap shows up as it happens. */
@@ -857,12 +858,28 @@ function boot() {
      * l'esistenza.
      */
     const guardia = installBackingGuard();
-    if (guardia.installed && !guardia.already) {
-        console.log('[' + ID + '] guardia sul doppio avvio del backing attiva (' + guardia.mode + ')');
-    } else if (!guardia.installed && guardia.mode !== 'niente-ponte') {
-        console.warn('[' + ID + '] guardia sul doppio avvio NON installata (' + guardia.mode
-            + '): su questo host il doppio audio puo ancora capitare');
-    }
+    /*
+     * Il custode e' l'altra meta', e cura un difetto diverso: non due voci
+     * insieme, ma una voce che riparte da sola dopo la pausa. Il perche' sta in
+     * `pause-keeper.js`. Vive solo dove puo' esserci un conteggio, cioe' con un
+     * loop armato.
+     */
+    const custode = installPauseKeeper({
+        on: host.on.bind(host),
+        loopArmed: () => host.loop().loopA !== null,
+    });
+    /*
+     * Questa riga si stampa SEMPRE, e porta la versione.
+     *
+     * Perche' e' successo di guardare un log completo per capire se una
+     * correzione fosse viva e non poterlo dire: l'assenza di una riga non
+     * distingue "non installata" da "app non riavviata". Una riga che c'e'
+     * sempre risponde a tutte e due le domande in una volta.
+     */
+    console.log('[' + ID + ' ' + VERSION + '] trasporto: guardia doppio-avvio '
+        + (guardia.installed ? 'attiva (' + guardia.mode + ')' : 'NO (' + guardia.mode + ')')
+        + ' · custode della pausa '
+        + (custode.installed ? 'attivo [' + custode.doors.join(', ') + ']' : 'NO (' + custode.reason + ')'));
     kit.install({ id: ID, version: VERSION });
     panel = kit.createPanel({
         id: ID,
