@@ -76,6 +76,24 @@ import { stampAround } from './silence.js';
 
 const MARK = '__rrAudioDoor';
 
+/*
+ * Le funzioni vere dell'elemento, quelle del prototipo.
+ *
+ * Servono per un caso solo, ed e' un caso che manda in stack overflow: `stems`
+ * cattura `core.play.bind(core)` come "la play nativa" nel momento in cui si
+ * installa (`stems/src/transport.js:352`). Il caricatore ordina i plugin per
+ * nome, "Riff Repeater" viene prima di "Stems Toggle", quindi quello che stems
+ * cattura come nativo e' LA NOSTRA funzione. Poi noi ci rimettiamo sopra al
+ * primo brano, e la catena si chiude ad anello: noi -> stems -> noi.
+ *
+ * Finche' si e' in JUCE non si vede, perche' li' devi'amo su `togglePlay` senza
+ * mai delegare. Fuori da JUCE, con un brano senza stem, il primo Play andrebbe
+ * in ricorsione infinita — cioe' il tasto play che non funziona piu', in un
+ * caso che sul desktop dell'utente non si presenta e sul portatile di qualcun
+ * altro si'.
+ */
+const NATIVE = (typeof HTMLMediaElement !== 'undefined' && HTMLMediaElement.prototype) || null;
+
 let door = null;
 
 /**
@@ -120,7 +138,25 @@ export function installAudioDoor(opts = {}) {
         return true;
     }
 
+    /*
+     * Profondita' della catena. Se rientriamo, l'anello si e' chiuso: si esce
+     * dalla parte vera dell'elemento, che e' l'unica che non richiama nessuno.
+     */
+    let inside = 0;
+
     const ourPlay = function () {
+        if (inside > 0) return NATIVE && NATIVE.play ? NATIVE.play.call(this) : Promise.resolve();
+        inside++;
+        try { return play.call(this); } finally { inside--; }
+    };
+
+    const ourPause = function () {
+        if (inside > 0) { if (NATIVE && NATIVE.pause) NATIVE.pause.call(this); return undefined; }
+        inside++;
+        try { return pause.call(this); } finally { inside--; }
+    };
+
+    const play = function () {
         // Delegare allo shim dell'app e' un avvio ANNUNCIATO: il timbro lo dice
         // al veto, che altrimenti potrebbe scambiarlo per il riavvio del
         // conteggio e negarlo.
@@ -134,7 +170,7 @@ export function installAudioDoor(opts = {}) {
         return Promise.resolve(out).then(() => undefined);
     };
 
-    const ourPause = function () {
+    const pause = function () {
         if (!takeOver()) return under.pause.call(this);
         hush();
         if (!appSaysPaused()) toggle();

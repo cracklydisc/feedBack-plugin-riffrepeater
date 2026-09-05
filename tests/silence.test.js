@@ -25,7 +25,9 @@ function makeHost({ playing = true } = {}) {
     const listeners = new Map();
     const t = { playing };
 
-    const probe = { fn: null };
+    // Una sonda sola per due punti: dentro la porta `#audio` e dentro
+    // `togglePlay`, che sono i due posti in cui il timbro deve valere.
+    const probe = { fn: null, inToggle: null };
     const el = {
         // `probe` campiona DENTRO la chiamata, che e' dove la guardia consulta
         // il veto: `jucePlayer.play()` parte da qui, mentre il timbro e' alzato.
@@ -46,14 +48,28 @@ function makeHost({ playing = true } = {}) {
         getElementById: (id) => (id === 'audio' ? el : null),
     };
 
+    const btn = {
+        attrs: { 'aria-pressed': playing ? 'true' : 'false' },
+        hasAttribute(n) { return n in this.attrs; },
+        getAttribute(n) { return this.attrs[n]; },
+    };
     globalThis.window = {
-        async togglePlay() { t.playing = !t.playing; emit(t.playing ? 'song:play' : 'song:pause'); },
+        async togglePlay() {
+            t.playing = !t.playing;
+            btn.attrs['aria-pressed'] = t.playing ? 'true' : 'false';
+            // Campiona DENTRO la chiamata: e' li' che il veto viene consultato,
+            // ed e' l'unico posto in cui il timbro puo' dimostrare di esserci.
+            if (probe.inToggle) probe.inToggle();
+            emit(t.playing ? 'song:play' : 'song:pause');
+        },
     };
     globalThis.document = doc;
+    doc.getElementById = (id) => (id === 'audio' ? el : (id === 'btn-play' ? btn : null));
 
     return {
         t,
         el,
+        btn,
         probe,
         on(name, fn) {
             if (!bus.has(name)) bus.set(name, []);
@@ -68,7 +84,11 @@ function makeHost({ playing = true } = {}) {
         /** Il conteggio ferma il motore SENZA dirlo a `S.isPlaying`. */
         countInPausesEngine() { /* nessun evento, nessun cambio di stato */ },
         /** La pausa dell'utente, da qualunque strada arrivi. */
-        userPauses() { t.playing = false; emit('song:pause'); },
+        userPauses() {
+            t.playing = false;
+            btn.attrs['aria-pressed'] = 'false';
+            emit('song:pause');
+        },
     };
 }
 
@@ -116,6 +136,7 @@ test('la barra spaziatrice vale quanto il pulsante', () => {
     // importato): arriva solo l'evento. E' esattamente il caso che il custode
     // precedente non vedeva.
     h.t.playing = false;
+    h.btn.attrs['aria-pressed'] = 'false';
     h.emit('song:pause');
     clock += 1600;
 
@@ -246,4 +267,49 @@ test('installarlo due volte non lo impila', () => {
     install(h);
     const second = mod.installSilence({ now, on: h.on, doc: document });
     assert.equal(second.already, true);
+});
+
+/*
+ * Il timbro su `window.togglePlay` non era provato da nessuna parte: si
+ * controllava solo che la porta risultasse nell'elenco. Se `stamp()` smettesse
+ * di alzare `depth`, l'elenco resterebbe identico e tutto verde — e il veto
+ * zittirebbe l'utente che preme play. Qui si guarda dentro la chiamata.
+ */
+test('durante un togglePlay il veto tace', async () => {
+    const h = makeHost({ playing: true });
+    const s = install(h);
+
+    h.countInStarts();
+    clock += 800;
+    h.userPauses();
+    clock += 1600;
+    assert.equal(s.wantsSilence(), true, 'fuori dalla chiamata negherebbe');
+
+    // Rimettiamo il conteggio in volo e premiamo play davvero.
+    h.countInStarts();
+    clock += 100;
+    h.userPauses();
+    clock += 1600;
+    let dentro = null;
+    h.probe.inToggle = () => { dentro = s.wantsSilence(); };
+    await window.togglePlay();
+
+    assert.equal(dentro, false, 'dentro la chiamata il timbro deve valere');
+});
+
+test('il sensore e il pulsante, non lelemento', () => {
+    const h = makeHost({ playing: true });
+    const s = install(h);
+
+    h.countInStarts();
+    clock += 800;
+    h.userPauses();
+    clock += 1600;
+
+    // L'elemento dice "sto suonando" — e' il caso reale con `stems` sopra, dove
+    // `#audio.paused` parla del trasporto sbagliato. Il pulsante dice pausa, e
+    // il pulsante e' quello che conta.
+    h.t.playing = true;
+    assert.equal(document.getElementById('audio').paused, false);
+    assert.equal(s.wantsSilence(), true);
 });

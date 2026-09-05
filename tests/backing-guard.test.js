@@ -32,15 +32,18 @@ function makeHost({ freeze = false, playing = false, player = true } = {}) {
     let pos = 0;
     let advancing = playing;
 
-    const lento = { rilascia: null };
+    const lento = { avvio: null, arresto: null };
     const audio = {
         async startBacking() {
             // Con `lento.rilascia` armato l'avvio resta appeso: serve a mettere
             // un arresto DENTRO un avvio ancora in volo.
-            if (lento.rilascia) await new Promise((r) => { lento.rilascia = r; });
+            if (lento.avvio) await new Promise((r) => { lento.avvio = r; });
             log.hard++; advancing = true; return true;
         },
-        async stopBacking() { log.stops++; advancing = false; },
+        async stopBacking() {
+            if (lento.arresto) await new Promise((r) => { lento.arresto = r; });
+            log.stops++; advancing = false;
+        },
         async seekBacking(s) { pos = s; },
         async getBackingPosition() { if (advancing) pos += 0.05; return pos; },
         async loadBackingTrack() { return true; },
@@ -62,7 +65,9 @@ function makeHost({ freeze = false, playing = false, player = true } = {}) {
         _startPolling() { this._polling = true; },
     };
 
-    globalThis.window = {};
+    // In JUCE, che e' l'unica modalita' in cui la guardia sa qualcosa: fuori
+    // di li' nessuno chiama `jucePlayer.*` e quello che sapeva invecchia.
+    globalThis.window = { _juceMode: true };
     if (freeze) {
         // Come `contextBridge.exposeInMainWorld`: l'oggetto e' congelato E la
         // proprieta' su `window` non e' ne' scrivibile ne' riconfigurabile.
@@ -328,17 +333,48 @@ test('se un arresto passa mentre lavvio e in volo, la guardia non resta convinta
     const h = makeHost();
     install();
 
-    h.lento.rilascia = true;              // il prossimo avvio resta appeso
+    h.lento.avvio = true;                 // il prossimo avvio resta appeso
     const inVolo = viaPlayer();
     await new Promise((r) => setTimeout(r, 0));
     await viaPlayerStop();                // arresto mentre l'avvio non e' tornato
-    h.lento.rilascia();                   // ora l'avvio si risolve
+    h.lento.avvio();                      // ora l'avvio si risolve
     await inVolo;
 
     assert.equal(mod.backingIsRunning(), false,
         'un avvio vecchio non deve dire "sta suonando" sopra un motore fermo');
 
-    h.lento.rilascia = null;
+    h.lento.avvio = null;
     await viaPlayer();
     assert.equal(h.log.hard, 2, 'e il prossimo avvio non viene soppresso a torto');
+});
+
+test('fuori da JUCE la guardia non risponde: quello che sapeva e vecchio', async () => {
+    makeHost();
+    install();
+    await viaPlayer();
+    assert.equal(mod.backingIsRunning(), true);
+
+    // Il brano finisce sull'elemento HTML5: da qui in poi nessuno chiama piu'
+    // `jucePlayer.*`, quindi `running` resta fermo all'ultimo valore noto. Una
+    // risposta vecchia con la faccia di una misura e' peggio di nessuna
+    // risposta: chi chiede deve poter ripiegare sul pulsante.
+    window._juceMode = false;
+    assert.equal(mod.backingIsRunning(), null);
+});
+
+test('un arresto in volo si puo attendere', async () => {
+    const h = makeHost();
+    install();
+    await viaPlayer();
+
+    h.lento.arresto = true;
+    const inVolo = viaPlayerStop();
+    await new Promise((r) => setTimeout(r, 0));
+
+    const attesa = mod.backingSettling();
+    assert.ok(attesa, 'finche non e atterrato, c e qualcosa da attendere');
+    h.lento.arresto();
+    await inVolo;
+    await attesa;
+    assert.equal(mod.backingSettling(), null, 'atterrato, non c e piu niente');
 });

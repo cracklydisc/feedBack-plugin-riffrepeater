@@ -21,7 +21,7 @@
  * caller surfaces it.
  */
 
-import { backingIsRunning } from './backing-guard.js';
+import { backingIsRunning, backingSettling } from './backing-guard.js';
 import { appSaysPaused } from './transport-truth.js';
 
 function bus() {
@@ -266,14 +266,32 @@ export const host = {
         catch (_) { return false; }
     },
 
+    /**
+     * Aspetta che un arresto in volo sia atterrato.
+     *
+     * `stopBacking()` puo' metterci piu' di un secondo, e in quel tempo la
+     * guardia dice gia' "fermo" mentre il pulsante dice ancora "sto suonando":
+     * i due non mentono, guardano due istanti diversi della stessa frenata.
+     * Decidere li' in mezzo significa decidere su meta' verita' — ed e' quello
+     * che faceva partire un drill con il trasporto fermo, se premevi pausa e
+     * subito D.
+     */
+    async _settled() {
+        const wait = backingSettling();
+        if (!wait) return;
+        try { await wait; } catch (_) { /* comunque atterrata */ }
+    },
+
     /** Ferma la riproduzione; dice se l'ha fermata davvero lei. */
     async pause() {
+        await this._settled();
         if (this._stopped()) return false;
         return this._flip();
     },
 
     /** Riprendi; il gemello di `pause()`, e con la stessa verita' di stato. */
     async resume() {
+        await this._settled();
         if (!this._stopped()) return false;
         return this._flip();
     },
@@ -317,12 +335,27 @@ export const host = {
      * two inches below it.
      */
     speedPct() {
+        /*
+         * IL MOTORE NATIVO PRIMA DELL'ELEMENTO, e l'ordine non e' un dettaglio.
+         *
+         * In modalita' JUCE `setSpeed` non scrive MAI `audio.playbackRate`
+         * (`player-controls.js:110-134`: quel ramo muove `jucePlayer.setRate` e
+         * l'IPC, e basta). L'unica scrittura sull'elemento e' il ripristino a 1
+         * per un brano nuovo. Leggendo l'elemento per primo si otteneva sempre
+         * 1, cioe' 100%, e siccome 1 e' un valore valido il ripiego sotto non
+         * veniva mai raggiunto: le scorciatoie della velocita' calcolavano da
+         * 100 a ogni pressione e non scendevano mai sotto 95.
+         */
+        const juce = window.jucePlayer;
+        if (window._juceMode && juce) {
+            const rate = num(juce._speed, NaN);
+            if (Number.isFinite(rate) && rate > 0) return Math.round(rate * 100);
+        }
         const el = document.getElementById('audio');
         if (el) {
             const rate = num(el.playbackRate, NaN);
             if (Number.isFinite(rate) && rate > 0) return Math.round(rate * 100);
         }
-        const juce = window.jucePlayer;
         if (juce && Number.isFinite(num(juce._speed, NaN))) return Math.round(num(juce._speed) * 100);
         return this.chosenSpeedPct();
     },

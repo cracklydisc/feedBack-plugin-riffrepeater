@@ -244,7 +244,36 @@ export function onEnded(fn) {
             best: Number.isFinite(Number(d.best)) ? Number(d.best) : null,
         });
     };
-    return host.onWindow('notedetect:drill-ended', handler);
+    /*
+     * DUE BUS, PERCHE' IL RILEVATORE NE USA UNO E I SUOI GEMELLI L'ALTRO.
+     *
+     * `notedetect:hit` e `notedetect:miss` arrivano su `window`, perche' il
+     * rilevatore li manda con `dispatchInstanceEvent` (`screen.js:5396`) — ed e'
+     * per questo che i verdetti si vedono. La FINE del drill no: quella la manda
+     * con `window.slopsmith.emit(...)` (`screen.js:13334`), e `slopsmith` e'
+     * `window.feedBack`, cioe' un `EventTarget` a se' stante creato in
+     * `app.js:756`. Un `window.addEventListener` non lo sente, e infatti non lo
+     * ha mai sentito: la memoria per passaggio non ha mai registrato un drill.
+     *
+     * Ascoltiamo tutti e due, con una diga contro il doppio conteggio nel caso
+     * un giorno il rilevatore ne rispecchiasse uno sull'altro. La diga guarda la
+     * coppia (motivo, istante) a 50 ms: la stessa fine, per due strade, arriva
+     * nello stesso task.
+     */
+    let lastAt = 0;
+    let lastReason = null;
+    const once = (e) => {
+        const d = (e && e.detail) || {};
+        const reason = d.reason || 'unknown';
+        const now = Date.now();
+        if (reason === lastReason && (now - lastAt) < 50) return;
+        lastReason = reason;
+        lastAt = now;
+        handler(e);
+    };
+    const offWindow = host.onWindow('notedetect:drill-ended', once);
+    const offBus = host.on('notedetect:drill-ended', once);
+    return () => { offWindow(); offBus(); };
 }
 
 /** Why a drill cannot start right now, as something a person can act on. */

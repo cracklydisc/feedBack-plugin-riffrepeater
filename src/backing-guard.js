@@ -206,7 +206,18 @@ function makeGate({ start, stop, onSuppress, veto }) {
             // Un avvio ancora in volo non deve piu' fare da capofila: dopo un
             // arresto il prossimo avvio e' un avvio nuovo, non una replica.
             state.inFlight = null;
-            return stop(...args);
+            /*
+             * E l'arresto si tiene, perche' non e' istantaneo: su questa
+             * macchina `stopBacking()` ci mette 1,3 secondi a tornare, e in quel
+             * tempo l'app crede ancora di suonare (il pulsante lo aggiorna DOPO
+             * l'await). Chi deve decidere qualcosa in mezzo puo' aspettare la
+             * fine invece di leggere uno stato a meta'.
+             */
+            const p = Promise.resolve(stop(...args));
+            state.settling = p;
+            const done = () => { if (state.settling === p) state.settling = null; };
+            p.then(done, done);
+            return p;
         },
         forget() { state.running = false; state.inFlight = null; },
     };
@@ -229,6 +240,7 @@ export function installBackingGuard(opts = {}) {
     guard = {
         mode: built.mode,
         isRunning: () => built.gate.state.running,
+        settling: () => built.gate.state.settling || null,
         stats: () => ({ dropped: built.gate.state.dropped, rescued: built.gate.state.rescued }),
     };
     window[MARK] = guard;
@@ -357,7 +369,24 @@ function onBridge(veto) {
  * inventare una certezza sarebbe peggio del non sapere.
  */
 export function backingIsRunning() {
+    /*
+     * Fuori da JUCE la guardia non sa NIENTE, e deve dirlo.
+     *
+     * Si installa sempre — `window.jucePlayer` esiste dal primo istante e
+     * `_juceMode` si accende solo al caricamento del brano, quindi aspettare
+     * quel flag vorrebbe dire non installarsi quasi mai. Ma se il brano poi
+     * finisce sull'elemento HTML5, nessuno chiama piu' `jucePlayer.*` e
+     * `running` resta fermo al valore con cui e' partita: una risposta vecchia,
+     * data con la faccia di una misura. `null` manda chi chiede al pulsante,
+     * che li' e' la verita'.
+     */
+    if (!window._juceMode) return null;
     return guard ? guard.isRunning() : null;
+}
+
+/** L'arresto ancora in volo, se ce n'e' uno; `null` altrimenti. */
+export function backingSettling() {
+    return guard ? guard.settling() : null;
 }
 
 /** Quante volte ha soppresso, e quante volte ha dovuto rimediare. */
