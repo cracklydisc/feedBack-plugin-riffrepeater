@@ -25,6 +25,11 @@ Riff Repeater is the missing caller. It adds no state machine of its own: it
 picks the passage, hands the engine a ladder and a goal, reads the engine's
 state back, and remembers what happened.
 
+![Il pannello di Riff Repeater sul player](docs/panel.png)
+
+*Il pannello, fermo: la sezione scelta sulla striscia, A e B, la scala di
+velocita' e i due verbi in fondo.*
+
 **Status: alpha.** Built and verified against a local library of about forty
 converted charts.
 
@@ -155,6 +160,12 @@ it.
 
 ### Drives the drill
 
+![Il quadrante del drill mentre gira](docs/drill-hud.png)
+
+*Mentre il drill gira il pannello si ripiega in questo: velocita' corrente,
+quanto manca all'obiettivo, il passaggio in corso e le note mancate. I numeri
+sono del motore, non nostri.*
+
 The ladder and the goal live in a **fold** — `HOW YOU DRILL  80→90→100 · goal
 85%` — because they are policy rather than part of the passage. That was a bug,
 not a tidying: they write straight to `localStorage`, so from two rows under
@@ -194,6 +205,11 @@ says what has to happen next, which changes at the top of the ladder: below it,
 finish*.
 
 ### Remembers
+
+![La mappa dei passaggi, con il peggiore in cima](docs/weak-spots.png)
+
+*Quello che hai suonato e quanto bene, per canzone. "Loop weakest" prende il
+passaggio piu' debole e lo arma senza farti cercare.*
 
 **Your practice speed, per song.** The app resets playback to 100% on every
 song load, which is right as a default and wrong for a chart you are three
@@ -320,6 +336,27 @@ to add a convenience.
 - **No drill result from a drill you abandoned.** Ending one before a single
   pass has been graded reports `best = 0`, and storing that would stamp 0% onto
   a passage nobody played.
+
+---
+
+## Meglio insieme a Live Tab
+
+I due plugin sono fatti per stare accesi insieme, e non solo perche' si
+somigliano.
+
+Riff Repeater sceglie il passaggio e arma il drill; [Live
+Tab](https://github.com/cracklydisc/feedBack-plugin-livetab) e' dove quel drill
+diventa leggibile. La zona giudicata prende il verde, la rincorsa resta
+tratteggiata, e le note fuori dal giro perdono il colore: sai quali battute
+contano guardando la tab, non il pannello.
+
+![Un drill armato qui, letto sulla tab di Live Tab](https://raw.githubusercontent.com/cracklydisc/feedBack-plugin-livetab/main/docs/drill-loop.png)
+
+*Un drill armato da Riff Repeater, visto da Live Tab: verde la parte che conta,
+tratteggiata la rincorsa, grigie le note che in questo giro non tocca suonare.*
+
+Uno arma, l'altro mostra. Presi da soli funzionano; presi insieme il ciclo si
+chiude senza che tu debba tenere a mente dove finisce il pezzo.
 
 ---
 
